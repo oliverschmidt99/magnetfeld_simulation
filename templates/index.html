@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Interaktiver Simulations-Editor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/konva@9.3.13/konva.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Linke Spalte: Bibliothek -->
+    <div id="library">
+        <h3>Bibliothek</h3>
+        <div class="section-title">Standard-Leiter</div>
+        <!-- NEU: Standard-Leiter mit festen Maßen -->
+        <div class="library-item" draggable="true" data-type="standard-leiter">Standard-Leiter</div>
+
+        <div class="section-title">Generische Bauteile</div>
+        <!-- Umbenannt für Klarheit -->
+        <div class="library-item" draggable="true" data-type="freier-leiter">Freier Leiter</div>
+        <div class="library-item" draggable="true" data-type="blech">Blech</div>
+        <!-- NEU: Wandler -->
+        <div class="library-item" draggable="true" data-type="wandler">Wandler</div>
+    </div>
+
+    <!-- Mittlere Spalte: Grafischer Editor -->
+    <div id="editor-wrapper">
+        <div id="editor-container"></div>
+    </div>
+
+    <!-- Rechte Spalte: Eigenschaften-Panel -->
+    <div id="properties">
+        <h3>Eigenschaften</h3>
+        <div id="properties-content">
+            <p class="placeholder">Ein Bauteil auswählen, um seine Parameter hier zu bearbeiten.</p>
+        </div>
+        <hr>
+        <button type="button" id="run-simulation">Simulation starten</button>
+        <div id="status">Status: Bereit</div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>

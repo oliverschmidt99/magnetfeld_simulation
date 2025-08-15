@@ -23,38 +23,35 @@
                 <button type="button" class="danger">Beenden</button>
             </div>
         </div>
-
         <div id="tab-bar" class="tab-bar"></div>
 
         <div class="tab-content-area">
-
             <div id="neues-projekt" class="tab-content">
                 <h2>Neues Projekt erstellen</h2>
                 <div class="form-grid-col2">
                     <fieldset>
                         <legend>Projektdetails</legend>
                         <div class="form-group"><label for="proj-name">Projektname</label><input type="text"
-                                id="proj-name" placeholder="z.B. 3-Phasen Wandleranalyse"></div>
+                                id="proj-name" value="Test-Projekt 3-Leiter"></div>
                         <div class="form-group"><label for="proj-desc">Beschreibung</label><textarea id="proj-desc"
                                 rows="4"></textarea></div>
-                        <div class="form-group"><label for="proj-location">Speicherort</label><input type="text"
-                                id="proj-location" placeholder="C:\FEMM_Projekte\"></div>
                     </fieldset>
                     <fieldset>
                         <legend>Simulationsart</legend>
-                        <div class="form-group"><label>Layout-Typ</label><select id="sim-type">
-                                <option value="3-leiter">3 Leiter (L1, L2, L3)</option>
+                        <div class="form-group">
+                            <label>Leiter-Konfiguration</label>
+                            <select id="sim-type">
+                                <option value="2-leiter">2 Leiter (L1, N)</option>
+                                <option value="3-leiter" selected>3 Leiter (L1, L2, L3)</option>
                                 <option value="4-leiter">4 Leiter (L1, L2, L3, N)</option>
                                 <option value="5-leiter">5 Leiter (L1, L2, L3, N, PE)</option>
-                                <option value="2-leiter">2 Leiter (L1, N)</option>
-                                <option value="sandbox" disabled>Sandbox (in Kürze)</option>
-                            </select></div>
-                        <div class="form-group"><label>Stromstärke (A)</label><input type="number" value="4000"></div>
-                        <div class="form-group"><label>Wandler auf Leiter</label>
-                            <div>
-                                <input type="checkbox" id="wandler-l1" checked><label for="wandler-l1">L1</label>
-                                <input type="checkbox" id="wandler-l2" checked><label for="wandler-l2">L2</label>
-                                <input type="checkbox" id="wandler-l3" checked><label for="wandler-l3">L3</label>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Stromstärke (A)</label><input type="number" id="stromstaerke"
+                                value="4000"></div>
+                        <div class="form-group" id="wandler-auswahl-container">
+                            <label>Wandler auf Leiter</label>
+                            <div id="wandler-checkboxes">
                             </div>
                         </div>
                     </fieldset>
@@ -63,64 +60,33 @@
                     öffnen</button>
             </div>
 
-            <div id="einstellungen" class="tab-content">
-                <h2>Globale Einstellungen</h2>
-                <div class="form-grid-col2">
-                    <fieldset>
-                        <legend>Problem Definition</legend>
-                        <div class="form-group"><label>Problem Type</label><select>
-                                <option>Planar</option>
-                                <option>Axisymmetric</option>
-                            </select></div>
-                        <div class="form-group"><label>Length Units</label><select>
-                                <option>Millimeters</option>
-                                <option>Meters</option>
-                                <option>Inches</option>
-                            </select></div>
-                        <div class="form-group"><label>Frequency (Hz)</label><input type="number" value="50"></div>
-                        <div class="form-group"><label>Depth (mm)</label><input type="number" value="30"></div>
-                        <div class="form-group"><label>Comment</label><textarea rows="3"></textarea></div>
-                    </fieldset>
-                    <fieldset>
-                        <legend>Solver &amp; Mesh</legend>
-                        <div class="form-group"><label>Solver Precision</label><input type="text" value="1e-8"></div>
-                        <div class="form-group"><label>Min Angle</label><input type="number" value="30"></div>
-                        <div class="form-group"><label>AC Solver</label><select>
-                                <option>Successive Approx.</option>
-                                <option>Newton</option>
-                            </select></div>
-                        <div class="form-group"><label>Smart Mesh</label><input type="checkbox" checked></div>
-                    </fieldset>
-                </div>
-            </div>
-
             <div id="projekt-laden" class="tab-content">
                 <h2>Projekt laden</h2>
-                <p>Funktionalität wird in Kürze hinzugefügt.</p>
             </div>
             <div id="bauteile-erstellen" class="tab-content">
-                <h2>Bauteile erstellen &amp; verwalten</h2>
-                <p>Funktionalität wird in Kürze hinzugefügt.</p>
+                <h2>Bauteile erstellen</h2>
+            </div>
+            <div id="einstellungen" class="tab-content">
+                <h2>Einstellungen</h2>
             </div>
 
-            <div id="editor" class="tab-content">
-                <div class="toolbar" id="editor-toolbar">
-                    <div class="toolbar-group"><button type="button" title="Speichern">💾</button><button type="button"
-                            title="Rückgängig">↩️</button><button type="button" title="Wiederholen">↪️</button></div>
-                    <div class="separator"></div>
-                    <div class="toolbar-group"><button type="button" title="Verschieben">✋</button><button type="button"
-                            title="Auswählen">👆</button></div>
+            <div id="editor-template" class="tab-content" style="display: none;">
+                <div class="toolbar">
+                    <div class="toolbar-group">
+                        <button type="button" title="Auswählen/Verschieben" data-tool="select">✋</button>
+                        <button type="button" title="Pfeil zeichnen" data-tool="arrow">✏️</button>
+                        <button type="button" title="Text hinzufügen" data-tool="text">T</button>
+                    </div>
                 </div>
                 <div class="editor-main-area">
-                    <div id="konva-container" class="editor-canvas"></div>
-                    <div id="properties-panel" class="properties-panel">
+                    <div class="editor-canvas"></div>
+                    <div class="properties-panel">
                         <h3>Eigenschaften</h3>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 

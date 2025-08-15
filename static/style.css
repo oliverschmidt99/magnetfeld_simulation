@@ -4,41 +4,29 @@
 }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; height: 100vh; }
 .app-container { display: flex; flex-direction: column; height: 100%; }
-
-/* Hauptmenü & Tabs */
 .main-menu { display: flex; justify-content: space-between; background-color: var(--panel-color); padding: 5px 10px; border-bottom: 1px solid var(--border-color); }
-.main-menu button { background: none; border: 1px solid transparent; color: var(--text-color); padding: 5px 10px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+.main-menu button { background: none; border: 1px solid transparent; color: var(--text-color); padding: 5px 10px; border-radius: 4px; cursor: pointer; }
 .main-menu button:hover { background-color: var(--primary-color); }
-.main-menu button.danger:hover { background-color: var(--danger-color); }
 .tab-bar { display: flex; background-color: var(--bg-color); padding: 5px 10px 0 10px; border-bottom: 1px solid var(--panel-color); }
 .tab { padding: 8px 15px; cursor: pointer; background-color: var(--panel-color); border: 1px solid var(--border-color); border-bottom: none; margin-right: 5px; border-radius: 5px 5px 0 0; position: relative; bottom: -1px; }
 .tab.active { background-color: var(--bg-color); border-bottom: 1px solid var(--bg-color); color: var(--primary-color); font-weight: bold; }
 .tab .close-btn { margin-left: 10px; font-weight: bold; cursor: pointer; }
-.tab .close-btn:hover { color: var(--danger-color); }
-
-/* Inhaltsbereich */
 .tab-content-area { flex-grow: 1; position: relative; }
 .tab-content { display: none; padding: 20px; height: 100%; box-sizing: border-box; overflow-y: auto; }
 .tab-content.active { display: block; }
-h2 { color: var(--primary-color); margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-
-/* Spezielles Editor-Layout */
-#editor { padding: 0; display: flex; flex-direction: column; }
+#editor-template.tab-content.active, .editor-instance.tab-content.active { display: flex; flex-direction: column; padding: 0; }
+h2 { color: var(--primary-color); margin-top: 0; }
 .toolbar { padding: 5px; background-color: var(--panel-color); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 5px; }
 .toolbar-group { display: flex; gap: 2px; }
-.toolbar button { font-size: 1.2em; padding: 5px; }
-.separator { border-left: 1px solid var(--border-color); height: 25px; margin: 0 5px; }
+.toolbar button { font-size: 1.2em; padding: 5px; background: #5a6164; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 3px; cursor: pointer; }
+.toolbar button.active-tool { background-color: var(--primary-color); }
 .editor-main-area { display: flex; flex-grow: 1; overflow: hidden; }
-.editor-canvas { flex-grow: 1; }
-.properties-panel { flex-basis: 280px; flex-shrink: 0; background-color: var(--panel-color); border-left: 1px solid var(--border-color); padding: 10px; overflow-y: auto; }
-
-/* Formular-Elemente */
+.editor-canvas { flex-grow: 1; background-color: white; }
+.properties-panel { flex-basis: 280px; flex-shrink: 0; background-color: var(--panel-color); border-left: 1px solid var(--border-color); padding: 10px; }
 .form-grid-col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
 .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
-.form-group label { margin-bottom: 5px; font-size: 0.9em; color: #bdc3c7; }
+.form-group label { margin-bottom: 5px; }
 .form-group input, .form-group select, .form-group textarea { padding: 8px; background-color: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px; }
-.form-group input[type="checkbox"] { align-self: flex-start; }
 fieldset { border: 1px solid var(--border-color); border-radius: 4px; padding: 10px 20px 20px 20px; margin-bottom: 20px; }
 legend { color: var(--primary-color); padding: 0 10px; font-weight: bold; }
-.full-width { grid-column: 1 / -1; }
 button.primary.large { padding: 12px 20px; font-size: 1.1em; margin-top: 10px; }

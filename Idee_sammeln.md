@@ -121,39 +121,40 @@
 - **Projekt XY** Wenn ein Projekt geöffnet ist, soll die Werkzeugleiste die verfügbaren Werkzeuge für dieses Projekt anzeigen.
 
   - **_Werkzeugbar_**
-  - Editor (Werkezuge sollen hier Gruppiert angezeigt werden, wie bei Word)
-    - Werkzeuge, wie Textwerkzeuge, Zeichenwerkzeuge, Bearbeitungswerkzeuge
-    - Farbauswahl
-    - Formenwerkzeuge
-    - Bauteil einfügen (z.B. Leiter, Wandler, Trafoblech)
-    - Größenänderungswerkzeuge
-    - Kopierwerkzeug
-    - Verschieben Werkzeug
-    - Drehen Werkzeug
-    - Spiegeln Werkzeug
-    - Gruppieren/Entgruppieren Werkzeug
-    - Ausrichten Werkzeug
-    - Anordnen Werkzeug (Ebene nach vorne/hinten)
-    - Bemaßungswerkzeug
-    - Messwerkzeug (Abstände, Winkel)
-    - Gitterfang/Ausrichtungshilfen
-    - Ebenenverwaltung (Sichtbarkeit, Sperren)
-    - Undo/Redo
-  - Simulieren
 
-    - Parameterauswahl
-    - Strom von I_start bis I_end in I_step Schritten simulieren oder Konstant
-    - Leiter und Wandler von einem Punkt zu einem andern Punkt wander lassen oder Konstant
-      - Mit einem Vektorpfeil reinzeichnen.
-    - Phasenwinkel phi_start bis phi_end in phi_step Schritten simulieren oder Konstant
-    -
+    - Editor (Werkezuge sollen hier Gruppiert angezeigt werden, wie bei Word)
+      - Werkzeuge, wie Textwerkzeuge, Zeichenwerkzeuge, Bearbeitungswerkzeuge
+      - Farbauswahl
+      - Formenwerkzeuge
+      - Bauteil einfügen (z.B. Leiter, Wandler, Trafoblech)
+      - Größenänderungswerkzeuge
+      - Kopierwerkzeug
+      - Verschieben Werkzeug
+      - Drehen Werkzeug
+      - Spiegeln Werkzeug
+      - Gruppieren/Entgruppieren Werkzeug
+      - Ausrichten Werkzeug
+      - Anordnen Werkzeug (Ebene nach vorne/hinten)
+      - Bemaßungswerkzeug
+      - Messwerkzeug (Abstände, Winkel)
+      - Gitterfang/Ausrichtungshilfen
+      - Ebenenverwaltung (Sichtbarkeit, Sperren)
+      - Undo/Redo
+    - Simulieren
 
-  - Analysieren
-    - Ergebnisse der Simulation anzeigen (z.B. Magnetfeldlinien, Flussdichte, Induktivität)
-    - Exportoptionen (z.B. als Bild, CSV, PDF)
-    - Diagramme und Plots (z.B. B-H-Kurven, Stromverläufe)
-  - Dokumentation
-    - Ein text feld damit man sich notzien machen kann
-  - Hilfe
+      - Parameterauswahl
+      - Strom von I_start bis I_end in I_step Schritten simulieren oder Konstant
+      - Leiter und Wandler von einem Punkt zu einem andern Punkt wander lassen oder Konstant
+        - Mit einem Vektorpfeil reinzeichnen.
+      - Phasenwinkel phi_start bis phi_end in phi_step Schritten simulieren oder Konstant
+      -
+
+    - Analysieren
+      - Ergebnisse der Simulation anzeigen (z.B. Magnetfeldlinien, Flussdichte, Induktivität)
+      - Exportoptionen (z.B. als Bild, CSV, PDF)
+      - Diagramme und Plots (z.B. B-H-Kurven, Stromverläufe)
+    - Dokumentation
+      - Ein text feld damit man sich notzien machen kann
+    - Hilfe
 
 ---

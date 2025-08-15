@@ -1,267 +1,284 @@
+// Dieser Event-Listener stellt sicher, dass der Code erst ausgeführt wird,
+// wenn die gesamte HTML-Seite geladen und bereit ist.
 document.addEventListener("DOMContentLoaded", () => {
-  // =========================================================================
-  // ## UI-Elemente ##
-  // =========================================================================
-  const tabBar = document.getElementById("tab-bar");
-  const simTypeSelect = document.getElementById("sim-type");
-  const wandlerCheckboxesContainer =
-    document.getElementById("wandler-checkboxes");
+  // ############ Globale Variablen und DOM-Elemente ############
+  const mainMenuView = document.getElementById("main-menu-view");
+  const projectEditorView = document.getElementById("project-editor-view");
+  const canvas = document.getElementById("editor-canvas");
+  const ctx = canvas.getContext("2d");
 
-  // =========================================================================
-  // ## TAB-MANAGEMENT FUNKTIONEN (Vollständig) ##
-  // =========================================================================
+  // Zustandsobjekt zur Verwaltung des Editors
+  let editorState = {
+    currentTool: "select",
+    isDrawing: false,
+    startX: 0,
+    startY: 0,
+    snapshot: null, // Für die Live-Vorschau beim Zeichnen
+  };
 
-  function deactivateAllTabs() {
-    document
-      .querySelectorAll(".tab")
-      .forEach((t) => t.classList.remove("active"));
-    document
-      .querySelectorAll(".tab-content")
-      .forEach((c) => c.classList.remove("active"));
-  }
+  // Arrays für die Undo/Redo-Funktionalität
+  let history = [];
+  let historyStep = -1;
 
-  function activateTab(tabId) {
-    deactivateAllTabs();
-    const tabElement = document.querySelector(`.tab[data-tab="${tabId}"]`);
-    const contentElement = document.getElementById(tabId);
-    if (tabElement && contentElement) {
-      tabElement.classList.add("active");
-      contentElement.classList.add("active");
-    }
-  }
+  // ############ LOGIK FÜR HAUPTMENÜ ############
 
-  function closeTab(tabId) {
-    const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
-    const content = document.getElementById(tabId);
+  // Event-Listener für den "Projekt erstellen"-Button
+  document
+    .getElementById("create-project-btn")
+    .addEventListener("click", () => {
+      const projectName = document.getElementById("proj-name").value.trim();
+      if (!projectName) {
+        alert("Bitte gib einen Projektnamen ein.");
+        return;
+      }
 
-    tab?.remove();
-    // Geklonte Editor-Tabs werden vollständig aus dem DOM entfernt
-    if (tabId.startsWith("editor-")) {
-      content?.remove();
-    } else {
-      content?.classList.remove("active");
-    }
+      // UI-Ansichten umschalten
+      document.getElementById(
+        "project-title-display"
+      ).textContent = `Projekt: ${projectName}`;
+      mainMenuView.classList.add("hidden");
+      projectEditorView.classList.remove("hidden");
 
-    // Den ersten verbleibenden Tab aktivieren, falls vorhanden
-    const firstTab = tabBar.querySelector(".tab");
-    if (firstTab) {
-      activateTab(firstTab.dataset.tab);
-    }
-  }
+      // Editor zurücksetzen und ersten Zustand speichern
+      resetCanvas();
+      saveState();
+    });
 
-  function openTab(tabId, title, isClosable = true) {
-    // Wenn der Tab bereits existiert, nur aktivieren
-    if (document.querySelector(`.tab[data-tab="${tabId}"]`)) {
-      activateTab(tabId);
-      return;
-    }
-    const tab = document.createElement("div");
-    tab.className = "tab";
-    tab.dataset.tab = tabId;
-    tab.innerHTML = `${title} ${
-      isClosable ? '<span class="close-btn">&times;</span>' : ""
-    }`;
-    tabBar.appendChild(tab);
+  // Event-Listener für den "Projekt schließen"-Button
+  document.getElementById("close-project-btn").addEventListener("click", () => {
+    // Hier könnte man eine "Wollen Sie wirklich schließen?"-Abfrage einbauen
+    mainMenuView.classList.remove("hidden");
+    projectEditorView.classList.add("hidden");
+  });
 
-    tab.addEventListener("click", (e) => {
-      if (e.target.classList.contains("close-btn")) {
-        closeTab(tabId);
-      } else {
-        activateTab(tabId);
+  // Event-Listener für den "Materialien laden"-Button
+  document
+    .getElementById("load-materials-btn")
+    .addEventListener("click", async () => {
+      const container = document.getElementById("material-list-container");
+      container.textContent = "Lade Materialien...";
+      try {
+        // Asynchroner Aufruf an den Flask-Endpunkt
+        const response = await fetch("/get-materials");
+        const data = await response.json();
+
+        if (!response.ok) {
+          // Zeigt Fehlermeldungen vom Server an (z.B. "Datei nicht gefunden")
+          throw new Error(data.error || "Unbekannter Serverfehler");
+        }
+
+        // Materialliste im UI erstellen
+        const list = document.createElement("ul");
+        data.forEach((material) => {
+          const item = document.createElement("li");
+          item.textContent = `${material.name} (μx = ${material.mu_x})`;
+          list.appendChild(item);
+        });
+        container.innerHTML = ""; // Alten Inhalt leeren
+        container.appendChild(list);
+      } catch (error) {
+        console.error("Fehler beim Laden der Materialien:", error);
+        container.textContent = `Fehler: ${error.message}`;
       }
     });
 
-    activateTab(tabId);
+  // ############ LOGIK FÜR EDITOR ############
+
+  // Werkzeugauswahl im Ribbon-Menü
+  document.querySelectorAll(".tool-selector").forEach((button) => {
+    button.addEventListener("click", () => {
+      document
+        .querySelector(".tool-selector.selected")
+        ?.classList.remove("selected");
+      button.classList.add("selected");
+      editorState.currentTool = button.dataset.tool;
+    });
+  });
+
+  // Undo/Redo-Buttons
+  document.getElementById("undo-btn").addEventListener("click", undo);
+  document.getElementById("redo-btn").addEventListener("click", redo);
+
+  // Aufruf der Simulations-Route
+  document
+    .getElementById("start-simulation-btn")
+    .addEventListener("click", runSimulation);
+
+  // --- Canvas-Zeichenlogik ---
+  canvas.addEventListener("mousedown", startDrawing);
+  canvas.addEventListener("mousemove", draw);
+  canvas.addEventListener("mouseup", stopDrawing);
+  canvas.addEventListener("mouseout", stopDrawing); // Beendet Zeichnen, wenn Maus Canvas verlässt
+
+  function startDrawing(e) {
+    if (editorState.currentTool === "select") return;
+    editorState.isDrawing = true;
+    editorState.startX = e.offsetX;
+    editorState.startY = e.offsetY;
+    // "Schnappschuss" der aktuellen Canvas für die Live-Vorschau machen
+    editorState.snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 
-  // =========================================================================
-  // ## EDITOR-LOGIK ##
-  // =========================================================================
+  function draw(e) {
+    if (!editorState.isDrawing) return;
+    // Schnappschuss wiederherstellen, um nur die finale Form zu zeigen
+    ctx.putImageData(editorState.snapshot, 0, 0);
+    drawShape(e.offsetX, e.offsetY);
+  }
 
-  let editorInstances = {}; // Verwaltet alle geöffneten Editor-Instanzen
+  function stopDrawing(e) {
+    if (!editorState.isDrawing) return;
+    editorState.isDrawing = false;
+    // Finale Form auf die Canvas zeichnen
+    drawShape(e.offsetX, e.offsetY);
+    // Den neuen Zustand in der History speichern
+    saveState();
+  }
 
-  function initializeEditor(tabId, config) {
-    console.log(
-      "Starte Initialisierung für Editor-Tab:",
-      tabId,
-      "mit Config:",
-      config
-    );
+  function drawShape(x2, y2) {
+    ctx.beginPath();
+    // Hier könnten in Zukunft Farbe, Linienstärke etc. aus dem UI ausgelesen werden
+    ctx.strokeStyle = "#0000FF"; // Standard-Randfarbe
+    ctx.lineWidth = 2;
+
+    const x1 = editorState.startX;
+    const y1 = editorState.startY;
+
+    switch (editorState.currentTool) {
+      case "line":
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke(); // Nur Rand
+        break;
+      case "rect":
+        ctx.rect(x1, y1, x2 - x1, y2 - y1);
+        ctx.stroke(); // Nur Rand
+        break;
+      case "circle":
+        const radius = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        ctx.arc(x1, y1, radius, 0, 2 * Math.PI);
+        ctx.stroke(); // Nur Rand
+        break;
+
+      // NEUER CODE FÜR BAUTEILE
+      case "leiter":
+        ctx.fillStyle = "#b87333"; // Kupfer-Farbe
+        ctx.rect(x1, y1, x2 - x1, y2 - y1);
+        ctx.fill(); // Gefülltes Rechteck
+        break;
+      case "wandler":
+        ctx.fillStyle = "#808080"; // Grau für den Kern
+        const outerRadius = Math.sqrt(
+          Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
+        );
+        const innerRadius = outerRadius * 0.7; // Innenradius ist 70% des Außenradius
+
+        // Donut-Form zeichnen
+        ctx.arc(x1, y1, outerRadius, 0, 2 * Math.PI); // Äußerer Kreis
+        ctx.arc(x1, y1, innerRadius, 0, 2 * Math.PI, true); // Innerer Kreis (gegen Uhrzeigersinn)
+        ctx.fill(); // Füllen
+        break;
+    }
+  }
+
+  // --- Undo/Redo-Logik ---
+  function saveState() {
+    historyStep++;
+    // Wenn wir in der History zurückgegangen sind, wird die "Zukunft" verworfen
+    if (historyStep < history.length) {
+      history.length = historyStep;
+    }
+    history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  }
+
+  function undo() {
+    if (historyStep > 0) {
+      historyStep--;
+      ctx.putImageData(history[historyStep], 0, 0);
+    }
+  }
+
+  function redo() {
+    if (historyStep < history.length - 1) {
+      historyStep++;
+      ctx.putImageData(history[historyStep], 0, 0);
+    }
+  }
+
+  function resetCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    history = [];
+    historyStep = -1;
+  }
+
+  // --- Simulations-Logik ---
+  async function runSimulation() {
+    const outputEl = document.getElementById("output-pre");
+    outputEl.textContent = "Simulation wird ausgeführt...";
     try {
-      const editorContent = document.getElementById(tabId);
-      const konvaContainer = editorContent.querySelector(".editor-canvas");
-
-      const stage = new Konva.Stage({
-        container: konvaContainer,
-        width: konvaContainer.clientWidth,
-        height: konvaContainer.clientHeight,
-        draggable: true,
+      // Hier könnten die Canvas-Daten an das Backend gesendet werden
+      // const canvasData = canvas.toDataURL(); // Beispiel
+      const response = await fetch("/run-simulation", {
+        method: "POST",
+        // body: JSON.stringify({ canvas: canvasData }), // Beispiel
+        // headers: { 'Content-Type': 'application/json' }
       });
-      const layer = new Konva.Layer();
-      stage.add(layer);
+      const result = await response.json();
 
-      editorInstances[tabId] = { stage, layer, config };
-
-      drawLayout(editorInstances[tabId]);
-      console.log("Editor Initialisierung erfolgreich.");
+      if (response.ok) {
+        outputEl.textContent = `Erfolg:\n${result.output}`;
+      } else {
+        outputEl.textContent = `Fehler:\n${result.error}`;
+      }
     } catch (error) {
-      console.error("Fehler bei der Editor-Initialisierung:", error);
+      console.error("Fetch-Fehler:", error);
+      outputEl.textContent = `Ein schwerwiegender Fehler ist aufgetreten: ${error.message}`;
     }
   }
+}); // Ende von DOMContentLoaded
 
-  function drawLayout({ stage, layer, config }) {
-    layer.destroyChildren();
-    const canvasWidth = stage.width();
-    const canvasHeight = stage.height();
+// ############ GLOBALE STEUERUNGSFUNKTIONEN (außerhalb von DOMContentLoaded) ############
 
-    const params = {
-      leiter_breite: 40,
-      leiter_hoehe: 40,
-      wandler_luftspalt: 10,
-      wandler_dicke: 15,
-    };
+// Umschalten der Tabs im Hauptmenü
+function showMainMenuTab(tabId) {
+  document
+    .querySelectorAll(".main-panel")
+    .forEach((p) => p.classList.remove("active"));
+  document
+    .querySelectorAll(".main-tab")
+    .forEach((t) => t.classList.remove("active"));
 
-    const leiterMapping = {
-      "2-leiter": ["L1", "N"],
-      "3-leiter": ["L1", "L2", "L3"],
-      "4-leiter": ["L1", "L2", "L3", "N"],
-      "5-leiter": ["L1", "L2", "L3", "N", "PE"],
-    };
-    const leiterNamen = leiterMapping[config.simType] || [];
-    const anzahlLeiter = leiterNamen.length;
-    const abstand =
-      anzahlLeiter > 1 ? (canvasWidth * 0.6) / (anzahlLeiter - 1) : 0;
-
-    leiterNamen.forEach((name, index) => {
-      const x_offset =
-        anzahlLeiter > 1 ? -canvasWidth * 0.3 + index * abstand : 0;
-      const center_x = canvasWidth / 2 + x_offset;
-      const center_y = canvasHeight / 2;
-
-      const group = new Konva.Group({ draggable: true });
-      layer.add(group);
-
-      if (config.wandler[name]) {
-        const stahl_b =
-          params.leiter_breite +
-          2 * params.wandler_luftspalt +
-          2 * params.wandler_dicke;
-        const stahl_h =
-          params.leiter_hoehe +
-          2 * params.wandler_luftspalt +
-          2 * params.wandler_dicke;
-        group.add(
-          new Konva.Rect({
-            x: center_x - stahl_b / 2,
-            y: center_y - stahl_h / 2,
-            width: stahl_b,
-            height: stahl_h,
-            fill: "#D2D2D2",
-            stroke: "black",
-          })
-        );
-        const luft_b = params.leiter_breite + 2 * params.wandler_luftspalt;
-        const luft_h = params.leiter_hoehe + 2 * params.wandler_luftspalt;
-        group.add(
-          new Konva.Rect({
-            x: center_x - luft_b / 2,
-            y: center_y - luft_h / 2,
-            width: luft_b,
-            height: luft_h,
-            fill: "#FFFFFF",
-          })
-        );
-      }
-
-      group.add(
-        new Konva.Rect({
-          x: center_x - params.leiter_breite / 2,
-          y: center_y - params.leiter_hoehe / 2,
-          width: params.leiter_breite,
-          height: params.leiter_hoehe,
-          fill: "#B87333",
-        })
-      );
-      group.add(
-        new Konva.Text({
-          text: name,
-          x: center_x - 5,
-          y: center_y - 8,
-          fontSize: 14,
-          fill: "white",
-          fontStyle: "bold",
-          listening: false,
-        })
-      );
-    });
-
-    stage.draw();
+  const panel = document.getElementById(tabId + "-panel");
+  if (panel) {
+    panel.classList.add("active");
   }
 
-  // =========================================================================
-  // ## EVENT-LISTENER & START ##
-  // =========================================================================
+  // `event.currentTarget` ist eine robustere Alternative zur manuellen Selektion
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add("active");
+  }
+}
 
-  // Event-Listener für die Hauptmenü-Buttons
-  document.querySelectorAll(".main-menu button[data-tab]").forEach((button) => {
-    button.addEventListener("click", () =>
-      openTab(button.dataset.tab, button.textContent)
+// Umschalten der Tabs in der Ribbon-Bar
+function showTab(tabId) {
+  document
+    .querySelectorAll(".ribbon-panel")
+    .forEach((panel) => panel.classList.remove("active"));
+  document
+    .querySelectorAll(".ribbon-tab")
+    .forEach((tab) => tab.classList.remove("active"));
+
+  // NEUE, SICHERE VERSION
+  const panel = document.getElementById(tabId + "-tab");
+  if (panel) {
+    panel.classList.add("active");
+  } else {
+    console.error(
+      `Fehler: Panel mit der ID '${tabId}-tab' wurde nicht gefunden.`
     );
-  });
-
-  // Funktion zum Aktualisieren der Wandler-Checkboxen
-  function updateWandlerCheckboxes() {
-    const leiterMapping = {
-      "2-leiter": ["L1", "N"],
-      "3-leiter": ["L1", "L2", "L3"],
-      "4-leiter": ["L1", "L2", "L3", "N"],
-      "5-leiter": ["L1", "L2", "L3", "N", "PE"],
-    };
-    const leiterNamen = leiterMapping[simTypeSelect.value] || [];
-    wandlerCheckboxesContainer.innerHTML = "";
-    leiterNamen.forEach((name) => {
-      const id = `wandler-${name}`;
-      const checkboxHtml = `
-                <input type="checkbox" id="${id}" data-leiter="${name}" checked>
-                <label for="${id}">${name}</label>
-            `;
-      wandlerCheckboxesContainer.innerHTML += checkboxHtml;
-    });
   }
 
-  // Event-Listener, um die Checkboxen bei Änderung der Konfiguration zu aktualisieren
-  simTypeSelect.addEventListener("change", updateWandlerCheckboxes);
-
-  // "Projekt erstellen"-Button
-  document.getElementById("start-projekt-btn").addEventListener("click", () => {
-    const wandlerConfig = {};
-    wandlerCheckboxesContainer
-      .querySelectorAll('input[type="checkbox"]')
-      .forEach((cb) => {
-        wandlerConfig[cb.dataset.leiter] = cb.checked;
-      });
-
-    const config = {
-      projectName:
-        document.getElementById("proj-name").value || "Unbenanntes Projekt",
-      simType: simTypeSelect.value,
-      stromstaerke: document.getElementById("stromstaerke").value,
-      wandler: wandlerConfig,
-    };
-
-    const tabId = `editor-${Date.now()}`;
-    const editorTemplate = document.getElementById("editor-template");
-    const newEditor = editorTemplate.cloneNode(true);
-    newEditor.id = tabId;
-    newEditor.classList.add("editor-instance");
-    newEditor.style.display = "flex";
-    document.querySelector(".tab-content-area").appendChild(newEditor);
-
-    openTab(tabId, config.projectName, true);
-    setTimeout(() => initializeEditor(tabId, config), 100);
-  });
-
-  // Initialen Zustand beim Laden der Seite herstellen
-  updateWandlerCheckboxes();
-  openTab("neues-projekt", "Neues Projekt", false);
-});
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add("active");
+  }
+}

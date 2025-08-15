@@ -1,8 +1,8 @@
 {
     "abstand": 220,
-    "leiter_hoehe": 40,
-    "leiter_breite": 100,
-    "spitzenstrom": 4000,
+    "leiter_hoehe": 10,
+    "leiter_breite": 40,
+    "spitzenstrom": 600,
     "wandler_luftspalt": 10,
     "wandler_dicke": 20,
     "wandler_material": "M-36 Steel",

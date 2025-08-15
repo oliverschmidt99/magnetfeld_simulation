@@ -1,88 +1,64 @@
-function plot_results(csv_filename, szenario)
-    % =========================================================================
-    % plot_results.m - Liest CSV und plottet szenario-basiert
-    % =========================================================================
+% =========================================================================
+% plot_results.m - Liest die Ergebnis-CSV-Datei und plottet die Daten
+% (Finale, robuste Version mit Fallback für Spaltennamen)
+% =========================================================================
+function plot_results(csv_filename)
+    % Lese die in main.m erstellte CSV-Datei ein
     data = readtable(csv_filename);
 
-    % Erstelle eine neue Abbildung und speichere sie
-    fig = figure('Name', ['Ergebnisse für Szenario: ' szenario], 'Position', [100, 100, 1200, 800], 'Visible', 'off');
+    % --- Intelligente Spaltenauswahl mit Fallback ---
+    if ismember('I_sek_final_A', data.Properties.VariableNames)
+        sek_strom_col_name = 'I_sek_final_A';
+    elseif ismember('I_sek_final_A_1', data.Properties.VariableNames)
+        sek_strom_col_name = 'I_sek_final_A_1';
+        fprintf('Hinweis: Veralteter Spaltenname "%s" wird für den Plot verwendet.\n', sek_strom_col_name);
+    else
+        fprintf('FEHLER: Konnte keine passende Spalte für den Sekundärstrom in der CSV-Datei finden.\n');
+        fprintf('Verfügbare Spalten sind:\n');
+        disp(data.Properties.VariableNames');
+        error('Bitte die schreibende Funktion (calculate_results.m) überprüfen.');
+    end
 
+    % Erstelle eine neue Abbildung
+    figure('Name', 'Simulationsergebnisse: Ströme vs. Phasenwinkel', 'NumberTitle', 'off');
+
+    % Teile die Daten nach Leitern auf
     L1_data = data(strcmp(data.Leiter, 'L1'), :);
     L2_data = data(strcmp(data.Leiter, 'L2'), :);
     L3_data = data(strcmp(data.Leiter, 'L3'), :);
 
-    switch szenario
-        case 'Phasenwinkel_Sweep'
-            x_data = L1_data.Sweep_Parameter;
-            x_label = 'Phasenwinkel [°]';
-        case 'Leiter_Verschiebung'
-            x_data = L1_data.Sweep_Parameter;
-            x_label = 'Y-Offset von Leiter L2 [mm]';
-        case 'Metallblech_Analyse'
-            x_data = L1_data.Sweep_Parameter;
-            x_label = 'Phasenwinkel [°]';
-        otherwise
-            error('Unbekanntes Szenario für Plot!');
-    end
+    % --- Plot 1: Betrag der Sekundärströme ---
+    subplot(2, 1, 1);
 
-    % Plot 1: Betrag der Sekundärströme
-    subplot(2, 2, 1);
-    plot(x_data, L1_data.I_sek_final_A, 'b-o', 'LineWidth', 1.5, 'DisplayName', 'I_sek L1');
+    plot(L1_data.Phasenwinkel, abs(L1_data.(sek_strom_col_name)), 'b-o', 'LineWidth', 1.5, 'DisplayName', 'Isek L1');
     hold on;
-    plot(x_data, L2_data.I_sek_final_A, 'r-s', 'LineWidth', 1.5, 'DisplayName', 'I_sek L2');
-    plot(x_data, L3_data.I_sek_final_A, 'g-^', 'LineWidth', 1.5, 'DisplayName', 'I_sek L3');
+    plot(L2_data.Phasenwinkel, abs(L2_data.(sek_strom_col_name)), 'r-s', 'LineWidth', 1.5, 'DisplayName', 'Isek L2');
+    plot(L3_data.Phasenwinkel, abs(L3_data.(sek_strom_col_name)), 'g-^', 'LineWidth', 1.5, 'DisplayName', 'Isek L3');
     hold off;
-    title('Betrag der Sekundärströme |I_sek|');
-    xlabel(x_label);
-    ylabel('Strom [A]');
-    legend('show'); grid on;
 
-    % Plot 2: Gemitteltes Magnetfeld B im Kern
-    subplot(2, 2, 2);
-    plot(x_data, L1_data.B_avg_T, 'b-o', 'LineWidth', 1.5, 'DisplayName', 'B_avg L1');
+    title('Betrag der Sekundärströme vs. Phasenwinkel');
+    xlabel('Phasenwinkel [°]');
+    ylabel('Betrag |Isek| [A]');
+    legend('show', 'Location', 'best');
+    grid on;
+
+    % --- Plot 2: Primärströme (zur Kontrolle) ---
+    subplot(2, 1, 2);
+
+    plot(L1_data.Phasenwinkel, L1_data.I_prim_A, 'b-o', 'LineWidth', 1.5, 'DisplayName', 'Iprim L1');
     hold on;
-    plot(x_data, L2_data.B_avg_T, 'r-s', 'LineWidth', 1.5, 'DisplayName', 'B_avg L2');
-    plot(x_data, L3_data.B_avg_T, 'g-^', 'LineWidth', 1.5, 'DisplayName', 'B_avg L3');
+    plot(L2_data.Phasenwinkel, L2_data.I_prim_A, 'r-s', 'LineWidth', 1.5, 'DisplayName', 'Iprim L2');
+    plot(L3_data.Phasenwinkel, L3_data.I_prim_A, 'g-^', 'LineWidth', 1.5, 'DisplayName', 'Iprim L3');
     hold off;
-    title('Mittlere magnetische Flussdichte im Kern');
-    xlabel(x_label);
-    ylabel('Flussdichte [T]');
-    legend('show'); grid on;
 
-    % Plot 3: Primärströme
-    subplot(2, 2, 3);
-    plot(x_data, L1_data.I_prim_A, 'b-o', 'LineWidth', 1.5, 'DisplayName', 'I_prim L1');
-    hold on;
-    plot(x_data, L2_data.I_prim_A, 'r-s', 'LineWidth', 1.5, 'DisplayName', 'I_prim L2');
-    plot(x_data, L3_data.I_prim_A, 'g-^', 'LineWidth', 1.5, 'DisplayName', 'I_prim L3');
-    hold off;
-    title('Primärströme (Momentanwerte)');
-    xlabel(x_label);
-    ylabel('Strom [A]');
-    legend('show'); grid on;
+    title('Momentane Primärströme vs. Phasenwinkel (Kontrollplot)');
+    xlabel('Phasenwinkel [°]');
+    ylabel('Momentanstrom Iprim [A]');
+    legend('show', 'Location', 'best');
+    grid on;
 
-    % Plot 4: Magnetisierungsstrom
-    subplot(2, 2, 4);
-    plot(x_data, L1_data.I_mag_sek_A, 'b-o', 'LineWidth', 1.5, 'DisplayName', 'I_mag L1');
-    hold on;
-    plot(x_data, L2_data.I_mag_sek_A, 'r-s', 'LineWidth', 1.5, 'DisplayName', 'I_mag L2');
-    plot(x_data, L3_data.I_mag_sek_A, 'g-^', 'LineWidth', 1.5, 'DisplayName', 'I_mag L3');
-    hold off;
-    title('Betrag des Magnetisierungsstroms (sekundärseitig)');
-    xlabel(x_label);
-    ylabel('Strom [A]');
-    legend('show'); grid on;
-
-    sgtitle(['Analyseergebnisse für Szenario: ' strrep(szenario, '_', ' ')], 'FontSize', 16, 'FontWeight', 'bold');
-
-    % Speichere die Abbildung als PNG
-    plot_ordner_pfad = fullfile(fileparts(mfilename('fullpath')), 'ergebnis_plots');
-
-    if ~exist(plot_ordner_pfad, 'dir')
-        mkdir(plot_ordner_pfad);
-    end
-
-    plot_dateiname = fullfile(plot_ordner_pfad, ['plot_' szenario '.png']);
-    saveas(fig, plot_dateiname);
-    fprintf('Plot wurde gespeichert unter: %s\n', plot_dateiname);
+    % Speichert die Abbildung als PNG-Datei
+    plot_filename = 'ergebnis_plot.png';
+    saveas(gcf, plot_filename);
+    fprintf('Plot wurde erfolgreich als "%s" gespeichert.\n', plot_filename);
 end

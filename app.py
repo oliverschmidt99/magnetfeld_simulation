@@ -1,108 +1,62 @@
-from flask import Flask, render_template, jsonify, request
+import json
 import subprocess
 import os
-import re
-
-app = Flask(__name__)
+import sys
 
 
-def parse_matlib_dat(file_path):
+def run_matlab_simulation(config_path):
     """
-    Ein einfacher Parser für die matlib.dat-Datei von FEMM.
-    Extrahiert Blocknamen und die Werte für mu_x.
+    Liest eine Konfigurationsdatei ein und startet das MATLAB-Simulationsskript.
+
+    Args:
+        config_path (str): Der Pfad zur JSON-Konfigurationsdatei.
     """
-    materials = []
+    if not os.path.exists(config_path):
+        print(f"Fehler: Konfigurationsdatei nicht gefunden unter '{config_path}'")
+        return
+
+    print(f"Lese Konfiguration von: {config_path}")
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    project_name = config.get("projectName", "default_project")
+    print(f"Starte Simulation für Projekt: '{project_name}'...")
+
+    # *** HIER IST DIE ÄNDERUNG ***
+    # Der Pfad zeigt jetzt auf dein gewünschtes Hauptskript.
+    matlab_script_path = os.path.join("src", "main.m")
+
+    if not os.path.exists(matlab_script_path):
+        print(f"Fehler: MATLAB-Skript nicht gefunden unter '{matlab_script_path}'")
+        return
+
+    command = ["matlab", "-batch", f"run('{matlab_script_path}')"]
+
+    print(f"Führe Befehl aus: {' '.join(command)}")
+
     try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read()
-            # Findet alle Blöcke, die mit <BeginBlock> anfangen und mit <EndBlock> aufhören
-            blocks = re.findall(r"<BeginBlock>([\s\S]*?)<EndBlock>", content)
-            for block in blocks:
-                # Sucht nach dem Blocknamen innerhalb des Blocks
-                name_match = re.search(
-                    r'<BlockName>\s*=\s*"(.*?)"', block, re.IGNORECASE
-                )
-                # Sucht nach dem Mu_x-Wert
-                mu_x_match = re.search(
-                    r"<Mu_x>\s*=\s*([\d.eE+-]+)", block, re.IGNORECASE
-                )
+        process = subprocess.run(
+            command, capture_output=True, text=True, check=True, encoding="utf-8"
+        )
+        print("\n--- MATLAB Output ---")
+        print(process.stdout)
+        print("--- Simulation erfolgreich abgeschlossen ---")
 
-                if name_match and mu_x_match:
-                    materials.append(
-                        {
-                            "name": name_match.group(1),
-                            "mu_x": float(mu_x_match.group(1)),
-                            # Hier können bei Bedarf weitere Materialparameter (mu_y, sigma, etc.)
-                            # nach dem gleichen Muster geparst werden.
-                        }
-                    )
-        return materials
     except FileNotFoundError:
-        return None
-    except Exception as e:
-        # Gibt einen Fehler in der Konsole aus, wenn das Parsen fehlschlägt
-        print(f"Fehler beim Parsen der matlib.dat: {e}")
-        return []
-
-
-@app.route("/")
-def index():
-    """Zeigt die Hauptseite der Anwendung an."""
-    return render_template("index.html")
-
-
-@app.route("/get-materials", methods=["GET"])
-def get_materials():
-    """
-    Sucht die FEMM Materialbibliothek, parst sie und gibt die
-    Materialien als JSON zurück.
-    """
-    # Standardpfad für eine typische Windows-Installation (entsprechend deiner Arbeitsumgebung)
-    femm_path = "C:/femm42/bin/matlib.dat"
-
-    # Fallback-Pfad für Linux-Systeme (wie dein privates Arch Linux)
-    if not os.path.exists(femm_path):
-        # Dieser Pfad ist ein Beispiel und muss ggf. angepasst werden
-        femm_path = "/opt/femm42/bin/matlib.dat"
-
-    materials = parse_matlib_dat(femm_path)
-
-    if materials is not None:
-        # Erfolgreich gefunden und geparst
-        return jsonify(materials)
-    else:
-        # Datei wurde an keinem der Pfade gefunden
-        error_message = f"Materialbibliothek 'matlib.dat' nicht gefunden. Überprüfte Pfade: C:/femm42/bin/matlib.dat und /opt/femm42/bin/matlib.dat"
-        return jsonify({"error": error_message}), 404
-
-
-@app.route("/run-simulation", methods=["POST"])
-def run_simulation():
-    """
-    Nimmt Simulationsdaten entgegen und ruft das MATLAB-Skript auf.
-    (Diese Funktion dient aktuell als Platzhalter).
-    """
-    try:
-        # In Zukunft werden hier die Daten aus dem Frontend (z.B. die Canvas-Zeichnung als JSON)
-        # entgegengenommen, in eine Konfigurationsdatei geschrieben und dann das MATLAB-Skript gestartet.
-
-        # Beispielhafter Aufruf (aktuell auskommentiert)
-        # config_data = request.json
-        # with open('simulation_config.json', 'w') as f:
-        #     json.dump(config_data, f)
-        #
-        # result = subprocess.run(['matlab', '-batch', 'simulation_main'], capture_output=True, text=True)
-        # if result.returncode != 0:
-        #    return jsonify({'error': result.stderr}), 500
-
-        # Temporärer Dummy-Output für die UI-Entwicklung
-        output = "Simulation erfolgreich abgeschlossen.\nErgebnis: 42"
-        return jsonify({"output": output})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("\nFehler: Der Befehl 'matlab' wurde nicht gefunden.")
+        print(
+            "Stelle sicher, dass MATLAB installiert und der 'PATH' korrekt gesetzt ist."
+        )
+    except subprocess.CalledProcessError as e:
+        print("\n--- Fehler bei der MATLAB-Ausführung ---")
+        print("Return Code:", e.returncode)
+        print("\n--- MATLAB Standard Output ---")
+        print(e.stdout)
+        print("\n--- MATLAB Error Output ---")
+        print(e.stderr)
+        print("-----------------------------------------")
 
 
 if __name__ == "__main__":
-    # Startet den Flask-Entwicklungsserver
-    # debug=True sorgt für automatisches Neuladen bei Code-Änderungen und zeigt detaillierte Fehlermeldungen an.
-    app.run(debug=True)
+    config_file = sys.argv[1] if len(sys.argv) > 1 else "simulation_config.json"
+    run_matlab_simulation(config_file)

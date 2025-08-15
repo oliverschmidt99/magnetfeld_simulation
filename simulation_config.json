@@ -1,13 +1,146 @@
 {
-    "abstand": 220,
-    "leiter_hoehe": 10,
-    "leiter_breite": 40,
-    "spitzenstrom": 600,
-    "wandler_luftspalt": 10,
-    "wandler_dicke": 20,
-    "wandler_material": "M-36 Steel",
-    "nenn_prim": 4000,
-    "nenn_sek": 5,
-    "problem_tiefe": 30,
-    "mu_r_wandler": 2500
+    "projectName": "3_Leiter_System_I_sek_Berechnung",
+    "description": "Berechnung der Sekundärströme für drei Leiter, die jeweils von einem eigenen Stromwandler erfasst werden.",
+    "problemDefinition": {
+        "type": "Planar",
+        "lengthUnits": "Millimeters",
+        "frequency": 50,
+        "depth": 30,
+        "solverPrecision": 1e-8,
+        "minAngle": 30,
+        "smartMesh": false
+    },
+    "materials": [
+        {
+            "name": "Air",
+            "mu_x": 1,
+            "mu_y": 1
+        },
+        {
+            "name": "Copper",
+            "mu_x": 1,
+            "mu_y": 1,
+            "sigma": 58
+        },
+        {
+            "name": "M-36 Steel",
+            "mu_x": 2500,
+            "mu_y": 2500,
+            "sigma": 2.27,
+            "lam_d": 0.635
+        }
+    ],
+    "geometry": {
+        "boundary": {
+            "shape": "circle",
+            "center": [
+                0,
+                0
+            ],
+            "radius": 150
+        },
+        "components": [
+            {
+                "id": "Leiter_L1",
+                "type": "leiter",
+                "material": "Copper",
+                "shape": "circle",
+                "position": [
+                    -50,
+                    0
+                ],
+                "radius": 5,
+                "group": 1
+            },
+            {
+                "id": "Wandler_L1",
+                "type": "wandler",
+                "material": "M-36 Steel",
+                "shape": "ring",
+                "position": [
+                    -50,
+                    0
+                ],
+                "inner_radius": 10,
+                "outer_radius": 20,
+                "group": 2,
+                "area": 300,
+                "secondary_windings_w2": 800
+            },
+            {
+                "id": "Leiter_L2",
+                "type": "leiter",
+                "material": "Copper",
+                "shape": "circle",
+                "position": [
+                    0,
+                    0
+                ],
+                "radius": 5,
+                "group": 3
+            },
+            {
+                "id": "Wandler_L2",
+                "type": "wandler",
+                "material": "M-36 Steel",
+                "shape": "ring",
+                "position": [
+                    0,
+                    0
+                ],
+                "inner_radius": 10,
+                "outer_radius": 20,
+                "group": 4,
+                "area": 300,
+                "secondary_windings_w2": 800
+            },
+            {
+                "id": "Leiter_L3",
+                "type": "leiter",
+                "material": "Copper",
+                "shape": "circle",
+                "position": [
+                    50,
+                    0
+                ],
+                "radius": 5,
+                "group": 5
+            },
+            {
+                "id": "Wandler_L3",
+                "type": "wandler",
+                "material": "M-36 Steel",
+                "shape": "ring",
+                "position": [
+                    50,
+                    0
+                ],
+                "inner_radius": 10,
+                "outer_radius": 20,
+                "group": 6,
+                "area": 300,
+                "secondary_windings_w2": 800
+            }
+        ]
+    },
+    "circuits": [
+        {
+            "name": "Circuit_L1",
+            "type": "series",
+            "current": 100,
+            "assign_to_group": 1
+        },
+        {
+            "name": "Circuit_L2",
+            "type": "series",
+            "current": 150,
+            "assign_to_group": 3
+        },
+        {
+            "name": "Circuit_L3",
+            "type": "series",
+            "current": 200,
+            "assign_to_group": 5
+        }
+    ]
 }

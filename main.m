@@ -11,7 +11,7 @@ addpath('src'); % Pfad zu unseren eigenen Skripten
 disp('--- Starte parametrische Simulationsreihe ---');
 
 %% 1. Simulationsparameter definieren
-params.problem_tiefe_m = 0.03;
+params.problem_tiefe_m = 0.1;
 params.frequenz_hz = 50;
 params.leiter_hoehe = 40;
 params.leiter_breite = 100;

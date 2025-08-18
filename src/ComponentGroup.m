@@ -22,6 +22,7 @@ classdef ComponentGroup
         function drawInFemm(obj, circuitName, groupNumOffset)
             rail = obj.findComponentByClass('CopperRail');
             transformer = obj.findComponentByClass('Transformer');
+            transformerSheet = obj.findComponentByClass('TransformerSheet');
 
             if isempty(rail) || isempty(transformer)
                 error('Assembly "%s" missing rail or transformer.', obj.name);
@@ -34,21 +35,17 @@ classdef ComponentGroup
             gap.groupNum = groupNumOffset + 2;
             core.groupNum = groupNumOffset + 3;
 
-            drawBoundary(rail, obj.xPos, obj.yPos, circuitName);
-            drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
-            drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+            % Geänderte Aufrufe der drawBoundary-Funktion, um sicherzustellen, dass die Materialeigenschaften zugewiesen werden.
+            drawBoundary(rail, obj.xPos, obj.yPos, circuitName, rail.material, rail.groupNum);
+            drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', core.material, core.groupNum);
+            drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', gap.material, gap.groupNum);
 
-            labelXAir = obj.xPos + (gap.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
-            mi_addblocklabel(labelXAir, obj.yPos);
-            mi_selectlabel(labelXAir, obj.yPos);
-            mi_setblockprop(gap.material, 1, 0, '<None>', 0, gap.groupNum, 0);
-            mi_clearselected();
+            % Hinzufügen der TransformerSheet-Komponente
+            if ~isempty(transformerSheet)
+                transformerSheet.groupNum = groupNumOffset + 4;
+                drawBoundary(transformerSheet, obj.xPos + transformerSheet.xPos, obj.yPos + transformerSheet.yPos, '<None>', transformerSheet.material, transformerSheet.groupNum);
+            end
 
-            labelXCore = obj.xPos + (core.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
-            mi_addblocklabel(labelXCore, obj.yPos);
-            mi_selectlabel(labelXCore, obj.yPos);
-            mi_setblockprop(core.material, 1, 0, '<None>', 0, core.groupNum, 0);
-            mi_clearselected();
         end
 
         function component = findComponentByClass(obj, className)
@@ -93,7 +90,8 @@ classdef ComponentGroup
 
 end
 
-function drawBoundary(component, groupX, groupY, varargin)
+% Die Funktion drawBoundary wurde geändert, um immer die Materialeigenschaften zu setzen.
+function drawBoundary(component, groupX, groupY, circuitName, material, groupNum)
     absX = groupX + component.xPos;
     absY = groupY + component.yPos;
     vertices = component.geoObject.vertices + [absX, absY];
@@ -108,12 +106,8 @@ function drawBoundary(component, groupX, groupY, varargin)
         mi_addsegment(startNode(1), startNode(2), endNode(1), endNode(2));
     end
 
-    if ~isempty(varargin)
-        circuitName = varargin{1};
-        mi_addblocklabel(absX, absY);
-        mi_selectlabel(absX, absY);
-        mi_setblockprop(component.material, 1, 0, circuitName, 0, component.groupNum, 0);
-        mi_clearselected();
-    end
-
+    mi_addblocklabel(absX, absY);
+    mi_selectlabel(absX, absY);
+    mi_setblockprop(material, 1, 0, circuitName, 0, groupNum, 0);
+    mi_clearselected();
 end

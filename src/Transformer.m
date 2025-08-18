@@ -15,8 +15,19 @@ classdef Transformer < ComponentGroup
             % Intelligente Geometrie-Erstellung
             switch config.geometry.type
                 case 'Rectangle'
-                    geoCore = GeoObject.createRectangle(config.geometry.outerWidth, config.geometry.outerHeight);
+                    % Erster switch für die Hauptgeometrie des Luftspalts
                     geoGap = GeoObject.createRectangle(config.geometry.innerWidth, config.geometry.innerHeight);
+                    % Zweiter switch für die spezifische Kerntypauswahl
+                    switch config.geometry.coreGeometryType
+                        case 'Rectangle'
+                            geoCore = GeoObject.createRectangle(config.geometry.outerWidth, config.geometry.outerHeight);
+                        case 'Ring'
+                            ringGeo = GeoObject.createRing(config.geometry.innerRadius, config.geometry.outerRadius);
+                            geoCore = ringGeo.outer;
+                        otherwise
+                            error('Unbekannter Kerntyp im Wandler: %s', config.geometry.coreGeometryType);
+                    end
+
                 case 'Ring'
                     ringGeo = GeoObject.createRing(config.geometry.innerRadius, config.geometry.outerRadius);
                     geoCore = ringGeo.outer;

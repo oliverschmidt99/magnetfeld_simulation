@@ -94,23 +94,26 @@
   ],
   "transformers": [
     {
-      "name": "CELSA_ALO-20060_5000-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 20060",
+      "name": "Custom_Wandler_Grafik_Neu",
+      "manufacturer": "Custom",
+      "productName": "Grafik_Wandler",
       "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 5000,
+      "burdenVA": 5.0,
+      "primaryRatedCurrentA": 600,
       "secondaryRatedCurrentA": 1,
-      "geometry": "Rectangle",
-      "innerWidth": 205.0,
-      "innerHeight": 65.0,
-      "outerWidth": 243.0,
-      "outerHeight": 153.0,
+      "geometry": {
+        "type": "Rectangle",
+        "innerWidth": 30.7,
+        "innerHeight": 30.7,
+        "outerWidth": 40.2,
+        "outerHeight": 40.2
+      },
+      "depth": 30.0,
+      "coreMaterial": "M-36 Steel",
+      "gapMaterial": "Air",
       "innerRadius": 40,
       "outerRadius": 60,
-      "depth": 50.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
+      "typeSteelCore ": "Rectangle"
     }
   ],
   "transformerSheets": [

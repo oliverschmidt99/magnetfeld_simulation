@@ -101,10 +101,14 @@
       "burdenVA": 5.0,
       "primaryRatedCurrentA": 600,
       "secondaryRatedCurrentA": 1,
-      "innerWidth": 40.2,
-      "innerHeight": 12.7,
-      "outerWidth": 53.5,
-      "outerHeight": 92.0,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle",
+        "innerWidth": 40.2,
+        "innerHeight": 12.7,
+        "outerWidth": 53.5,
+        "outerHeight": 92.0
+      },
       "depth": 31.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -117,6 +121,10 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 800,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 31.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -129,6 +137,10 @@
       "burdenVA": 5.0,
       "primaryRatedCurrentA": 1000,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 31.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -141,6 +153,10 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 1250,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 50.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -153,6 +169,10 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 1600,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 50.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -165,6 +185,10 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 2000,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 31.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -177,6 +201,10 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 2500,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 31.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -189,6 +217,10 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 3000,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 50.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -201,6 +233,10 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 4000,
       "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle"
+      },
       "depth": 50.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
@@ -213,14 +249,35 @@
       "burdenVA": 10.0,
       "primaryRatedCurrentA": 5000,
       "secondaryRatedCurrentA": 1,
-      "geometry": "Rectangle",
-      "innerWidth": 205.0,
-      "innerHeight": 65.0,
-      "outerWidth": 243.0,
-      "outerHeight": 153.0,
-      "innerRadius": 40,
-      "outerRadius": 60,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle",
+        "innerWidth": 205.0,
+        "innerHeight": 65.0,
+        "outerWidth": 243.0,
+        "outerHeight": 153.0
+      },
       "depth": 50.0,
+      "coreMaterial": "M-36 Steel",
+      "gapMaterial": "Air"
+    },
+    {
+      "name": "Custom_Wandler_Grafik_Neu",
+      "manufacturer": "Custom",
+      "productName": "Grafik_Wandler",
+      "isCompensated": false,
+      "burdenVA": 5.0,
+      "primaryRatedCurrentA": 600,
+      "secondaryRatedCurrentA": 1,
+      "geometry": {
+        "type": "Rectangle",
+        "coreGeometryType": "Rectangle",
+        "innerWidth": 30.7,
+        "innerHeight": 30.7,
+        "outerWidth": 40.2,
+        "outerHeight": 40.2
+      },
+      "depth": 30.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
     }

@@ -21,39 +21,36 @@ classdef ComponentGroup
         end
 
         function drawInFemm(obj, circuitName, groupNumOffset)
-            copperRail = obj.findComponentByClass('CopperRail');
+            rail = obj.findComponentByClass('CopperRail');
             transformer = obj.findComponentByClass('Transformer');
 
-            if isempty(copperRail) || isempty(transformer)
-                error('Assembly "%s" must contain one CopperRail and one Transformer object.', obj.name);
+            if isempty(rail) || isempty(transformer)
+                error('Assembly "%s" missing rail or transformer.', obj.name);
             end
 
-            steelCore = transformer.findComponentByName('SteelCore');
-            airGap = transformer.findComponentByName('AirGap');
+            core = transformer.findComponentByName('SteelCore');
+            gap = transformer.findComponentByName('AirGap');
 
-            drawBoundary(copperRail, obj.xPos, obj.yPos);
-            drawBoundary(steelCore, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
-            drawBoundary(airGap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+            % Weise die Gruppennummern den Objekten zu
+            rail.groupNum = groupNumOffset + 1;
+            gap.groupNum = groupNumOffset + 2;
+            core.groupNum = groupNumOffset + 3;
 
-            railWidth = copperRail.geoObject.vertices(2, 1);
-            airGapWidth = airGap.geoObject.vertices(2, 1);
-            coreWidth = steelCore.geoObject.vertices(2, 1);
+            % Zeichne die Grenzen und setze die Labels
+            drawBoundary(rail, obj.xPos, obj.yPos, circuitName);
+            drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+            drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
 
-            mi_addblocklabel(obj.xPos + copperRail.xPos, obj.yPos + copperRail.yPos);
-            mi_selectlabel(obj.xPos + copperRail.xPos, obj.yPos + copperRail.yPos);
-            mi_setblockprop(copperRail.material, 1, 0, circuitName, 0, groupNumOffset + 1, 0);
-            mi_clearselected();
-
-            labelXAir = obj.xPos + (airGapWidth + railWidth) / 2;
+            labelXAir = obj.xPos + (gap.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
             mi_addblocklabel(labelXAir, obj.yPos);
             mi_selectlabel(labelXAir, obj.yPos);
-            mi_setblockprop(airGap.material, 1, 0, '<None>', 0, groupNumOffset + 2, 0);
+            mi_setblockprop(gap.material, 1, 0, '<None>', 0, gap.groupNum, 0);
             mi_clearselected();
 
-            labelXCore = obj.xPos + (coreWidth + airGapWidth) / 2;
+            labelXCore = obj.xPos + (core.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
             mi_addblocklabel(labelXCore, obj.yPos);
             mi_selectlabel(labelXCore, obj.yPos);
-            mi_setblockprop(steelCore.material, 1, 0, '<None>', 0, groupNumOffset + 3, 0);
+            mi_setblockprop(core.material, 1, 0, '<None>', 0, core.groupNum, 0);
             mi_clearselected();
         end
 
@@ -99,7 +96,7 @@ classdef ComponentGroup
 
 end
 
-function drawBoundary(component, groupX, groupY)
+function drawBoundary(component, groupX, groupY, varargin)
     absX = groupX + component.xPos;
     absY = groupY + component.yPos;
     vertices = component.geoObject.vertices + [absX, absY];
@@ -112,6 +109,14 @@ function drawBoundary(component, groupX, groupY)
         startNode = vertices(i, :);
         endNode = vertices(mod(i, size(vertices, 1)) + 1, :);
         mi_addsegment(startNode(1), startNode(2), endNode(1), endNode(2));
+    end
+
+    if ~isempty(varargin)
+        circuitName = varargin{1};
+        mi_addblocklabel(absX, absY);
+        mi_selectlabel(absX, absY);
+        mi_setblockprop(component.material, 1, 0, circuitName, 0, component.groupNum, 0);
+        mi_clearselected();
     end
 
 end

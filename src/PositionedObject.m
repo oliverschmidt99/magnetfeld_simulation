@@ -1,4 +1,3 @@
-% Represents an object with a position.
 classdef PositionedObject
 
     properties

@@ -1,4 +1,3 @@
-% Defines a pure geometric shape through a list of vertices.
 classdef GeoObject
 
     properties

@@ -1,13 +1,10 @@
-% Located in: src/plotResults.m
 function plotResults(csvFile, resultsPath, baseFilename)
     data = readtable(csvFile);
 
-    % Finde dynamisch alle Leiter in der Ergebnistabelle
     uniqueConductors = unique(data.conductor);
     numConductors = length(uniqueConductors);
 
-    % Definiere Farben und Marker, die durchlaufen werden
-    colors = lines(numConductors); % Erzeugt N unterscheidbare Farben
+    colors = lines(numConductors);
     markers = {'-o', '-s', '-^', '-d', '-v', '-x', '-*'};
 
     fig = figure('Name', 'Simulation Results', 'NumberTitle', 'off', 'Visible', 'off');

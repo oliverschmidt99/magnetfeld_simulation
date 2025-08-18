@@ -1,4 +1,3 @@
-% A Transformer is a composite object (a group), made of other components.
 classdef Transformer < ComponentGroup
 
     properties

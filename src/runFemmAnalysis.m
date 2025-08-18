@@ -1,48 +1,49 @@
-% Located in: src/runFemmAnalysis.m
 function runFemmAnalysis(params, runIdentifier)
-
     newdocument(0);
     mi_probdef(params.frequencyHz, 'millimeters', 'planar', 1e-8, params.problemDepthM * 1000, 30);
 
-    uniqueMaterials = {'Air', 'Copper'};
+    % Dynamically find and define all materials
+    mats = {'Air', 'Copper'};
 
     for i = 1:length(params.assemblies)
-        assembly = params.assemblies{i};
+        asm = params.assemblies{i};
 
-        for j = 1:length(assembly.components)
-            component = assembly.components{j};
+        for j = 1:length(asm.components)
+            comp = asm.components{j};
 
-            if isa(component, 'ComponentGroup')
+            if isa(comp, 'ComponentGroup')
 
-                for k = 1:length(component.components)
-                    uniqueMaterials{end + 1} = component.components{k}.material;
+                for k = 1:length(comp.components)
+                    mats{end + 1} = comp.components{k}.material;
                 end
 
             else
-                uniqueMaterials{end + 1} = component.material;
+                mats{end + 1} = comp.material;
             end
 
         end
 
     end
 
-    uniqueMaterials = unique(uniqueMaterials);
+    mats = unique(mats);
 
-    for i = 1:length(uniqueMaterials)
-        materialName = uniqueMaterials{i};
+    for i = 1:length(mats)
+        matName = mats{i};
 
-        if contains(materialName, 'Steel')
-            mi_addmaterial(materialName, params.coreRelPermeability, params.coreRelPermeability);
+        if contains(matName, 'Steel')
+            mi_addmaterial(matName, params.coreRelPermeability, params.coreRelPermeability);
         else
-            mi_getmaterial(materialName);
+            mi_getmaterial(matName);
         end
 
     end
 
+    % Define electrical circuits
     for i = 1:length(params.currents)
         params.currents{i}.defineInFemm(params.phaseAngleDeg);
     end
 
+    % Draw all assemblies
     for i = 1:length(params.assemblies)
         assembly = params.assemblies{i};
         circuitName = params.currents{i}.name;
@@ -50,17 +51,17 @@ function runFemmAnalysis(params, runIdentifier)
         assembly.drawInFemm(circuitName, groupNumOffset);
     end
 
+    % Define surrounding air and boundary condition
     mi_addblocklabel(0, 300);
     mi_selectlabel(0, 300);
     mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);
     mi_clearselected();
-
     mi_makeABC(7, 500, 0, 0, 0);
     mi_zoomnatural();
 
+    % Save and run analysis
     femFile = fullfile(params.femmFilesPath, [runIdentifier, '.fem']);
     mi_saveas(femFile);
-
     mi_analyze(1);
     mi_loadsolution();
 end

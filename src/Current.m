@@ -1,4 +1,3 @@
-% Manages an electrical circuit and its value.
 classdef Current
 
     properties

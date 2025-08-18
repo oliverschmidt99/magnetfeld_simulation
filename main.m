@@ -1,32 +1,28 @@
-% =========================================================================
-% Main script using a separate library and simulation setup file.
-% =========================================================================
 clear variables; close all; clc;
 addpath('C:\femm42\mfiles'); addpath('src');
 
-%% 1. Load Library and Simulation Configuration
+% --- 1. Load Configuration ---
 library = jsondecode(fileread('library.json'));
 simConfig = jsondecode(fileread('simulation.json'));
 params = simConfig.simulationParams;
 
-%% 2. Setup Results Directory
+% --- 2. Setup Results Directory ---
 simulationName = 'Standard_N_Phase_Core';
 dateStr = datestr(now, 'yyyymmdd');
 timeStr = datestr(now, 'HHMMSS');
 resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationName]);
-baseFilename = [timeStr, '_', simulationName];
 femmFilesPath = fullfile(resultsPath, 'femm_files');
 
 if ~exist(femmFilesPath, 'dir')
     mkdir(femmFilesPath);
-    fprintf('Ergebnisordner erstellt: %s\n', femmFilesPath);
+    fprintf('Results folder created: %s\n', femmFilesPath);
 end
 
 params.resultsPath = resultsPath;
 params.femmFilesPath = femmFilesPath;
-params.baseFilename = baseFilename;
+params.baseFilename = [timeStr, '_', simulationName];
 
-%% 3. Create Current Objects
+% --- 3. Create Current Objects ---
 currents = {};
 
 for i = 1:length(simConfig.electricalSystem)
@@ -36,7 +32,7 @@ end
 
 params.currents = currents;
 
-%% 4. Create Component Assemblies
+% --- 4. Create Component Assemblies ---
 assemblies = {};
 
 for i = 1:length(simConfig.assemblies)
@@ -56,8 +52,8 @@ end
 
 params.assemblies = assemblies;
 
-%% 5. Run Parametric Analysis
-phaseAngleVector = 0:45:90;
+% --- 5. Run Parametric Analysis ---
+phaseAngleVector = 0:10:180;
 openfemm;
 
 try
@@ -76,19 +72,20 @@ try
 
     fprintf('Simulation series finished.\n');
     totalDurationSec = toc;
-    hours = floor(totalDurationSec / 3600);
-    minutes = floor(mod(totalDurationSec, 3600) / 60);
-    seconds = floor(mod(totalDurationSec, 60));
-    fprintf('\nGesamte Simulationsdauer: %d h %d min %d sec\n', hours, minutes, seconds);
+    h = floor(totalDurationSec / 3600);
+    m = floor(mod(totalDurationSec, 3600) / 60);
+    s = floor(mod(totalDurationSec, 60));
+    fprintf('\nTotal simulation time: %d h %d min %d sec\n', h, m, s);
     closefemm;
 catch ME
     closefemm;
     rethrow(ME);
 end
 
-%% 6. Save and Visualize Results
-resultsCsvFile = fullfile(resultsPath, [baseFilename, '_summary.csv']);
+% --- 6. Save and Visualize Results ---
+resultsCsvFile = fullfile(resultsPath, [params.baseFilename, '_summary.csv']);
 writetable(masterResultsTable, resultsCsvFile);
-fprintf('All results have been saved to "%s".\n', resultsCsvFile);
-plotResults(resultsCsvFile, resultsPath, baseFilename);
+fprintf('All results saved to "%s".\n', resultsCsvFile);
+
+plotResults(resultsCsvFile, resultsPath, params.baseFilename);
 disp('--- Simulation workflow completed successfully ---');

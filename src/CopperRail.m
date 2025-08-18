@@ -1,4 +1,3 @@
-% Represents a copper busbar.
 classdef CopperRail < Component
 
     properties

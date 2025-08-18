@@ -1,39 +1,109 @@
 {
-    "description": "Template for a single current transformer assembly",
-    "units": "mm",
-    "components": [
+  "description": "Full layout with individually positioned assemblies",
+  "simulationParams": {
+    "frequencyHz": 50,
+    "problemDepthM": 0.1,
+    "peakCurrentA": 4000,
+    "nominalPrimaryA": 4000,
+    "nominalSecondaryA": 5,
+    "coreMaterial": "M-36 Steel",
+    "coreRelPermeability": 2500
+  },
+  "electricalSystem": [
+    { "name": "L1", "phaseShiftDeg": 0 },
+    { "name": "L2", "phaseShiftDeg": -120 },
+    { "name": "L3", "phaseShiftDeg": 120 }
+  ],
+  "assemblies": [
+    {
+      "name": "Transformer_L1",
+      "position": { "x": -220, "y": 0 },
+      "components": [
         {
-            "name": "CopperConductor",
-            "geoType": "Rectangle",
-            "geoParams": {
-                "width": 100,
-                "height": 40
-            },
-            "material": "Copper",
-            "circuit": "L",
-            "groupNum": 1
+          "name": "CopperConductor",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 100, "height": 40 },
+          "material": "Copper",
+          "circuit": "L",
+          "groupNum": 1
         },
         {
-            "name": "AirGap",
-            "geoType": "Rectangle",
-            "geoParams": {
-                "width": 120,
-                "height": 60
-            },
-            "material": "Air",
-            "circuit": "<None>",
-            "groupNum": 2
+          "name": "AirGap",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 120, "height": 60 },
+          "material": "Air",
+          "circuit": "<None>",
+          "groupNum": 2
         },
         {
-            "name": "SteelCore",
-            "geoType": "Rectangle",
-            "geoParams": {
-                "width": 160,
-                "height": 100
-            },
-            "material": "M-36 Steel",
-            "circuit": "<None>",
-            "groupNum": 3
+          "name": "SteelCore",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 160, "height": 100 },
+          "material": "M-36 Steel",
+          "circuit": "<None>",
+          "groupNum": 3
         }
-    ]
+      ]
+    },
+    {
+      "name": "Transformer_L2",
+      "position": { "x": 0, "y": 0 },
+      "components": [
+        {
+          "name": "CopperConductor",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 100, "height": 40 },
+          "material": "Copper",
+          "circuit": "L",
+          "groupNum": 1
+        },
+        {
+          "name": "AirGap",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 120, "height": 60 },
+          "material": "Air",
+          "circuit": "<None>",
+          "groupNum": 2
+        },
+        {
+          "name": "SteelCore",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 160, "height": 100 },
+          "material": "M-36 Steel",
+          "circuit": "<None>",
+          "groupNum": 3
+        }
+      ]
+    },
+    {
+      "name": "Transformer_L3",
+      "position": { "x": 220, "y": 0 },
+      "components": [
+        {
+          "name": "CopperConductor",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 100, "height": 40 },
+          "material": "Copper",
+          "circuit": "L",
+          "groupNum": 1
+        },
+        {
+          "name": "AirGap",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 120, "height": 60 },
+          "material": "Air",
+          "circuit": "<None>",
+          "groupNum": 2
+        },
+        {
+          "name": "SteelCore",
+          "geoType": "Rectangle",
+          "geoParams": { "width": 160, "height": 100 },
+          "material": "M-36 Steel",
+          "circuit": "<None>",
+          "groupNum": 3
+        }
+      ]
+    }
+  ]
 }

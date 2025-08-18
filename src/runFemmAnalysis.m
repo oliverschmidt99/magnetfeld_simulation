@@ -13,51 +13,9 @@ function runFemmAnalysis(params, runIdentifier)
         params.currents{i}.defineInFemm(params.phaseAngleDeg);
     end
 
-    % Draw the Geometry Shapes
+    % Draw the Geometry by telling each assembly to draw itself
     for i = 1:length(params.assemblies)
-        assembly = params.assemblies{i};
-
-        for j = 1:length(assembly.components)
-            assembly.components{j}.drawShapeInFemm();
-        end
-
-    end
-
-    % Place Block Labels Intelligently
-    for i = 1:length(params.assemblies)
-        assembly = params.assemblies{i};
-
-        % --- ROBUST COMPONENT IDENTIFICATION (NEW) ---
-        % Find each component by its name instead of relying on index
-        for j = 1:length(assembly.components)
-            comp = assembly.components{j};
-
-            switch comp.name
-                case 'SteelCore'
-                    steelCore = comp;
-                case 'AirGap'
-                    airGap = comp;
-                case 'CopperConductor'
-                    conductor = comp;
-            end
-
-        end
-
-        % Calculate label positions based on the correctly identified components
-        coreWidth = steelCore.geoObject.vertices(2, 1); % half-width
-        airGapWidth = airGap.geoObject.vertices(2, 1);
-        conductorWidth = conductor.geoObject.vertices(2, 1);
-
-        % 1. Label for the Steel Core region
-        labelXCore = (coreWidth + airGapWidth) / 2 + steelCore.xPos;
-        steelCore.placeLabelInFemm(labelXCore, steelCore.yPos);
-
-        % 2. Label for the Air Gap region
-        labelXAir = (airGapWidth + conductorWidth) / 2 + airGap.xPos;
-        airGap.placeLabelInFemm(labelXAir, airGap.yPos);
-
-        % 3. Label for the Copper Conductor region
-        conductor.placeLabelInFemm(conductor.xPos, conductor.yPos);
+        params.assemblies{i}.drawInFemm();
     end
 
     % Define surrounding air and boundary condition

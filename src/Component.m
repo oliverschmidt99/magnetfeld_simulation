@@ -10,11 +10,10 @@ classdef Component < PositionedObject
 
     methods
 
-        function obj = Component(name, x, y, geoObject, material, circuit, groupNum)
-            % The superclass constructor call is now the first, unconditional line.
-            obj@PositionedObject(x, y, geoObject);
+        function obj = Component(name, relX, relY, geoObject, material, circuit, groupNum)
+            % The position is now relative to the parent group's center.
+            obj@PositionedObject(relX, relY, geoObject);
 
-            % The rest of the properties are set afterwards.
             obj.name = name;
             obj.material = material;
 
@@ -28,9 +27,11 @@ classdef Component < PositionedObject
 
         end
 
-        % ... (drawShapeInFemm and placeLabelInFemm methods are unchanged) ...
-        function drawShapeInFemm(obj)
-            vertices = obj.geoObject.vertices + [obj.xPos, obj.yPos];
+        % Draws the shape at its absolute world position.
+        function drawShapeInFemm(obj, groupX, groupY)
+            absX = groupX + obj.xPos;
+            absY = groupY + obj.yPos;
+            vertices = obj.geoObject.vertices + [absX, absY];
             numVertices = size(vertices, 1);
 
             for i = 1:numVertices
@@ -45,9 +46,12 @@ classdef Component < PositionedObject
 
         end
 
-        function placeLabelInFemm(obj, labelX, labelY)
-            mi_addblocklabel(labelX, labelY);
-            mi_selectlabel(labelX, labelY);
+        % Places the label at its absolute world position.
+        function placeLabelInFemm(obj, groupX, groupY, labelX, labelY)
+            absLabelX = groupX + labelX;
+            absLabelY = groupY + labelY;
+            mi_addblocklabel(absLabelX, absLabelY);
+            mi_selectlabel(absLabelX, absLabelY);
             mi_setblockprop(obj.material, 1, 0, obj.circuit, 0, obj.groupNum, 0);
             mi_clearselected();
         end

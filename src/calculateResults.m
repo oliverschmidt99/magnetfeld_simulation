@@ -2,37 +2,43 @@
 function resultsTable = calculateResults(params)
 
     mu0 = 4 * pi * 1e-7;
+    numPhases = length(params.currents); % Dynamische Anzahl der Phasen
 
     % Get instantaneous primary currents
-    iPrimAll = zeros(3, 1);
+    iPrimAll = zeros(numPhases, 1);
+    conductorCol = cell(numPhases, 1);
 
-    for i = 1:3
+    for i = 1:numPhases
         iPrimAll(i) = params.currents{i}.getValue(params.phaseAngleDeg);
+        conductorCol{i} = params.currents{i}.name;
     end
 
-    % Core group numbers are assumed to be 3, 13, 23
-    coreGroups = [3, 13, 23];
-    iSecResults = zeros(3, 1);
-    bMeasuredResults = zeros(3, 1);
+    iSecResults = zeros(numPhases, 1);
+    bMeasuredResults = zeros(numPhases, 1);
 
-    % Find one conductor to get its dimensions for calculation
-    conductor = params.assemblies{1}.components{1};
-    core = params.assemblies{1}.components{3};
-    airGap = params.assemblies{1}.components{2};
-    coreThickness = (core.geoObject.vertices(2, 1) - airGap.geoObject.vertices(2, 1)); % width/2
+    % Schleife läuft über die Anzahl der Baugruppen
+    for i = 1:length(params.assemblies)
+        assembly = params.assemblies{i};
+        conductor = assembly.findComponentByName('CopperConductor');
+        airGap = assembly.findComponentByName('AirGap');
+        steelCore = assembly.findComponentByName('SteelCore');
 
-    for i = 1:3
-        mo_groupselectblock(coreGroups(i));
+        if isempty(conductor) || isempty(airGap) || isempty(steelCore)
+            error('Could not find all required components in assembly %s.', assembly.name);
+        end
+
+        mo_groupselectblock(steelCore.groupNum);
         avgBx = mo_blockintegral(10);
         avgBy = mo_blockintegral(11);
         bMeasured = sqrt(avgBx ^ 2 + avgBy ^ 2);
         mo_clearblock();
 
-        meanPathLength = 2 * (conductor.geoObject.vertices(2, 1) * 2 + airGap.geoObject.vertices(2, 1) * 2 + coreThickness) + ...
-            2 * (conductor.geoObject.vertices(3, 2) * 2 + airGap.geoObject.vertices(3, 2) * 2 + coreThickness);
-        meanPathLengthM = meanPathLength / 1000;
-
+        coreThickness = (steelCore.geoObject.vertices(2, 1) - airGap.geoObject.vertices(2, 1));
+        meanPathWidth = airGap.geoObject.vertices(2, 1) * 2 + coreThickness;
+        meanPathHeight = airGap.geoObject.vertices(3, 2) * 2 + coreThickness;
+        meanPathLengthM = (2 * meanPathWidth + 2 * meanPathHeight) / 1000;
         areaM2 = (coreThickness / 1000) * params.problemDepthM;
+
         turnsRatio = params.nominalPrimaryA / params.nominalSecondaryA;
         reluctance = meanPathLengthM / (mu0 * params.coreRelPermeability * areaM2);
         magneticFlux = bMeasured * areaM2;
@@ -43,8 +49,7 @@ function resultsTable = calculateResults(params)
         bMeasuredResults(i) = bMeasured;
     end
 
-    phaseAngleCol = repmat(params.phaseAngleDeg, 3, 1);
-    conductorCol = {'L1'; 'L2'; 'L3'};
+    phaseAngleCol = repmat(params.phaseAngleDeg, numPhases, 1);
 
     resultsTable = table(phaseAngleCol, conductorCol, iPrimAll, iSecResults, bMeasuredResults, ...
         'VariableNames', {'phaseAngle', 'conductor', 'iPrimA', 'iSecFinalA', 'bMeasuredT'});

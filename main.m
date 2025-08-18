@@ -1,68 +1,52 @@
 % =========================================================================
-% Main script to orchestrate the FEMM simulation series.
+% Main script using a fully dynamic, data-driven approach.
 % =========================================================================
 clear variables; close all; clc;
+addpath('C:\femm42\mfiles'); addpath('src');
 
-% Add paths to FEMM and local source files
-addpath('C:\femm42\mfiles');
-addpath('src');
+%% 1. Load Full Configuration from JSON
+config = jsondecode(fileread('geometry.json'));
+params = config.simulationParams;
 
-%% 1. Define Simulation Name and Create Results Directory
-simulationName = 'Standard_3_Phase_Core'; % Name für diesen Simulationslauf
-
+%% 2. Setup Results Directory
+% ... (Dieser Abschnitt ist bereits dynamisch) ...
+simulationName = 'Standard_N_Phase_Core';
 dateStr = datestr(now, 'yyyymmdd');
 timeStr = datestr(now, 'HHMMSS');
-
 resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationName]);
 baseFilename = [timeStr, '_', simulationName];
-
-% NEU: Definiere den Unterordner für FEMM-Dateien
 femmFilesPath = fullfile(resultsPath, 'femm_files');
 
-% Erstelle die Ordnerstruktur (mkdir erstellt auch übergeordnete Ordner)
 if ~exist(femmFilesPath, 'dir')
     mkdir(femmFilesPath);
     fprintf('Ergebnisordner erstellt: %s\n', femmFilesPath);
 end
 
 params.resultsPath = resultsPath;
-params.femmFilesPath = femmFilesPath; % NEU: Übergebe den neuen Pfad
+params.femmFilesPath = femmFilesPath;
 params.baseFilename = baseFilename;
 
-%% 2. Load Parameters, Geometry Template, and Currents
-% ... (Dieser Abschnitt bleibt unverändert) ...
-params.frequencyHz = 50;
-params.problemDepthM = 0.1;
-params.peakCurrentA = 4000;
-params.nominalPrimaryA = 4000;
-params.nominalSecondaryA = 5;
-params.coreMaterial = 'M-36 Steel';
-params.coreRelPermeability = 2500;
+%% 3. Create Current Objects Dynamically
+currents = {};
 
-geoTemplate = jsondecode(fileread('geometry.json'));
-assemblySpacing = 220;
+for i = 1:length(config.electricalSystem)
+    phase = config.electricalSystem(i);
+    currents{end + 1} = Current(phase.name, params.peakCurrentA, phase.phaseShiftDeg);
+end
 
-%% 3. Create Current Objects
-% ... (Dieser Abschnitt bleibt unverändert) ...
-currents = {
-            Current('L1', params.peakCurrentA, 0), ...
-                Current('L2', params.peakCurrentA, -120), ...
-                Current('L3', params.peakCurrentA, 120)
-            };
 params.currents = currents;
 
-%% 4. Create Component Assemblies
-% ... (Dieser Abschnitt bleibt unverändert) ...
+%% 4. Create Component Assemblies Dynamically
 assemblies = {};
-conductorWidth = geoTemplate.components(1).geoParams.width;
-positions = [- (conductorWidth + assemblySpacing), 0, (conductorWidth + assemblySpacing)];
+% Die Schleife läuft jetzt über die Anzahl der Baugruppen in der JSON
+for i = 1:length(config.assemblies)
+    assemblyConfig = config.assemblies(i);
+    group = ComponentGroup(assemblyConfig.name, assemblyConfig.position.x, assemblyConfig.position.y);
 
-for i = 1:3
-    group = ComponentGroup(sprintf('Transformer_L%d', i));
-
-    for j = 1:length(geoTemplate.components)
-        cfg = geoTemplate.components(j);
+    for j = 1:length(assemblyConfig.components)
+        cfg = assemblyConfig.components(j);
         geo = GeoObject.createRectangle(cfg.geoParams.width, cfg.geoParams.height);
+
         circuitName = '';
 
         if strcmp(cfg.circuit, 'L')
@@ -74,14 +58,13 @@ for i = 1:3
         group = group.addComponent(comp);
     end
 
-    group = group.translate(positions(i), 0);
     assemblies{end + 1} = group;
 end
 
 params.assemblies = assemblies;
 
 %% 5. Run Parametric Analysis
-% ... (Die Schleife bleibt unverändert) ...
+% ... (Dieser Abschnitt ist bereits dynamisch) ...
 phaseAngleVector = 0:45:90;
 openfemm;
 
@@ -106,9 +89,9 @@ catch ME
 end
 
 %% 6. Save and Visualize Results
+% ... (Dieser Abschnitt ist bereits dynamisch) ...
 resultsCsvFile = fullfile(resultsPath, [baseFilename, '_summary.csv']);
 writetable(masterResultsTable, resultsCsvFile);
 fprintf('All results have been saved to "%s".\n', resultsCsvFile);
-
 plotResults(resultsCsvFile, resultsPath, baseFilename);
 disp('--- Simulation workflow completed successfully ---');

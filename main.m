@@ -10,24 +10,27 @@ addpath('src');
 %% 1. Define Simulation Name and Create Results Directory
 simulationName = 'Standard_3_Phase_Core'; % Name für diesen Simulationslauf
 
-% Erzeuge Zeitstempel für die Ordnerstruktur
 dateStr = datestr(now, 'yyyymmdd');
 timeStr = datestr(now, 'HHMMSS');
 
-% Baue den finalen Pfad zusammen
 resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationName]);
 baseFilename = [timeStr, '_', simulationName];
 
-% Erstelle die Ordnerstruktur, falls sie nicht existiert
-if ~exist(resultsPath, 'dir')
-    mkdir(resultsPath);
-    fprintf('Ergebnisordner erstellt: %s\n', resultsPath);
+% NEU: Definiere den Unterordner für FEMM-Dateien
+femmFilesPath = fullfile(resultsPath, 'femm_files');
+
+% Erstelle die Ordnerstruktur (mkdir erstellt auch übergeordnete Ordner)
+if ~exist(femmFilesPath, 'dir')
+    mkdir(femmFilesPath);
+    fprintf('Ergebnisordner erstellt: %s\n', femmFilesPath);
 end
 
 params.resultsPath = resultsPath;
+params.femmFilesPath = femmFilesPath; % NEU: Übergebe den neuen Pfad
 params.baseFilename = baseFilename;
 
 %% 2. Load Parameters, Geometry Template, and Currents
+% ... (Dieser Abschnitt bleibt unverändert) ...
 params.frequencyHz = 50;
 params.problemDepthM = 0.1;
 params.peakCurrentA = 4000;
@@ -60,7 +63,6 @@ for i = 1:3
     for j = 1:length(geoTemplate.components)
         cfg = geoTemplate.components(j);
         geo = GeoObject.createRectangle(cfg.geoParams.width, cfg.geoParams.height);
-
         circuitName = '';
 
         if strcmp(cfg.circuit, 'L')
@@ -79,6 +81,7 @@ end
 params.assemblies = assemblies;
 
 %% 5. Run Parametric Analysis
+% ... (Die Schleife bleibt unverändert) ...
 phaseAngleVector = 0:45:90;
 openfemm;
 
@@ -89,8 +92,8 @@ try
     for i = 1:length(phaseAngleVector)
         params.phaseAngleDeg = phaseAngleVector(i);
         fprintf('--> Simulating for phase angle: %d°\n', params.phaseAngleDeg);
-
-        runFemmAnalysis(params);
+        runIdentifier = sprintf('%s_angle%ddeg', params.baseFilename, params.phaseAngleDeg);
+        runFemmAnalysis(params, runIdentifier);
         singleRunResults = calculateResults(params);
         masterResultsTable = [masterResultsTable; singleRunResults];
     end
@@ -103,7 +106,7 @@ catch ME
 end
 
 %% 6. Save and Visualize Results
-resultsCsvFile = fullfile(resultsPath, [baseFilename, '.csv']);
+resultsCsvFile = fullfile(resultsPath, [baseFilename, '_summary.csv']);
 writetable(masterResultsTable, resultsCsvFile);
 fprintf('All results have been saved to "%s".\n', resultsCsvFile);
 

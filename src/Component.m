@@ -1,10 +1,9 @@
-% Base class for all physical components.
 classdef Component < PositionedObject
 
     properties
         name
         material
-        groupNum = 0; % NEU: Eigenschaft für die FEMM-Gruppennummer
+        groupNum = 0;
     end
 
     methods

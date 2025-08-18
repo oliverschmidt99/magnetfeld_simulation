@@ -8,8 +8,8 @@ params = simConfig.simulationParams;
 
 % --- 2. Setup Results Directory ---
 simulationName = 'Standard_N_Phase_Core';
-dateStr = datestr(now, 'yyyymmdd');
-timeStr = datestr(now, 'HHMMSS');
+dateStr = datestr(now, 'yyyymmdd'); %#ok<DATST>
+timeStr = datestr(now, 'HHMMSS'); %#ok<DATST>
 resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationName]);
 femmFilesPath = fullfile(resultsPath, 'femm_files');
 
@@ -27,7 +27,7 @@ currents = {};
 
 for i = 1:length(simConfig.electricalSystem)
     phase = simConfig.electricalSystem(i);
-    currents{end + 1} = Current(phase.name, params.peakCurrentA, phase.phaseShiftDeg);
+    currents{end + 1} = Current(phase.name, params.peakCurrentA, phase.phaseShiftDeg); %#ok<SAGROW>
 end
 
 params.currents = currents;
@@ -37,9 +37,25 @@ assemblies = {};
 
 for i = 1:length(simConfig.assemblies)
     asmCfg = simConfig.assemblies(i);
-    railCfg = library.copperRails(strcmp({library.copperRails.name}, asmCfg.copperRailName));
-    transformerCfg = library.transformers(strcmp({library.transformers.name}, asmCfg.transformerName));
 
+    % --- ROBUSTE SUCHE mit Fehlerprüfung (KORREKTUR HIER) ---
+    railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
+
+    if ~any(railIdx)
+        error('Kupferschiene "%s" wurde in der library.json nicht gefunden.', asmCfg.copperRailName);
+    end
+
+    railCfg = library.copperRails(railIdx);
+
+    transformerIdx = strcmp({library.transformers.name}, asmCfg.transformerName);
+
+    if ~any(transformerIdx)
+        error('Wandler "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerName);
+    end
+
+    transformerCfg = library.transformers(transformerIdx);
+
+    % Erstelle die Matlab-Objekte
     copperRail = CopperRail(railCfg);
     transformer = Transformer(transformerCfg);
 
@@ -47,13 +63,13 @@ for i = 1:length(simConfig.assemblies)
     assemblyGroup = assemblyGroup.addComponent(copperRail);
     assemblyGroup = assemblyGroup.addComponent(transformer);
 
-    assemblies{end + 1} = assemblyGroup;
+    assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
 end
 
 params.assemblies = assemblies;
 
 % --- 5. Run Parametric Analysis ---
-phaseAngleVector = 0:10:180;
+phaseAngleVector = 0:45:90;
 openfemm;
 
 try
@@ -67,7 +83,7 @@ try
         runIdentifier = sprintf('%s_angle%ddeg', params.baseFilename, params.phaseAngleDeg);
         runFemmAnalysis(params, runIdentifier);
         singleRunResults = calculateResults(params);
-        masterResultsTable = [masterResultsTable; singleRunResults];
+        masterResultsTable = [masterResultsTable; singleRunResults]; %#ok<AGROW>
     end
 
     fprintf('Simulation series finished.\n');

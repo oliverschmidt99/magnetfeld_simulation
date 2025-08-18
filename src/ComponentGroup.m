@@ -1,4 +1,3 @@
-% Groups multiple components into a logical assembly with its own position.
 classdef ComponentGroup
 
     properties
@@ -31,12 +30,10 @@ classdef ComponentGroup
             core = transformer.findComponentByName('SteelCore');
             gap = transformer.findComponentByName('AirGap');
 
-            % Weise die Gruppennummern den Objekten zu
             rail.groupNum = groupNumOffset + 1;
             gap.groupNum = groupNumOffset + 2;
             core.groupNum = groupNumOffset + 3;
 
-            % Zeichne die Grenzen und setze die Labels
             drawBoundary(rail, obj.xPos, obj.yPos, circuitName);
             drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
             drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);

@@ -17,20 +17,23 @@
     {
       "name": "Assembly_L1",
       "position": { "x": -220, "y": 0 },
-      "copperRailName": "Standard_80x10",
-      "transformerName": "Standard_Kompensiert_100-5A"
+      "copperRailName": "RJ_4x100x10_4000A",
+      "transformerName": "CELSA_ALO-12070_4000-1A",
+      "transformerSheetName": "Sheet_200x5"
     },
     {
       "name": "Assembly_L2",
       "position": { "x": 0, "y": 0 },
-      "copperRailName": "Standard_80x10",
-      "transformerName": "Standard_Kompensiert_100-5A"
+      "copperRailName": "RJ_4x100x10_4000A",
+      "transformerName": "CELSA_ALO-12070_4000-1A",
+      "transformerSheetName": "Sheet_200x5"
     },
     {
       "name": "Assembly_L3",
       "position": { "x": 220, "y": 0 },
-      "copperRailName": "Standard_80x10",
-      "transformerName": "Standard_Kompensiert_100-5A"
+      "copperRailName": "RJ_4x100x10_4000A",
+      "transformerName": "CELSA_ALO-12070_4000-1A",
+      "transformerSheetName": "Sheet_200x5"
     }
   ]
 }

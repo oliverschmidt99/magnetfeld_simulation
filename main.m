@@ -1,15 +1,15 @@
 % =========================================================================
-% Main script using a fully dynamic, data-driven approach.
+% Main script using a separate library and simulation setup file.
 % =========================================================================
 clear variables; close all; clc;
 addpath('C:\femm42\mfiles'); addpath('src');
 
-%% 1. Load Full Configuration from JSON
-config = jsondecode(fileread('geometry.json'));
-params = config.simulationParams;
+%% 1. Load Library and Simulation Configuration
+library = jsondecode(fileread('library.json'));
+simConfig = jsondecode(fileread('simulation.json'));
+params = simConfig.simulationParams;
 
 %% 2. Setup Results Directory
-% ... (Dieser Abschnitt ist bereits dynamisch) ...
 simulationName = 'Standard_N_Phase_Core';
 dateStr = datestr(now, 'yyyymmdd');
 timeStr = datestr(now, 'HHMMSS');
@@ -26,50 +26,43 @@ params.resultsPath = resultsPath;
 params.femmFilesPath = femmFilesPath;
 params.baseFilename = baseFilename;
 
-%% 3. Create Current Objects Dynamically
+%% 3. Create Current Objects
 currents = {};
 
-for i = 1:length(config.electricalSystem)
-    phase = config.electricalSystem(i);
+for i = 1:length(simConfig.electricalSystem)
+    phase = simConfig.electricalSystem(i);
     currents{end + 1} = Current(phase.name, params.peakCurrentA, phase.phaseShiftDeg);
 end
 
 params.currents = currents;
 
-%% 4. Create Component Assemblies Dynamically
+%% 4. Create Component Assemblies
 assemblies = {};
-% Die Schleife läuft jetzt über die Anzahl der Baugruppen in der JSON
-for i = 1:length(config.assemblies)
-    assemblyConfig = config.assemblies(i);
-    group = ComponentGroup(assemblyConfig.name, assemblyConfig.position.x, assemblyConfig.position.y);
 
-    for j = 1:length(assemblyConfig.components)
-        cfg = assemblyConfig.components(j);
-        geo = GeoObject.createRectangle(cfg.geoParams.width, cfg.geoParams.height);
+for i = 1:length(simConfig.assemblies)
+    asmCfg = simConfig.assemblies(i);
+    railCfg = library.copperRails(strcmp({library.copperRails.name}, asmCfg.copperRailName));
+    transformerCfg = library.transformers(strcmp({library.transformers.name}, asmCfg.transformerName));
 
-        circuitName = '';
+    copperRail = CopperRail(railCfg);
+    transformer = Transformer(transformerCfg);
 
-        if strcmp(cfg.circuit, 'L')
-            circuitName = currents{i}.name;
-        end
+    assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
+    assemblyGroup = assemblyGroup.addComponent(copperRail);
+    assemblyGroup = assemblyGroup.addComponent(transformer);
 
-        groupNum = (i - 1) * 10 + cfg.groupNum;
-        comp = Component(cfg.name, 0, 0, geo, cfg.material, circuitName, groupNum);
-        group = group.addComponent(comp);
-    end
-
-    assemblies{end + 1} = group;
+    assemblies{end + 1} = assemblyGroup;
 end
 
 params.assemblies = assemblies;
 
 %% 5. Run Parametric Analysis
-% ... (Dieser Abschnitt ist bereits dynamisch) ...
 phaseAngleVector = 0:45:90;
 openfemm;
 
 try
     masterResultsTable = table();
+    tic;
     fprintf('Starting simulation series for %d phase angles...\n', length(phaseAngleVector));
 
     for i = 1:length(phaseAngleVector)
@@ -82,6 +75,11 @@ try
     end
 
     fprintf('Simulation series finished.\n');
+    totalDurationSec = toc;
+    hours = floor(totalDurationSec / 3600);
+    minutes = floor(mod(totalDurationSec, 3600) / 60);
+    seconds = floor(mod(totalDurationSec, 60));
+    fprintf('\nGesamte Simulationsdauer: %d h %d min %d sec\n', hours, minutes, seconds);
     closefemm;
 catch ME
     closefemm;
@@ -89,7 +87,6 @@ catch ME
 end
 
 %% 6. Save and Visualize Results
-% ... (Dieser Abschnitt ist bereits dynamisch) ...
 resultsCsvFile = fullfile(resultsPath, [baseFilename, '_summary.csv']);
 writetable(masterResultsTable, resultsCsvFile);
 fprintf('All results have been saved to "%s".\n', resultsCsvFile);

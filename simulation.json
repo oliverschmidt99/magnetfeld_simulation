@@ -1,0 +1,36 @@
+{
+  "description": "Setup for a standard 3-phase simulation.",
+  "simulationParams": {
+    "frequencyHz": 50,
+    "problemDepthM": 0.1,
+    "peakCurrentA": 4000,
+    "nominalPrimaryA": 4000,
+    "nominalSecondaryA": 5,
+    "coreRelPermeability": 2500
+  },
+  "electricalSystem": [
+    { "name": "L1", "phaseShiftDeg": 0 },
+    { "name": "L2", "phaseShiftDeg": -120 },
+    { "name": "L3", "phaseShiftDeg": 120 }
+  ],
+  "assemblies": [
+    {
+      "name": "Assembly_L1",
+      "position": { "x": -220, "y": 0 },
+      "copperRailName": "Standard_80x10",
+      "transformerName": "Standard_Kompensiert_100-5A"
+    },
+    {
+      "name": "Assembly_L2",
+      "position": { "x": 0, "y": 0 },
+      "copperRailName": "Standard_80x10",
+      "transformerName": "Standard_Kompensiert_100-5A"
+    },
+    {
+      "name": "Assembly_L3",
+      "position": { "x": 220, "y": 0 },
+      "copperRailName": "Standard_80x10",
+      "transformerName": "Standard_Kompensiert_100-5A"
+    }
+  ]
+}

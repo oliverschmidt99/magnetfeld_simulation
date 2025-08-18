@@ -1,0 +1,37 @@
+{
+  "description": "Library of predefined components for magnetic simulation.",
+  "copperRails": [
+    {
+      "name": "RolfJanssen_40x10",
+      "manufacturer": "Rolf Janssen",
+      "format": "1x40x10",
+      "width": 40,
+      "height": 10,
+      "material": "Copper"
+    },
+    {
+      "name": "Standard_80x10",
+      "manufacturer": "Standard",
+      "format": "1x80x10",
+      "width": 80,
+      "height": 10,
+      "material": "Copper"
+    }
+  ],
+  "transformers": [
+    {
+      "name": "Standard_Kompensiert_100-5A",
+      "manufacturer": "Standard",
+      "productName": "SK-100",
+      "isCompensated": true,
+      "burden": 1.5,
+      "ratedCurrent": 5,
+      "innerWidth": 120,
+      "innerHeight": 60,
+      "outerWidth": 160,
+      "outerHeight": 100,
+      "coreMaterial": "M-36 Steel",
+      "gapMaterial": "Air"
+    }
+  ]
+}

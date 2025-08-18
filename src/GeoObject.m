@@ -2,7 +2,7 @@
 classdef GeoObject
 
     properties
-        vertices % Relative corner points of the shape, centered around (0,0)
+        vertices
     end
 
     methods
@@ -14,7 +14,7 @@ classdef GeoObject
     end
 
     methods (Static)
-        % Factory method to create a rectangle
+
         function obj = createRectangle(width, height)
             halfW = width / 2;
             halfH = height / 2;

@@ -20,47 +20,49 @@ classdef ComponentGroup
             obj.components{end + 1} = component;
         end
 
-        function obj = translate(obj, dx, dy)
-            obj.xPos = obj.xPos + dx;
-            obj.yPos = obj.yPos + dy;
-        end
+        function drawInFemm(obj, circuitName, groupNumOffset)
+            copperRail = obj.findComponentByClass('CopperRail');
+            transformer = obj.findComponentByClass('Transformer');
 
-        % Tells all its components to draw themselves relative to the group's position.
-        function drawInFemm(obj)
-            % --- Draw Shapes First ---
-            for i = 1:length(obj.components)
-                % Pass the group's position to the component
-                obj.components{i}.drawShapeInFemm(obj.xPos, obj.yPos);
+            if isempty(copperRail) || isempty(transformer)
+                error('Assembly "%s" must contain one CopperRail and one Transformer object.', obj.name);
             end
 
-            % --- Place Labels Intelligently After All Shapes Are Drawn ---
-            steelCore = obj.findComponentByName('SteelCore');
-            airGap = obj.findComponentByName('AirGap');
-            conductor = obj.findComponentByName('CopperConductor');
+            steelCore = transformer.findComponentByName('SteelCore');
+            airGap = transformer.findComponentByName('AirGap');
 
-            if ~isempty(steelCore) && ~isempty(airGap) && ~isempty(conductor)
-                coreWidth = steelCore.geoObject.vertices(2, 1); % half-width
-                airGapWidth = airGap.geoObject.vertices(2, 1);
-                conductorWidth = conductor.geoObject.vertices(2, 1);
+            drawBoundary(copperRail, obj.xPos, obj.yPos);
+            drawBoundary(steelCore, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+            drawBoundary(airGap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
 
-                labelXCore = (coreWidth + airGapWidth) / 2 + steelCore.xPos;
-                steelCore.placeLabelInFemm(obj.xPos, obj.yPos, labelXCore, steelCore.yPos);
+            railWidth = copperRail.geoObject.vertices(2, 1);
+            airGapWidth = airGap.geoObject.vertices(2, 1);
+            coreWidth = steelCore.geoObject.vertices(2, 1);
 
-                labelXAir = (airGapWidth + conductorWidth) / 2 + airGap.xPos;
-                airGap.placeLabelInFemm(obj.xPos, obj.yPos, labelXAir, airGap.yPos);
+            mi_addblocklabel(obj.xPos + copperRail.xPos, obj.yPos + copperRail.yPos);
+            mi_selectlabel(obj.xPos + copperRail.xPos, obj.yPos + copperRail.yPos);
+            mi_setblockprop(copperRail.material, 1, 0, circuitName, 0, groupNumOffset + 1, 0);
+            mi_clearselected();
 
-                conductor.placeLabelInFemm(obj.xPos, obj.yPos, conductor.xPos, conductor.yPos);
-            end
+            labelXAir = obj.xPos + (airGapWidth + railWidth) / 2;
+            mi_addblocklabel(labelXAir, obj.yPos);
+            mi_selectlabel(labelXAir, obj.yPos);
+            mi_setblockprop(airGap.material, 1, 0, '<None>', 0, groupNumOffset + 2, 0);
+            mi_clearselected();
 
+            labelXCore = obj.xPos + (coreWidth + airGapWidth) / 2;
+            mi_addblocklabel(labelXCore, obj.yPos);
+            mi_selectlabel(labelXCore, obj.yPos);
+            mi_setblockprop(steelCore.material, 1, 0, '<None>', 0, groupNumOffset + 3, 0);
+            mi_clearselected();
         end
 
-        % Helper method to find a component within the group
-        function component = findComponentByName(obj, name)
+        function component = findComponentByClass(obj, className)
             component = [];
 
             for i = 1:length(obj.components)
 
-                if strcmp(obj.components{i}.name, name)
+                if isa(obj.components{i}, className)
                     component = obj.components{i};
                     return;
                 end
@@ -69,6 +71,47 @@ classdef ComponentGroup
 
         end
 
+        function component = findComponentByName(obj, name)
+            component = [];
+
+            for i = 1:length(obj.components)
+                comp = obj.components{i};
+
+                if strcmp(comp.name, name)
+                    component = comp;
+                    return;
+                end
+
+                if isa(comp, 'ComponentGroup')
+                    component = comp.findComponentByName(name);
+
+                    if ~isempty(component)
+                        return;
+                    end
+
+                end
+
+            end
+
+        end
+
+    end
+
+end
+
+function drawBoundary(component, groupX, groupY)
+    absX = groupX + component.xPos;
+    absY = groupY + component.yPos;
+    vertices = component.geoObject.vertices + [absX, absY];
+
+    for i = 1:size(vertices, 1)
+        mi_addnode(vertices(i, 1), vertices(i, 2));
+    end
+
+    for i = 1:size(vertices, 1)
+        startNode = vertices(i, :);
+        endNode = vertices(mod(i, size(vertices, 1)) + 1, :);
+        mi_addsegment(startNode(1), startNode(2), endNode(1), endNode(2));
     end
 
 end

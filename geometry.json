@@ -1,0 +1,39 @@
+{
+    "description": "Template for a single current transformer assembly",
+    "units": "mm",
+    "components": [
+        {
+            "name": "CopperConductor",
+            "geoType": "Rectangle",
+            "geoParams": {
+                "width": 100,
+                "height": 40
+            },
+            "material": "Copper",
+            "circuit": "L",
+            "groupNum": 1
+        },
+        {
+            "name": "AirGap",
+            "geoType": "Rectangle",
+            "geoParams": {
+                "width": 120,
+                "height": 60
+            },
+            "material": "Air",
+            "circuit": "<None>",
+            "groupNum": 2
+        },
+        {
+            "name": "SteelCore",
+            "geoType": "Rectangle",
+            "geoParams": {
+                "width": 160,
+                "height": 100
+            },
+            "material": "M-36 Steel",
+            "circuit": "<None>",
+            "groupNum": 3
+        }
+    ]
+}

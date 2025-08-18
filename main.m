@@ -1,62 +1,111 @@
 % =========================================================================
-% main.m - Steuerzentrale für die FEMM-Simulationsreihe
-% (Befindet sich im Hauptverzeichnis des Projekts)
+% Main script to orchestrate the FEMM simulation series.
 % =========================================================================
 clear variables; close all; clc;
 
-% Pfade zu den benötigten Toolboxen und Skripten hinzufügen
-addpath('C:\femm42\mfiles'); % Pfad zur FEMM-Toolbox
-addpath('src'); % Pfad zu unseren eigenen Skripten
+% Add paths to FEMM and local source files
+addpath('C:\femm42\mfiles');
+addpath('src');
 
-disp('--- Starte parametrische Simulationsreihe ---');
+%% 1. Define Simulation Name and Create Results Directory
+simulationName = 'Standard_3_Phase_Core'; % Name für diesen Simulationslauf
 
-%% 1. Simulationsparameter definieren
-params.problem_tiefe_m = 0.1;
-params.frequenz_hz = 50;
-params.leiter_hoehe = 40;
-params.leiter_breite = 100;
-params.abstand = 220;
-params.wandler_luftspalt = 10;
-params.wandler_dicke = 20;
-params.spitzenstrom_prim_A = 4000;
-params.nenn_prim_A = 4000;
-params.nenn_sek_A = 5;
-params.wandler_material = 'M-36 Steel';
-params.mu_r_wandler = 2500;
+% Erzeuge Zeitstempel für die Ordnerstruktur
+dateStr = datestr(now, 'yyyymmdd');
+timeStr = datestr(now, 'HHMMSS');
 
-%% 2. Parametrische Analyse (Schleife)
-phasenWinkel_vektor = 0:45:90;
+% Baue den finalen Pfad zusammen
+resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationName]);
+baseFilename = [timeStr, '_', simulationName];
 
+% Erstelle die Ordnerstruktur, falls sie nicht existiert
+if ~exist(resultsPath, 'dir')
+    mkdir(resultsPath);
+    fprintf('Ergebnisordner erstellt: %s\n', resultsPath);
+end
+
+params.resultsPath = resultsPath;
+params.baseFilename = baseFilename;
+
+%% 2. Load Parameters, Geometry Template, and Currents
+params.frequencyHz = 50;
+params.problemDepthM = 0.1;
+params.peakCurrentA = 4000;
+params.nominalPrimaryA = 4000;
+params.nominalSecondaryA = 5;
+params.coreMaterial = 'M-36 Steel';
+params.coreRelPermeability = 2500;
+
+geoTemplate = jsondecode(fileread('geometry.json'));
+assemblySpacing = 220;
+
+%% 3. Create Current Objects
+% ... (Dieser Abschnitt bleibt unverändert) ...
+currents = {
+            Current('L1', params.peakCurrentA, 0), ...
+                Current('L2', params.peakCurrentA, -120), ...
+                Current('L3', params.peakCurrentA, 120)
+            };
+params.currents = currents;
+
+%% 4. Create Component Assemblies
+% ... (Dieser Abschnitt bleibt unverändert) ...
+assemblies = {};
+conductorWidth = geoTemplate.components(1).geoParams.width;
+positions = [- (conductorWidth + assemblySpacing), 0, (conductorWidth + assemblySpacing)];
+
+for i = 1:3
+    group = ComponentGroup(sprintf('Transformer_L%d', i));
+
+    for j = 1:length(geoTemplate.components)
+        cfg = geoTemplate.components(j);
+        geo = GeoObject.createRectangle(cfg.geoParams.width, cfg.geoParams.height);
+
+        circuitName = '';
+
+        if strcmp(cfg.circuit, 'L')
+            circuitName = currents{i}.name;
+        end
+
+        groupNum = (i - 1) * 10 + cfg.groupNum;
+        comp = Component(cfg.name, 0, 0, geo, cfg.material, circuitName, groupNum);
+        group = group.addComponent(comp);
+    end
+
+    group = group.translate(positions(i), 0);
+    assemblies{end + 1} = group;
+end
+
+params.assemblies = assemblies;
+
+%% 5. Run Parametric Analysis
+phaseAngleVector = 0:45:90;
 openfemm;
 
 try
-    master_results_table = table();
-    fprintf('Starte Messreihe für %d Phasenwinkel...\n', length(phasenWinkel_vektor));
+    masterResultsTable = table();
+    fprintf('Starting simulation series for %d phase angles...\n', length(phaseAngleVector));
 
-    for i = 1:length(phasenWinkel_vektor)
-        params.phasenWinkel_deg = phasenWinkel_vektor(i);
-        fprintf('--> Simuliere & berechne für Phasenwinkel: %d°\n', params.phasenWinkel_deg);
+    for i = 1:length(phaseAngleVector)
+        params.phaseAngleDeg = phaseAngleVector(i);
+        fprintf('--> Simulating for phase angle: %d°\n', params.phaseAngleDeg);
 
-        % Schritt A: Führt die FEMM-Analyse durch
-        run_wandler_analyse(params);
-
-        % Schritt B: Lädt die Ergebnisse und führt die Berechnungen durch
-        single_run_results = calculate_results(params);
-
-        master_results_table = [master_results_table; single_run_results];
+        runFemmAnalysis(params);
+        singleRunResults = calculateResults(params);
+        masterResultsTable = [masterResultsTable; singleRunResults];
     end
 
-    fprintf('Messreihe abgeschlossen.\n');
+    fprintf('Simulation series finished.\n');
     closefemm;
 catch ME
     closefemm;
     rethrow(ME);
 end
 
-%% 3. Ergebnisse speichern und visualisieren
-ergebnis_dateiname_csv = 'simulations_ergebnisse.csv';
-writetable(master_results_table, ergebnis_dateiname_csv);
-fprintf('Alle Ergebnisse wurden erfolgreich in "%s" gespeichert.\n', ergebnis_dateiname_csv);
+%% 6. Save and Visualize Results
+resultsCsvFile = fullfile(resultsPath, [baseFilename, '.csv']);
+writetable(masterResultsTable, resultsCsvFile);
+fprintf('All results have been saved to "%s".\n', resultsCsvFile);
 
-plot_results(ergebnis_dateiname_csv);
-disp('--- Simulations-Workflow erfolgreich beendet ---');
+plotResults(resultsCsvFile, resultsPath, baseFilename);
+disp('--- Simulation workflow completed successfully ---');

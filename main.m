@@ -69,7 +69,7 @@ end
 params.assemblies = assemblies;
 
 % --- 5. Run Parametric Analysis ---
-phaseAngleVector = 0:45:90;
+phaseAngleVector = 0:15:180;
 openfemm;
 
 try
@@ -97,7 +97,7 @@ catch ME
     closefemm;
     rethrow(ME);
 end
-
+%
 % --- 6. Save and Visualize Results ---
 resultsCsvFile = fullfile(resultsPath, [params.baseFilename, '_summary.csv']);
 writetable(masterResultsTable, resultsCsvFile);

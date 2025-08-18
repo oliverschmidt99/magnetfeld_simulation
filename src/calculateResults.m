@@ -1,7 +1,13 @@
 function resultsTable = calculateResults(params)
-    mu0 = 4 * pi * 1e-7;
+    % Verbesserte Funktion zur Berechnung von Ergebnissen aus einer FEMM-Simulation.
+    % ÄNDERUNG: Der Sekundärstrom wird jetzt direkt aus den Circuit-Eigenschaften
+    % ausgelesen, anstatt über den magnetischen Widerstand geschätzt zu werden.
+    % Dies ist genauer und robuster.
+
+    mu0 = 4 * pi * 1e-7; %#ok<NASGU>
     numPhases = length(params.currents);
 
+    % Primärströme und Leiternamen initialisieren
     iPrimAll = zeros(numPhases, 1);
     conductorCol = cell(numPhases, 1);
 
@@ -10,6 +16,7 @@ function resultsTable = calculateResults(params)
         conductorCol{i} = params.currents{i}.name;
     end
 
+    % Ergebnisvektoren initialisieren
     iSecResults = zeros(numPhases, 1);
     bAvgComplexX = zeros(numPhases, 1);
     bAvgComplexY = zeros(numPhases, 1);
@@ -26,6 +33,7 @@ function resultsTable = calculateResults(params)
         airGap = transformer.findComponentByName('AirGap');
         steelCore = transformer.findComponentByName('SteelCore');
 
+        % Geometrie des Stahlkerns berechnen
         coreW = steelCore.geoObject.vertices(2, 1) - steelCore.geoObject.vertices(1, 1);
         coreH = steelCore.geoObject.vertices(3, 2) - steelCore.geoObject.vertices(2, 2);
         gapW = airGap.geoObject.vertices(2, 1) - airGap.geoObject.vertices(1, 1);
@@ -34,7 +42,8 @@ function resultsTable = calculateResults(params)
         steelAreaM2 = ((coreW * coreH) - (gapW * gapH)) / (1000 ^ 2);
         volumeM3 = steelAreaM2 * params.problemDepthM;
 
-        groupNum = (i - 1) * 10 + 3; % SteelCore is group 3 in its template
+        % Blockintegrale für Feldgrößen und Verluste aus dem Stahlkern holen
+        groupNum = (i - 1) * 10 + 3; % Annahme: SteelCore ist Gruppe 3 im Template
         mo_groupselectblock(groupNum);
 
         bIntegralX = mo_blockintegral(10);
@@ -42,9 +51,10 @@ function resultsTable = calculateResults(params)
         hIntegralX = mo_blockintegral(18);
         hIntegralY = mo_blockintegral(19);
         eddyIntegral = mo_blockintegral(22);
-        coreIntegral = mo_blockintegral(23);
+        coreIntegral = mo_blockintegral(23); % Hystereseverluste
         mo_clearblock();
 
+        % Gemittelte Feldgrößen und Verluste berechnen
         bAvgComplexX(i) = bIntegralX / volumeM3;
         bAvgComplexY(i) = bIntegralY / volumeM3;
         hAvgComplexX(i) = hIntegralX / volumeM3;
@@ -54,20 +64,26 @@ function resultsTable = calculateResults(params)
         eddyLossesW(i) = eddyIntegral;
         coreLossesVA(i) = coreIntegral;
 
-        flux = bAvgMag(i) * steelAreaM2;
-        coreThick = (coreW - gapW) / 2;
-        meanPathW = gapW + coreThick;
-        meanPathH = gapH + coreThick;
-        meanPathM = (2 * meanPathW + 2 * meanPathH) / 1000;
-        turnsRatio = params.nominalPrimaryA / params.nominalSecondaryA;
-        reluctance = meanPathM / (mu0 * params.coreRelPermeability * steelAreaM2);
-        mmf = flux * reluctance;
-        iSec = mmf / turnsRatio;
-        iSecResults(i) = abs(iSec);
+        % ====================================================================
+        % === NEUE, VERBESSERTE METHODE ZUR BERECHNUNG DES SEKUNDÄRSTROMS ===
+        % ====================================================================
+        % Wir rufen den Strom direkt aus den "Circuit Properties" ab.
+        % WICHTIG: Passe den Namen 'sec_circuit_name' an den Namen an, den du
+        % im FEMM-Modell für den Sekundär-Circuit vergeben hast.
+
+        sec_circuit_name = [conductorCol{i}]; % e.g., 'PhaseA_sec'
+        circuit_props = mo_getcircuitproperties(sec_circuit_name);
+        iSecComplex = circuit_props(1) + 1j * circuit_props(2); % Strom (Real + Imaginär)
+        iSecResults(i) = abs(iSecComplex);
+
+        % ====================================================================
+        % === Die alte, ungenauere Berechnung wurde entfernt. ===
+        % ====================================================================
     end
 
     phaseAngleCol = repmat(params.phaseAngleDeg, numPhases, 1);
 
+    % finale Ergebnistabelle erstellen
     resultsTable = table(phaseAngleCol, conductorCol, iPrimAll, iSecResults, ...
         bAvgComplexX, bAvgComplexY, bAvgMag, ...
         hAvgComplexX, hAvgComplexY, hAvgMag, ...

@@ -103,141 +103,62 @@
       "secondaryRatedCurrentA": 1,
       "geometry": {
         "type": "Rectangle",
-        "coreGeometryType": "Rectangle",
-        "innerWidth": 40.2,
-        "innerHeight": 12.7,
-        "outerWidth": 53.5,
-        "outerHeight": 92.0
+        "outerAirWidth": 83.5,
+        "outerAirHeight": 122.0,
+        "coreOuterWidth": 53.5,
+        "coreOuterHeight": 92.0,
+        "coreInnerWidth": 40.2,
+        "coreInnerHeight": 12.7,
+        "innerWidth": 20.2,
+        "innerHeight": -7.3
       },
       "depth": 31.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
     },
     {
-      "name": "CELSA_ALO-5012_800-1A",
+      "name": "CELSA_ALO-20060_5000-1A",
       "manufacturer": "CELSA",
-      "productName": "ALO 5012",
+      "productName": "ALO 20060",
       "isCompensated": false,
       "burdenVA": 10.0,
-      "primaryRatedCurrentA": 800,
+      "primaryRatedCurrentA": 5000,
       "secondaryRatedCurrentA": 1,
       "geometry": {
         "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
+        "outerAirWidth": 273.0,
+        "outerAirHeight": 183.0,
+        "coreOuterWidth": 243.0,
+        "coreOuterHeight": 153.0,
+        "coreInnerWidth": 205.0,
+        "coreInnerHeight": 65.0,
+        "innerWidth": 185.0,
+        "innerHeight": 45.0
       },
-      "depth": 31.0,
+      "depth": 50.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
     },
     {
-      "name": "CELSA_ALO-6015.8_1000-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 6015.8",
+      "name": "Custom_Wandler_Grafik_Neu",
+      "manufacturer": "Custom",
+      "productName": "Grafik_Wandler",
       "isCompensated": false,
       "burdenVA": 5.0,
-      "primaryRatedCurrentA": 1000,
+      "primaryRatedCurrentA": 600,
       "secondaryRatedCurrentA": 1,
       "geometry": {
         "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
+        "outerAirWidth": 70.2,
+        "outerAirHeight": 70.2,
+        "coreOuterWidth": 40.2,
+        "coreOuterHeight": 40.2,
+        "coreInnerWidth": 30.7,
+        "coreInnerHeight": 30.7,
+        "innerWidth": 10.7,
+        "innerHeight": 10.7
       },
-      "depth": 31.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
-    },
-    {
-      "name": "CELSA_ALO-6040_1250-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 6040",
-      "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 1250,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
-      },
-      "depth": 50.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
-    },
-    {
-      "name": "CELSA_ALO-6040_1600-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 6040",
-      "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 1600,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
-      },
-      "depth": 50.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
-    },
-    {
-      "name": "CELSA_ALO-10030_2000-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 10030",
-      "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 2000,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
-      },
-      "depth": 31.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
-    },
-    {
-      "name": "CELSA_ALO-10030_2500-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 10030",
-      "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 2500,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
-      },
-      "depth": 31.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
-    },
-    {
-      "name": "CELSA_ALO-12070_3000-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 12070",
-      "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 3000,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
-      },
-      "depth": 50.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
-    },
-    {
-      "name": "CELSA_ALO-12070_4000-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 12070",
-      "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 4000,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle"
-      },
-      "depth": 50.0,
+      "depth": 30.0,
       "coreMaterial": "M-36 Steel",
       "gapMaterial": "Air"
     },
@@ -254,49 +175,11 @@
       "gapMaterial": "Air",
       "geometry": {
         "type": "Ring",
-        "innerRadius": 80,
-        "outerRadius": 90
+        "outerAirRadius": 125,
+        "coreOuterRadius": 100,
+        "coreInnerRadius": 90,
+        "gapRadius": 50
       }
-    },
-    {
-      "name": "CELSA_ALO-20060_5000-1A",
-      "manufacturer": "CELSA",
-      "productName": "ALO 20060",
-      "isCompensated": false,
-      "burdenVA": 10.0,
-      "primaryRatedCurrentA": 5000,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle",
-        "innerWidth": 205.0,
-        "innerHeight": 65.0,
-        "outerWidth": 243.0,
-        "outerHeight": 153.0
-      },
-      "depth": 50.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
-    },
-    {
-      "name": "Custom_Wandler_Grafik_Neu",
-      "manufacturer": "Custom",
-      "productName": "Grafik_Wandler",
-      "isCompensated": false,
-      "burdenVA": 5.0,
-      "primaryRatedCurrentA": 600,
-      "secondaryRatedCurrentA": 1,
-      "geometry": {
-        "type": "Rectangle",
-        "coreGeometryType": "Rectangle",
-        "innerWidth": 30.7,
-        "innerHeight": 30.7,
-        "outerWidth": 40.2,
-        "outerHeight": 40.2
-      },
-      "depth": 30.0,
-      "coreMaterial": "M-36 Steel",
-      "gapMaterial": "Air"
     }
   ],
   "transformerSheets": [

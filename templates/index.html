@@ -120,7 +120,8 @@
     </div>
 
     <script>
-        const library = {{ library | tojson | safe }};
+        // HIER IST DIE KORREKTUR: "| safe" wurde hinzugefügt
+        const library = { library, tojson, safe };
         const SQRT2 = Math.sqrt(2);
         let phaseCounter = 0;
         let assemblyCounter = 0;
@@ -257,7 +258,7 @@
             const data = {
                 frequencyHz: document.getElementById('frequencyHz').value,
                 problemDepthM: document.getElementById('problemDepthM').value,
-                nominalPrimaryA: 4000, // Beispielwerte, könnten auch aus UI kommen
+                nominalPrimaryA: 4000,
                 nominalSecondaryA: 5,
                 coreRelPermeability: document.getElementById('coreRelPermeability').value,
                 electricalSystem: [],
@@ -269,7 +270,7 @@
                 data.electricalSystem.push({
                     name: item.querySelector('.phase-name').value,
                     phaseShiftDeg: parseInt(item.querySelector('.phase-shift').value),
-                    peakCurrentA: parseFloat(item.querySelector('.phase-peak').value) // Wert hier holen
+                    peakCurrentA: parseFloat(item.querySelector('.phase-peak').value)
                 });
             });
 

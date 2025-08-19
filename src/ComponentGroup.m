@@ -21,6 +21,7 @@ classdef ComponentGroup
         end
 
         function drawInFemm(obj, circuitName, groupNumOffset)
+            % --- Komponenten abrufen ---
             rail = obj.findComponentByClass('CopperRail');
             transformer = obj.findComponentByClass('Transformer');
             transformerSheet = obj.findComponentByClass('TransformerSheet');
@@ -29,29 +30,48 @@ classdef ComponentGroup
                 error('Assembly "%s" missing rail or transformer.', obj.name);
             end
 
-            % Alle Wandler-Komponenten abrufen
+            % --- Wandler-Subkomponenten abrufen ---
             outerAir = transformer.findComponentByName('OuterAir');
             core = transformer.findComponentByName('SteelCore');
             innerAir = transformer.findComponentByName('InnerAir');
             gap = transformer.findComponentByName('AirGap');
 
+            % --- Gruppennummern zuweisen ---
             rail.groupNum = groupNumOffset + 1;
             gap.groupNum = groupNumOffset + 2;
             core.groupNum = groupNumOffset + 3;
             innerAir.groupNum = groupNumOffset + 4;
             outerAir.groupNum = groupNumOffset + 5;
 
-            % Alle Komponenten mit den korrekten Materialien und Gruppennummern zeichnen
-            drawBoundary(rail, obj.xPos, obj.yPos, circuitName, rail.material, rail.groupNum);
-            drawBoundary(outerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', outerAir.material, outerAir.groupNum);
-            drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', core.material, core.groupNum);
-            drawBoundary(innerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', innerAir.material, innerAir.groupNum);
-            drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', gap.material, gap.groupNum);
-
-            % Trafoblech hinzufügen und zeichnen, falls vorhanden
             if ~isempty(transformerSheet)
                 transformerSheet.groupNum = groupNumOffset + 6;
-                drawBoundary(transformerSheet, obj.xPos + transformerSheet.xPos, obj.yPos + transformerSheet.yPos, '<None>', transformerSheet.material, transformerSheet.groupNum);
+            end
+
+            % --- 1. Alle Grenzen zeichnen ---
+            drawBoundary(rail, obj.xPos, obj.yPos);
+            drawBoundary(outerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+            drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+            drawBoundary(innerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+            drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
+
+            if ~isempty(transformerSheet)
+                drawBoundary(transformerSheet, obj.xPos + transformerSheet.xPos, obj.yPos + transformerSheet.yPos);
+            end
+
+            % --- 2. Alle Material-Labels gezielt platzieren ---
+            placeLabel(rail, obj.xPos, obj.yPos, 0, 0, circuitName, rail.material, rail.groupNum);
+
+            labelX = (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
+            placeLabel(outerAir, obj.xPos, obj.yPos, labelX, 0, '<None>', outerAir.material, outerAir.groupNum);
+
+            labelX = (core.geoObject.vertices(2, 1) + innerAir.geoObject.vertices(2, 1)) / 2;
+            placeLabel(core, obj.xPos, obj.yPos, labelX, 0, '<None>', core.material, core.groupNum);
+
+            labelX = (innerAir.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
+            placeLabel(innerAir, obj.xPos, obj.yPos, labelX, 0, '<None>', innerAir.material, innerAir.groupNum);
+
+            if ~isempty(transformerSheet)
+                placeLabel(transformerSheet, obj.xPos, obj.yPos, 0, 0, '<None>', transformerSheet.material, transformerSheet.groupNum);
             end
 
         end
@@ -98,15 +118,15 @@ classdef ComponentGroup
 
 end
 
-% Diese Funktion ruft nun die drawInFemm-Methode des GeoObject auf
-function drawBoundary(component, groupX, groupY, circuitName, material, groupNum)
+function drawBoundary(component, groupX, groupY)
     absX = groupX + component.xPos;
     absY = groupY + component.yPos;
-
-    % HIER IST DIE KORREKTUR: Aufruf der neuen Methode
     component.geoObject.drawInFemm(absX, absY);
+end
 
-    % Label hinzufügen, um das Material zuzuweisen
+function placeLabel(component, groupX, groupY, offsetX, offsetY, circuitName, material, groupNum)
+    absX = groupX + component.xPos + offsetX;
+    absY = groupY + component.yPos + offsetY;
     mi_addblocklabel(absX, absY);
     mi_selectlabel(absX, absY);
     mi_setblockprop(material, 1, 0, circuitName, 0, groupNum, 0);

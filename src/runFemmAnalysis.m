@@ -56,7 +56,10 @@ function runFemmAnalysis(params, runIdentifier)
     mi_selectlabel(0, 300);
     mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);
     mi_clearselected();
-    mi_makeABC(7, 500, 0, 0, 0);
+
+    % HIER IST DIE KORREKTUR: Radius von 500 auf 1500 erhöht
+    mi_makeABC(7, 1500, 0, 0, 0);
+
     mi_zoomnatural();
 
     % Save and run analysis

@@ -3,7 +3,7 @@ function runFemmAnalysis(params, runIdentifier)
     newdocument(0);
     mi_probdef(params.frequencyHz, 'millimeters', 'planar', 1e-8, params.problemDepthM * 1000, 30);
 
-    % Materialien dynamisch finden und definieren
+    % (Restlicher Code bis zur ABC-Funktion bleibt gleich)...
     mats = {'Air', 'Copper'};
 
     for i = 1:length(params.assemblies)
@@ -43,12 +43,10 @@ function runFemmAnalysis(params, runIdentifier)
 
     end
 
-    % Stromkreise definieren
     for i = 1:length(params.currents)
         params.currents{i}.defineInFemm(params.phaseAngleDeg);
     end
 
-    % Baugruppen zeichnen
     for i = 1:length(params.assemblies)
         assembly = params.assemblies{i};
         circuitName = params.currents{i}.name;
@@ -56,15 +54,13 @@ function runFemmAnalysis(params, runIdentifier)
         assembly.drawInFemm(circuitName, groupNumOffset);
     end
 
-    % Eigenständige Komponenten zeichnen
     for i = 1:length(params.standAloneComponents)
         comp = params.standAloneComponents{i};
-        comp.groupNum = 100 + i; % Eigene Gruppennummern
+        comp.groupNum = 100 + i;
         drawBoundary(comp, 0, 0);
         placeLabel(comp, 0, 0, 0, 0, '<None>', comp.material, comp.groupNum);
     end
 
-    % Umgebungsluft und Randbedingung
     mi_addblocklabel(0, 300);
     mi_selectlabel(0, 300);
     mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);
@@ -72,25 +68,10 @@ function runFemmAnalysis(params, runIdentifier)
     mi_makeABC(7, 1500, 0, 0, 0);
     mi_zoomnatural();
 
-    % Speichern und Analyse
     femFile = fullfile(params.femmFilesPath, [runIdentifier, '.fem']);
     mi_saveas(femFile);
     mi_analyze(1);
     mi_loadsolution();
 end
 
-% HILFSFUNKTIONEN HIERHIN VERSCHOBEN
-function drawBoundary(component, groupX, groupY)
-    absX = groupX + component.xPos;
-    absY = groupY + component.yPos;
-    component.geoObject.drawInFemm(absX, absY);
-end
-
-function placeLabel(component, groupX, groupY, offsetX, offsetY, circuitName, material, groupNum)
-    absX = groupX + component.xPos + offsetX;
-    absY = groupY + component.yPos + offsetY;
-    mi_addblocklabel(absX, absY);
-    mi_selectlabel(absX, absY);
-    mi_setblockprop(material, 1, 0, circuitName, 0, groupNum, 0);
-    mi_clearselected();
-end
+% KEINE HILFSFUNKTIONEN MEHR HIER

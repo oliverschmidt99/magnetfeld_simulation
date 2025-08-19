@@ -18,33 +18,21 @@
       "name": "Assembly_L1",
       "position": { "x": -220, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-<<<<<<< HEAD
       "transformerName": "Custom_Wandler_Grafik_Neu",
-=======
-      "transformerName": "Generic_Ring_Core_Example",
->>>>>>> mein_alter_commit
       "transformerSheetName": "Sheet_200x5"
     },
     {
       "name": "Assembly_L2",
       "position": { "x": 0, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-<<<<<<< HEAD
       "transformerName": "Custom_Wandler_Grafik_Neu",
-=======
-      "transformerName": "Generic_Ring_Core_Example",
->>>>>>> mein_alter_commit
       "transformerSheetName": "Sheet_200x5"
     },
     {
       "name": "Assembly_L3",
       "position": { "x": 220, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-<<<<<<< HEAD
       "transformerName": "Custom_Wandler_Grafik_Neu",
-=======
-      "transformerName": "Generic_Ring_Core_Example",
->>>>>>> mein_alter_commit
       "transformerSheetName": "Sheet_200x5"
     }
   ]

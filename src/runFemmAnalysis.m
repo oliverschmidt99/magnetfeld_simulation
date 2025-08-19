@@ -1,8 +1,9 @@
+% oliverschmidt99/magnetfeld_simulation/magnetfeld_simulation-lab/src/runFemmAnalysis.m
 function runFemmAnalysis(params, runIdentifier)
     newdocument(0);
     mi_probdef(params.frequencyHz, 'millimeters', 'planar', 1e-8, params.problemDepthM * 1000, 30);
 
-    % Dynamically find and define all materials
+    % Materialien dynamisch finden und definieren
     mats = {'Air', 'Copper'};
 
     for i = 1:length(params.assemblies)
@@ -25,6 +26,11 @@ function runFemmAnalysis(params, runIdentifier)
 
     end
 
+    % NEU: Materialien von eigenständigen Komponenten hinzufügen
+    for i = 1:length(params.standAloneComponents)
+        mats{end + 1} = params.standAloneComponents{i}.material;
+    end
+
     mats = unique(mats);
 
     for i = 1:length(mats)
@@ -38,12 +44,12 @@ function runFemmAnalysis(params, runIdentifier)
 
     end
 
-    % Define electrical circuits
+    % Stromkreise definieren
     for i = 1:length(params.currents)
         params.currents{i}.defineInFemm(params.phaseAngleDeg);
     end
 
-    % Draw all assemblies
+    % Baugruppen zeichnen
     for i = 1:length(params.assemblies)
         assembly = params.assemblies{i};
         circuitName = params.currents{i}.name;
@@ -51,18 +57,24 @@ function runFemmAnalysis(params, runIdentifier)
         assembly.drawInFemm(circuitName, groupNumOffset);
     end
 
-    % Define surrounding air and boundary condition
+    % NEU: Eigenständige Komponenten zeichnen
+    for i = 1:length(params.standAloneComponents)
+        comp = params.standAloneComponents{i};
+        comp.groupNum = 100 + i; % Eigene Gruppennummern
+        % Verwenden der globalen drawBoundary-Funktion
+        drawBoundary(comp, 0, 0); % Position ist schon im Objekt
+        placeLabel(comp, 0, 0, 0, 0, '<None>', comp.material, comp.groupNum);
+    end
+
+    % Umgebungsluft und Randbedingung
     mi_addblocklabel(0, 300);
     mi_selectlabel(0, 300);
     mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);
     mi_clearselected();
-
-    % HIER IST DIE KORREKTUR: Radius von 500 auf 1500 erhöht
     mi_makeABC(7, 1500, 0, 0, 0);
-
     mi_zoomnatural();
 
-    % Save and run analysis
+    % Speichern und Analyse
     femFile = fullfile(params.femmFilesPath, [runIdentifier, '.fem']);
     mi_saveas(femFile);
     mi_analyze(1);

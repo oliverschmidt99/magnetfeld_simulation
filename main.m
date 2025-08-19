@@ -39,51 +39,53 @@ assemblies = {};
 for i = 1:length(simConfig.assemblies)
     asmCfg = simConfig.assemblies(i);
 
-    % --- Robuste Suche für Kupferschiene ---
     railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
-
-    if ~any(railIdx)
-        error('Kupferschiene "%s" wurde in der library.json nicht gefunden.', asmCfg.copperRailName);
-    end
-
+    if ~any(railIdx), error('Kupferschiene "%s" nicht gefunden.', asmCfg.copperRailName); end
     railCfg = library.copperRails(railIdx);
 
-    % --- Robuste Suche für Wandler ---
     transformerNames = cellfun(@(x) x.name, library.transformers, 'UniformOutput', false);
     transformerIdx = strcmp(transformerNames, asmCfg.transformerName);
-
-    if ~any(transformerIdx)
-        error('Wandler "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerName);
-    end
-
+    if ~any(transformerIdx), error('Wandler "%s" nicht gefunden.', asmCfg.transformerName); end
     transformerCfg = library.transformers{transformerIdx};
 
-    % --- NEU: Suche und Erstellung für Trafoblech ---
-    sheetIdx = strcmp({library.transformerSheets.name}, asmCfg.transformerSheetName);
-
-    if ~any(sheetIdx)
-        error('Trafoblech "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerSheetName);
-    end
-
-    sheetCfg = library.transformerSheets(sheetIdx);
-
-    % Erstelle die Matlab-Objekte
     copperRail = CopperRail(railCfg);
     transformer = Transformer(transformerCfg);
-    transformerSheet = TransformerSheet(sheetCfg); % NEU
 
     assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
     assemblyGroup = assemblyGroup.addComponent(copperRail);
     assemblyGroup = assemblyGroup.addComponent(transformer);
-    assemblyGroup = assemblyGroup.addComponent(transformerSheet); % NEU
-
     assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
 end
 
 params.assemblies = assemblies;
 
+% --- NEU: Eigenständige Komponenten erstellen ---
+standAloneComponents = {};
+
+if isfield(simConfig, 'standAloneComponents')
+
+    for i = 1:length(simConfig.standAloneComponents)
+        compCfg = simConfig.standAloneComponents(i);
+
+        % Annahme: Wir suchen erstmal nur nach TransformerSheets
+        sheetIdx = strcmp({library.transformerSheets.name}, compCfg.name);
+        if ~any(sheetIdx), error('Trafoblech "%s" nicht gefunden.', compCfg.name); end
+        sheetCfg = library.transformerSheets(sheetIdx);
+
+        sheet = TransformerSheet(sheetCfg);
+        % Position direkt dem Objekt zuweisen
+        sheet.xPos = compCfg.position.x;
+        sheet.yPos = compCfg.position.y;
+
+        standAloneComponents{end + 1} = sheet; %#ok<SAGROW>
+    end
+
+end
+
+params.standAloneComponents = standAloneComponents;
+
 % --- 5. Run Parametric Analysis ---
-phaseAngleVector = 0:15:90; % Gekürzt für schnelleren Test
+phaseAngleVector = 0:15:90;
 openfemm;
 
 try
@@ -112,7 +114,6 @@ catch ME
     rethrow(ME);
 end
 
-%
 % --- 6. Save and Visualize Results ---
 resultsCsvFile = fullfile(resultsPath, [params.baseFilename, '_summary.csv']);
 writetable(masterResultsTable, resultsCsvFile);

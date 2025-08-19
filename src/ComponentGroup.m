@@ -21,43 +21,48 @@ classdef ComponentGroup
         end
 
         function drawInFemm(obj, circuitName, groupNumOffset)
+            % --- Komponenten abrufen ---
             rail = obj.findComponentByClass('CopperRail');
             transformer = obj.findComponentByClass('Transformer');
 
             if isempty(rail) || isempty(transformer)
-                error('Assembly "%s" missing rail or transformer.', obj.name);
+                error('Assembly "%s" fehlt die Kupferschiene oder der Wandler.', obj.name);
             end
 
+            % --- Wandler-Subkomponenten abrufen ---
             outerAir = transformer.findComponentByName('OuterAir');
             core = transformer.findComponentByName('SteelCore');
             innerAir = transformer.findComponentByName('InnerAir');
-            gap = transformer.findComponentByName('AirGap');
+            gap = transformer.findComponentByName('AirGap'); %#ok<NASGU>
 
+            % --- Gruppennummern zuweisen ---
             rail.groupNum = groupNumOffset + 1;
-            gap.groupNum = groupNumOffset + 2;
             core.groupNum = groupNumOffset + 3;
             innerAir.groupNum = groupNumOffset + 4;
             outerAir.groupNum = groupNumOffset + 5;
 
+            % --- 1. Alle Grenzen zeichnen ---
             drawBoundary(rail, obj.xPos, obj.yPos);
             drawBoundary(outerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
             drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
             drawBoundary(innerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
-            drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
 
+            % --- 2. Alle Material-Labels gezielt platzieren ---
+
+            % KUPFER in der Mitte (deine Region "2")
             placeLabel(rail, obj.xPos, obj.yPos, 0, 0, circuitName, rail.material, rail.groupNum);
 
-            labelX = (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
-            placeLabel(outerAir, obj.xPos, obj.yPos, labelX, 0, '<None>', outerAir.material, outerAir.groupNum);
+            % Äußere Luftschicht
+            labelX_outer = (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
+            placeLabel(outerAir, obj.xPos, obj.yPos, labelX_outer, 0, '<None>', outerAir.material, outerAir.groupNum);
 
-            labelX = (core.geoObject.vertices(2, 1) + innerAir.geoObject.vertices(2, 1)) / 2;
-            placeLabel(core, obj.xPos, obj.yPos, labelX, 0, '<None>', core.material, core.groupNum);
+            % Stahlkern
+            labelX_core = (core.geoObject.vertices(2, 1) + innerAir.geoObject.vertices(2, 1)) / 2;
+            placeLabel(core, obj.xPos, obj.yPos, labelX_core, 0, '<None>', core.material, core.groupNum);
 
-            labelX = (innerAir.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
-            placeLabel(innerAir, obj.xPos, obj.yPos, labelX, 0, '<None>', innerAir.material, innerAir.groupNum);
-
-            % DIESE ZEILE HAT GEFEHLT
-            placeLabel(gap, obj.xPos, obj.yPos, 0, 0, '<None>', gap.material, gap.groupNum);
+            % Innere Luftschicht (deine Region "1")
+            labelX_inner = (innerAir.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
+            placeLabel(innerAir, obj.xPos, obj.yPos, labelX_inner, 0, '<None>', innerAir.material, innerAir.groupNum);
         end
 
         function component = findComponentByClass(obj, className)

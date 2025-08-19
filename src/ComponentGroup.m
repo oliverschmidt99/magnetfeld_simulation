@@ -1,3 +1,4 @@
+% oliverschmidt99/magnetfeld_simulation/magnetfeld_simulation-lab/src/ComponentGroup.m
 classdef ComponentGroup
 
     properties
@@ -97,13 +98,15 @@ classdef ComponentGroup
 
 end
 
-% Die Funktion drawBoundary wurde geändert, um immer die Materialeigenschaften zu setzen.
+% Diese Funktion ruft nun die drawInFemm-Methode des GeoObject auf
 function drawBoundary(component, groupX, groupY, circuitName, material, groupNum)
     absX = groupX + component.xPos;
     absY = groupY + component.yPos;
 
+    % HIER IST DIE KORREKTUR: Aufruf der neuen Methode
     component.geoObject.drawInFemm(absX, absY);
 
+    % Label hinzufügen, um das Material zuzuweisen
     mi_addblocklabel(absX, absY);
     mi_selectlabel(absX, absY);
     mi_setblockprop(material, 1, 0, circuitName, 0, groupNum, 0);

@@ -15,6 +15,7 @@ classdef Transformer < ComponentGroup
             % Intelligente Geometrie-Erstellung
             switch config.geometry.type
                 case 'Rectangle'
+<<<<<<< HEAD
                     % Erster switch für die Hauptgeometrie des Luftspalts
                     geoGap = GeoObject.createRectangle(config.geometry.innerWidth, config.geometry.innerHeight);
                     % Zweiter switch für die spezifische Kerntypauswahl
@@ -36,6 +37,18 @@ classdef Transformer < ComponentGroup
                     error('Unbekannter Geometrie-Typ im Wandler: %s', config.geometry.type);
             end
 
+=======
+                    geoCore = GeoObject.createRectangle(config.geometry.outerWidth, config.geometry.outerHeight);
+                    geoGap = GeoObject.createRectangle(config.geometry.innerWidth, config.geometry.innerHeight);
+                case 'Ring'
+                    ringGeo = GeoObject.createRing(config.geometry.innerRadius, config.geometry.outerRadius);
+                    geoCore = ringGeo.outer;
+                    geoGap = ringGeo.inner;
+                otherwise
+                    error('Unbekannter Geometrie-Typ im Wandler: %s', config.geometry.type);
+            end
+
+>>>>>>> mein_alter_commit
             compCore = Component('SteelCore', 0, 0, geoCore, config.coreMaterial);
             compGap = Component('AirGap', 0, 0, geoGap, config.gapMaterial);
 

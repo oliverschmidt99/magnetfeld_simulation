@@ -98,7 +98,3 @@ Hier sind die nächsten geplanten Schritte zur Verbesserung des Projekts:
   - Eine Funktion zum Speichern und Laden von verschiedenen Konfigurationen (Szenarien) implementieren.
   - Ein Dropdown-Menü auf der Startseite, um gespeicherte Szenarien schnell zu laden.
 
-- **Benutzerfreundlichkeit des Konfigurators verbessern**:
-
-  - Die Erstellung der Anordnung durch eine Drag-and-Drop-Oberfläche vereinfachen, anstatt nur X/Y-Koordinaten einzugeben.
-  - Dropdown-Menüs und logische Gruppierungen verwenden, um die Formulare übersichtlicher zu gestalten.

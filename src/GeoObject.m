@@ -17,9 +17,7 @@ classdef GeoObject
 
         end
 
-        % NEUE METHODE: Zeichnet das Objekt in FEMM
         function drawInFemm(obj, centerX, centerY)
-            % Verschiebt die lokalen Vertices an die globale Position und zeichnet sie
             absVertices = obj.vertices + [centerX, centerY];
 
             for i = 1:size(absVertices, 1)
@@ -37,14 +35,13 @@ classdef GeoObject
     end
 
     methods (Static)
-        % ... (der Rest deiner Static-Methoden bleibt unverändert)
+
         function geo = create(config)
 
             switch config.type
                 case 'Rectangle'
                     geo = GeoObject.createRectangle(config.width, config.height);
                 case 'Ring'
-                    % createRing gibt jetzt direkt ein GeoObject zurück
                     geo = GeoObject.createRing(config.innerRadius, config.outerRadius);
                 otherwise
                     error('Unbekannter Geometrie-Typ: %s', config.type);
@@ -62,16 +59,15 @@ classdef GeoObject
         function obj = createRing(innerRadius, outerRadius, numSegments)
 
             if nargin < 3
-                numSegments = 64; % Standardwert für eine glatte Kreis-Approximation
+                numSegments = 64; % More segments for a smoother circle
             end
 
             angles = linspace(0, 2 * pi, numSegments + 1)';
 
-            % Äußere und innere Punkte in der richtigen Reihenfolge für eine einzige Polygondefeinition
             outerPoints = [cos(angles) * outerRadius, sin(angles) * outerRadius];
             innerPoints = [cos(angles) * innerRadius, sin(angles) * innerRadius];
 
-            % Vertices für ein Polygon mit Loch
+            % Create vertices for a single polygon with a hole
             vertices = [outerPoints; flipud(innerPoints)];
             obj = GeoObject(vertices);
         end

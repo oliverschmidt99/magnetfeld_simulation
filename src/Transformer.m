@@ -13,34 +13,41 @@ classdef Transformer < ComponentGroup
             obj.manufacturer = config.manufacturer;
             obj.productName = config.productName;
 
-            % Intelligente Geometrie-Erstellung
+            % Erstellt die Geometrie basierend auf dem Typ (Ring oder Rechteck)
             switch config.geometry.type
-                case 'Rectangle'
-                    % Erster switch für die Hauptgeometrie des Luftspalts
-                    geoGap = GeoObject.createRectangle(config.geometry.innerWidth, config.geometry.innerHeight);
-                    % Zweiter switch für die spezifische Kerntypauswahl
-                    switch config.geometry.coreGeometryType
-                        case 'Rectangle'
-                            geoCore = GeoObject.createRectangle(config.geometry.outerWidth, config.geometry.outerHeight);
-                        case 'Ring'
-                            ringGeo = GeoObject.createRing(config.geometry.innerRadius, config.geometry.outerRadius);
-                            geoCore = ringGeo.outer;
-                        otherwise
-                            error('Unbekannter Kerntyp im Wandler: %s', config.geometry.coreGeometryType);
-                    end
-
                 case 'Ring'
-                    ringGeo = GeoObject.createRing(config.geometry.innerRadius, config.geometry.outerRadius);
-                    geoCore = ringGeo.outer;
-                    geoGap = ringGeo.inner;
+                    % Erzeugt vier konzentrische Kreise als Grenzen
+                    geoOuterAir = GeoObject.createRing(config.geometry.coreOuterRadius, config.geometry.outerAirRadius);
+                    geoCore = GeoObject.createRing(config.geometry.coreInnerRadius, config.geometry.coreOuterRadius);
+                    geoInnerAir = GeoObject.createRing(config.geometry.gapRadius, config.geometry.coreInnerRadius);
+                    geoGap = GeoObject.createRing(0, config.geometry.gapRadius); % Innenraum für Leiter
+
+                    % Erstellt die vier Komponenten
+                    compOuterAir = Component('OuterAir', 0, 0, geoOuterAir.outer, config.gapMaterial);
+                    compCore = Component('SteelCore', 0, 0, geoCore.outer, config.coreMaterial);
+                    compInnerAir = Component('InnerAir', 0, 0, geoInnerAir.outer, config.gapMaterial);
+                    compGap = Component('AirGap', 0, 0, geoGap.outer, config.gapMaterial);
+
+                case 'Rectangle'
+                    % Erzeugt vier konzentrische Rechtecke als Grenzen
+                    geoOuterAir = GeoObject.createRectangle(config.geometry.outerAirWidth, config.geometry.outerAirHeight);
+                    geoCore = GeoObject.createRectangle(config.geometry.coreOuterWidth, config.geometry.coreOuterHeight);
+                    geoInnerAir = GeoObject.createRectangle(config.geometry.coreInnerWidth, config.geometry.coreInnerHeight);
+                    geoGap = GeoObject.createRectangle(config.geometry.innerWidth, config.geometry.innerHeight);
+
+                    % Erstellt die vier Komponenten
+                    compOuterAir = Component('OuterAir', 0, 0, geoOuterAir, config.gapMaterial);
+                    compCore = Component('SteelCore', 0, 0, geoCore, config.coreMaterial);
+                    compInnerAir = Component('InnerAir', 0, 0, geoInnerAir, config.gapMaterial);
+                    compGap = Component('AirGap', 0, 0, geoGap, config.gapMaterial);
                 otherwise
                     error('Unbekannter Geometrie-Typ im Wandler: %s', config.geometry.type);
             end
 
-            compCore = Component('SteelCore', 0, 0, geoCore, config.coreMaterial);
-            compGap = Component('AirGap', 0, 0, geoGap, config.gapMaterial);
-
+            % Fügt die Komponenten zur Gruppe hinzu (von außen nach innen)
+            obj = obj.addComponent(compOuterAir);
             obj = obj.addComponent(compCore);
+            obj = obj.addComponent(compInnerAir);
             obj = obj.addComponent(compGap);
         end
 

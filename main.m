@@ -1,3 +1,4 @@
+% oliverschmidt99/magnetfeld_simulation/magnetfeld_simulation-lab/main.m
 clear variables; close all; clc;
 addpath('C:\femm42\mfiles'); addpath('src');
 
@@ -38,8 +39,7 @@ assemblies = {};
 for i = 1:length(simConfig.assemblies)
     asmCfg = simConfig.assemblies(i);
 
-    % --- ROBUSTE SUCHE mit Fehlerprüfung (KORREKTUR HIER) ---
-    % 'copperRails' is a struct array, use dot notation
+    % --- Robuste Suche für Kupferschiene ---
     railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
 
     if ~any(railIdx)
@@ -48,7 +48,7 @@ for i = 1:length(simConfig.assemblies)
 
     railCfg = library.copperRails(railIdx);
 
-    % 'transformers' is a cell array due to inconsistent 'geometry' objects, use cellfun
+    % --- Robuste Suche für Wandler ---
     transformerNames = cellfun(@(x) x.name, library.transformers, 'UniformOutput', false);
     transformerIdx = strcmp(transformerNames, asmCfg.transformerName);
 
@@ -58,13 +58,24 @@ for i = 1:length(simConfig.assemblies)
 
     transformerCfg = library.transformers{transformerIdx};
 
+    % --- NEU: Suche und Erstellung für Trafoblech ---
+    sheetIdx = strcmp({library.transformerSheets.name}, asmCfg.transformerSheetName);
+
+    if ~any(sheetIdx)
+        error('Trafoblech "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerSheetName);
+    end
+
+    sheetCfg = library.transformerSheets(sheetIdx);
+
     % Erstelle die Matlab-Objekte
     copperRail = CopperRail(railCfg);
     transformer = Transformer(transformerCfg);
+    transformerSheet = TransformerSheet(sheetCfg); % NEU
 
     assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
     assemblyGroup = assemblyGroup.addComponent(copperRail);
     assemblyGroup = assemblyGroup.addComponent(transformer);
+    assemblyGroup = assemblyGroup.addComponent(transformerSheet); % NEU
 
     assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
 end
@@ -72,7 +83,7 @@ end
 params.assemblies = assemblies;
 
 % --- 5. Run Parametric Analysis ---
-phaseAngleVector = 0:15:180;
+phaseAngleVector = 0:15:90; % Gekürzt für schnelleren Test
 openfemm;
 
 try
@@ -100,6 +111,7 @@ catch ME
     closefemm;
     rethrow(ME);
 end
+
 %
 % --- 6. Save and Visualize Results ---
 resultsCsvFile = fullfile(resultsPath, [params.baseFilename, '_summary.csv']);

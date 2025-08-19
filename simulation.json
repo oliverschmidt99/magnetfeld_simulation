@@ -3,32 +3,52 @@
   "simulationParams": {
     "frequencyHz": 50,
     "problemDepthM": 30,
-    "peakCurrentA": 5000,
     "nominalPrimaryA": 5000,
     "nominalSecondaryA": 1,
     "coreRelPermeability": 4000
   },
   "electricalSystem": [
-    { "name": "L1", "phaseShiftDeg": 0 },
-    { "name": "L2", "phaseShiftDeg": -120 },
-    { "name": "L3", "phaseShiftDeg": 120 }
+    {
+      "name": "L1",
+      "phaseShiftDeg": 0,
+      "peakCurrentA": 5000
+    },
+    {
+      "name": "L2",
+      "phaseShiftDeg": -120,
+      "peakCurrentA": 5000
+    },
+    {
+      "name": "L3",
+      "phaseShiftDeg": 120,
+      "peakCurrentA": 5000
+    }
   ],
   "assemblies": [
     {
       "name": "Assembly_L1",
-      "position": { "x": -500, "y": 0 },
+      "position": {
+        "x": -500,
+        "y": 0
+      },
       "copperRailName": "RJ_4x100x10_4000A",
       "transformerName": "CELSA_ALO-20060_5000-1A"
     },
     {
       "name": "Assembly_L2",
-      "position": { "x": 0, "y": 0 },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
       "copperRailName": "RJ_4x100x10_4000A",
       "transformerName": "CELSA_ALO-20060_5000-1A"
     },
     {
       "name": "Assembly_L3",
-      "position": { "x": 500, "y": 0 },
+      "position": {
+        "x": 500,
+        "y": 0
+      },
       "copperRailName": "RJ_4x100x10_4000A",
       "transformerName": "CELSA_ALO-20060_5000-1A"
     }
@@ -36,7 +56,10 @@
   "standAloneComponents": [
     {
       "name": "Sheet_200x5",
-      "position": { "x": 0, "y": -200 }
+      "position": {
+        "x": 0,
+        "y": -200
+      }
     }
   ]
 }

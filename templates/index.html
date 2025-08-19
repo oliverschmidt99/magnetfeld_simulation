@@ -9,6 +9,8 @@
             font-family: sans-serif;
             margin: 2em;
             background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
         }
 
         h1,
@@ -16,11 +18,66 @@
             color: #333;
         }
 
+        .main-container {
+            width: 80%;
+            max-width: 1200px;
+        }
+
         .container {
             background-color: white;
             padding: 2em;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 1em;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 16px;
+            border-bottom: 2px solid transparent;
+            color: #555;
+        }
+
+        .tab-button.active {
+            border-bottom: 2px solid #007bff;
+            font-weight: bold;
+            color: black;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        #visualization-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #svg-canvas {
+            border: 1px solid #ddd;
+            width: 100%;
+            height: 600px;
+            background-color: #fff;
+        }
+
+        .svg-label {
+            font-size: 12px;
+            font-family: sans-serif;
+            fill: black;
+            transform: scale(1, -1);
         }
 
         .form-group {
@@ -76,57 +133,90 @@
 </head>
 
 <body>
+    <div id="library-data" data-library='{{ library|tojson|safe }}' style="display: none;"></div>
 
-    <div class="container">
+    <div class="main-container">
         <h1>Simulations-Konfigurator</h1>
-        <p>Erstelle hier deine <code>simulation.json</code> Datei.</p>
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'configurator')">Konfigurator</button>
+            <button class="tab-button" onclick="openTab(event, 'visualization')">Visualisierung</button>
+        </div>
 
-        <form id="simulation-form">
+        <div id="configurator" class="container tab-content active">
+            <p>Erstelle hier deine <code>simulation.json</code> Datei.</p>
+            <form id="simulation-form">
+                <h2>Allgemeine Simulations-Parameter</h2>
+                <div class="form-group">
+                    <label for="frequencyHz">Frequenz (Hz)</label>
+                    <input type="number" id="frequencyHz" value="50">
+                </div>
+                <div class="form-group">
+                    <label for="problemDepthM">Problem-Tiefe (m)</label>
+                    <input type="number" step="0.01" id="problemDepthM" value="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="coreRelPermeability">Relative Permeabilität (Kern)</label>
+                    <input type="number" id="coreRelPermeability" value="2500">
+                </div>
 
-            <h2>Allgemeine Simulations-Parameter</h2>
-            <div class="form-group">
-                <label for="frequencyHz">Frequenz (Hz)</label>
-                <input type="number" id="frequencyHz" value="50">
+                <h2>Elektrisches System (Phasen)</h2>
+                <div id="electrical-system-list" class="dynamic-list"></div>
+                <button type="button" onclick="addPhase()">+ Phase hinzufügen</button>
+
+                <hr style="margin: 2em 0;">
+
+                <h2>Baugruppen (Assemblies)</h2>
+                <div id="assemblies-list" class="dynamic-list"></div>
+                <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
+
+                <hr style="margin: 2em 0;">
+
+                <h2>Eigenständige Bauteile</h2>
+                <div id="standalone-list" class="dynamic-list"></div>
+                <button type="button" onclick="addStandalone()">+ Bauteil hinzufügen</button>
+
+                <hr style="margin: 2em 0;">
+
+                <button type="submit">simulation.json erstellen</button>
+            </form>
+        </div>
+
+        <div id="visualization" class="container tab-content">
+            <div id="visualization-container">
+                <p>Zeigt eine 2D-Vorschau der Anordnung.</p>
+                <button type="button" onclick="updateVisualization()">Visualisierung aktualisieren</button>
+                <svg id="svg-canvas"></svg>
             </div>
-            <div class="form-group">
-                <label for="problemDepthM">Problem-Tiefe (m)</label>
-                <input type="number" step="0.01" id="problemDepthM" value="0.1">
-            </div>
-            <div class="form-group">
-                <label for="coreRelPermeability">Relative Permeabilität (Kern)</label>
-                <input type="number" id="coreRelPermeability" value="2500">
-            </div>
-
-            <h2>Elektrisches System (Phasen)</h2>
-            <div id="electrical-system-list" class="dynamic-list"></div>
-            <button type="button" onclick="addPhase()">+ Phase hinzufügen</button>
-
-            <hr style="margin: 2em 0;">
-
-            <h2>Baugruppen (Assemblies)</h2>
-            <div id="assemblies-list" class="dynamic-list"></div>
-            <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
-
-            <hr style="margin: 2em 0;">
-
-            <h2>Eigenständige Bauteile</h2>
-            <div id="standalone-list" class="dynamic-list"></div>
-            <button type="button" onclick="addStandalone()">+ Bauteil hinzufügen</button>
-
-            <hr style="margin: 2em 0;">
-
-            <button type="submit">simulation.json erstellen</button>
-        </form>
+        </div>
     </div>
 
+
     <script>
-        // HIER IST DIE KORREKTUR: "| safe" wurde hinzugefügt
-        const library = { library, tojson, safe };
+        const library = JSON.parse(document.getElementById("library-data").dataset.library);
         const SQRT2 = Math.sqrt(2);
         let phaseCounter = 0;
         let assemblyCounter = 0;
         let standaloneCounter = 0;
 
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+
+            if (tabName === 'visualization') {
+                updateVisualization();
+            }
+        }
+
+        // HINZUGEFÜGT: Funktionen zur Umrechnung von Spitzen- und Effektivstrom
         function updatePeak(id) {
             const rmsInput = document.getElementById(`phase-${id}-rms`);
             const peakInput = document.getElementById(`phase-${id}-peak`);
@@ -155,24 +245,29 @@
             const item = document.createElement('div');
             item.className = 'list-item';
             item.id = `phase-${phaseCounter}`;
+
+            // KORREKTUR: HTML für Phasen um Effektivstrom-Feld erweitert
+            const defaultRms = 4000;
+            const defaultPeak = (defaultRms * SQRT2).toFixed(2);
+
             item.innerHTML = `
             <h4>Phase ${phaseCounter}</h4>
             <label>Name:</label>
             <input type="text" class="phase-name" value="L${phaseCounter}" onkeyup="updateAssemblyPhaseDropdowns()">
             <label>Phasenverschiebung (°):</label>
             <input type="number" class="phase-shift" value="0">
-            <div class="form-row">
+             <div class="form-row">
                 <div>
                     <label>Spitzenstrom (A):</label>
-                    <input type="number" step="any" id="phase-${phaseCounter}-peak" class="phase-peak" value="4000" oninput="updateRms(${phaseCounter})">
+                    <input type="number" step="any" id="phase-${phaseCounter}-peak" class="phase-peak" value="${defaultPeak}" oninput="updateRms(${phaseCounter})">
                 </div>
                 <div>
                     <label>Effektivstrom (A):</label>
-                    <input type="number" step="any" id="phase-${phaseCounter}-rms" class="phase-rms" value="${(4000 / SQRT2).toFixed(2)}" oninput="updatePeak(${phaseCounter})">
+                    <input type="number" step="any" id="phase-${phaseCounter}-rms" class="phase-rms" value="${defaultRms.toFixed(2)}" oninput="updatePeak(${phaseCounter})">
                 </div>
             </div>
             <button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>
-        `;
+            `;
             list.appendChild(item);
             updateAssemblyPhaseDropdowns();
         }
@@ -195,8 +290,6 @@
             <input type="number" class="pos-x" value="0">
             <label>Position Y:</label>
             <input type="number" class="pos-y" value="0">
-            <label>Zugehörige Phase:</label>
-            <select class="assembly-phase-select"></select>
             <label>Kupferschiene:</label>
             <select class="copper-rail">${railOptions}</select>
             <label>Wandler:</label>
@@ -233,33 +326,10 @@
             document.getElementById(id).remove();
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            addPhase();
-            addPhase();
-            addPhase();
-            document.querySelector('#phase-2 .phase-shift').value = -120;
-            document.querySelector('#phase-3 .phase-shift').value = 120;
-
-            addAssembly();
-            addAssembly();
-            addAssembly();
-            document.querySelector('#assembly-1 .pos-x').value = -220;
-            document.querySelector('#assembly-3 .pos-x').value = 220;
-            document.querySelector('#assembly-1 .assembly-phase-select').value = "L1";
-            document.querySelector('#assembly-2 .assembly-phase-select').value = "L2";
-            document.querySelector('#assembly-3 .assembly-phase-select').value = "L3";
-
-            addStandalone();
-        });
-
-        document.getElementById('simulation-form').addEventListener('submit', function (event) {
-            event.preventDefault();
-
+        function gatherFormData() {
             const data = {
                 frequencyHz: document.getElementById('frequencyHz').value,
                 problemDepthM: document.getElementById('problemDepthM').value,
-                nominalPrimaryA: 4000,
-                nominalSecondaryA: 5,
                 coreRelPermeability: document.getElementById('coreRelPermeability').value,
                 electricalSystem: [],
                 assemblies: [],
@@ -281,7 +351,6 @@
                         x: parseInt(item.querySelector('.pos-x').value),
                         y: parseInt(item.querySelector('.pos-y').value)
                     },
-                    electricalSystemName: item.querySelector('.assembly-phase-select').value,
                     copperRailName: item.querySelector('.copper-rail').value,
                     transformerName: item.querySelector('.transformer').value
                 });
@@ -296,6 +365,79 @@
                     }
                 });
             });
+            return data;
+        }
+
+        function updateVisualization() {
+            const data = gatherFormData();
+            const svg = document.getElementById('svg-canvas');
+            svg.innerHTML = '';
+
+            fetch('/visualize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(elements => {
+                    if (elements.length === 0) return;
+
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+                    elements.forEach(el => {
+                        minX = Math.min(minX, el.x);
+                        minY = Math.min(minY, el.y);
+                        maxX = Math.max(maxX, el.x + el.width);
+                        maxY = Math.max(maxY, el.y + el.height);
+                    });
+
+                    const padding = 100;
+                    const viewBoxWidth = (maxX - minX) + 2 * padding;
+                    const viewBoxHeight = (maxY - minY) + 2 * padding;
+
+                    svg.setAttribute('viewBox', `${minX - padding} ${-maxY - padding} ${viewBoxWidth} ${viewBoxHeight}`);
+
+                    elements.forEach(el => {
+                        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', el.x);
+                        rect.setAttribute('y', el.y);
+                        rect.setAttribute('width', el.width);
+                        rect.setAttribute('height', el.height);
+                        rect.setAttribute('fill', el.fill);
+                        rect.setAttribute('stroke', 'black');
+                        rect.setAttribute('stroke-width', '1');
+
+                        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        text.setAttribute('x', el.x + el.width / 2);
+                        text.setAttribute('y', el.y + el.height / 2);
+                        text.setAttribute('text-anchor', 'middle');
+                        text.setAttribute('dominant-baseline', 'middle');
+                        text.setAttribute('class', 'svg-label');
+                        text.textContent = el.label;
+
+                        group.appendChild(rect);
+                        group.appendChild(text);
+                        svg.appendChild(group);
+                    });
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            addPhase();
+            addPhase();
+            addPhase();
+            document.querySelector('#phase-2 .phase-shift').value = -120;
+            document.querySelector('#phase-3 .phase-shift').value = 120;
+
+            addAssembly();
+            document.querySelector('#assembly-1 .pos-x').value = -500;
+        });
+
+        document.getElementById('simulation-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const data = gatherFormData();
 
             fetch('/generate', {
                 method: 'POST',

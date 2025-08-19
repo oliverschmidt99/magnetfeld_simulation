@@ -1,4 +1,3 @@
-% oliverschmidt99/magnetfeld_simulation/magnetfeld_simulation-lab/src/ComponentGroup.m
 classdef ComponentGroup
 
     properties
@@ -29,22 +28,29 @@ classdef ComponentGroup
                 error('Assembly "%s" missing rail or transformer.', obj.name);
             end
 
+            % Alle Wandler-Komponenten abrufen
+            outerAir = transformer.findComponentByName('OuterAir');
             core = transformer.findComponentByName('SteelCore');
+            innerAir = transformer.findComponentByName('InnerAir');
             gap = transformer.findComponentByName('AirGap');
 
             rail.groupNum = groupNumOffset + 1;
             gap.groupNum = groupNumOffset + 2;
             core.groupNum = groupNumOffset + 3;
+            innerAir.groupNum = groupNumOffset + 4;
+            outerAir.groupNum = groupNumOffset + 5;
 
-            % Geänderte Aufrufe der drawBoundary-Funktion, um sicherzustellen, dass die Materialeigenschaften zugewiesen werden.
+            % Alle Komponenten mit den korrekten Materialien und Gruppennummern zeichnen
             drawBoundary(rail, obj.xPos, obj.yPos, circuitName, rail.material, rail.groupNum);
+            drawBoundary(outerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', outerAir.material, outerAir.groupNum);
             drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', core.material, core.groupNum);
+            drawBoundary(innerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', innerAir.material, innerAir.groupNum);
             drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos, '<None>', gap.material, gap.groupNum);
 
-            % Hinzufügen der TransformerSheet-Komponente
+            % Trafoblech hinzufügen und zeichnen, falls vorhanden
             if ~isempty(transformerSheet)
-                transformerSheet.groupNum = groupNumOffset + 4;
-                drawBoundary(transformerSheet, obj.xPos, obj.yPos, '<None>', transformerSheet.material, transformerSheet.groupNum);
+                transformerSheet.groupNum = groupNumOffset + 6;
+                drawBoundary(transformerSheet, obj.xPos + transformerSheet.xPos, obj.yPos + transformerSheet.yPos, '<None>', transformerSheet.material, transformerSheet.groupNum);
             end
 
         end
@@ -95,17 +101,8 @@ end
 function drawBoundary(component, groupX, groupY, circuitName, material, groupNum)
     absX = groupX + component.xPos;
     absY = groupY + component.yPos;
-    vertices = component.geoObject.vertices + [absX, absY];
 
-    for i = 1:size(vertices, 1)
-        mi_addnode(vertices(i, 1), vertices(i, 2));
-    end
-
-    for i = 1:size(vertices, 1)
-        startNode = vertices(i, :);
-        endNode = vertices(mod(i, size(vertices, 1)) + 1, :);
-        mi_addsegment(startNode(1), startNode(2), endNode(1), endNode(2));
-    end
+    component.geoObject.drawInFemm(absX, absY);
 
     mi_addblocklabel(absX, absY);
     mi_selectlabel(absX, absY);

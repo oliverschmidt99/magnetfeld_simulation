@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Magnetfeld Simulation Konfigurator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+            background-color: #f4f4f4;
+        }
+
+        h1,
+        h2 {
+            color: #333;
+        }
+
+        .container {
+            background-color: white;
+            padding: 2em;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1em;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1em;
+        }
+
+        .form-row>div {
+            flex: 1;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5em;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .dynamic-list .list-item {
+            border: 1px solid #ddd;
+            padding: 1em;
+            margin-bottom: 1em;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Simulations-Konfigurator</h1>
+        <p>Erstelle hier deine <code>simulation.json</code> Datei.</p>
+
+        <form id="simulation-form">
+
+            <h2>Allgemeine Simulations-Parameter</h2>
+            <div class="form-group">
+                <label for="frequencyHz">Frequenz (Hz)</label>
+                <input type="number" id="frequencyHz" value="50">
+            </div>
+            <div class="form-group">
+                <label for="problemDepthM">Problem-Tiefe (m)</label>
+                <input type="number" step="0.01" id="problemDepthM" value="0.1">
+            </div>
+            <div class="form-group">
+                <label for="coreRelPermeability">Relative Permeabilität (Kern)</label>
+                <input type="number" id="coreRelPermeability" value="2500">
+            </div>
+
+            <h2>Elektrisches System (Phasen)</h2>
+            <div id="electrical-system-list" class="dynamic-list"></div>
+            <button type="button" onclick="addPhase()">+ Phase hinzufügen</button>
+
+            <hr style="margin: 2em 0;">
+
+            <h2>Baugruppen (Assemblies)</h2>
+            <div id="assemblies-list" class="dynamic-list"></div>
+            <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
+
+            <hr style="margin: 2em 0;">
+
+            <h2>Eigenständige Bauteile</h2>
+            <div id="standalone-list" class="dynamic-list"></div>
+            <button type="button" onclick="addStandalone()">+ Bauteil hinzufügen</button>
+
+            <hr style="margin: 2em 0;">
+
+            <button type="submit">simulation.json erstellen</button>
+        </form>
+    </div>
+
+    <script>
+        const library = {{ library | tojson | safe }};
+        const SQRT2 = Math.sqrt(2);
+        let phaseCounter = 0;
+        let assemblyCounter = 0;
+        let standaloneCounter = 0;
+
+        function updatePeak(id) {
+            const rmsInput = document.getElementById(`phase-${id}-rms`);
+            const peakInput = document.getElementById(`phase-${id}-peak`);
+            peakInput.value = (parseFloat(rmsInput.value) * SQRT2).toFixed(2);
+        }
+
+        function updateRms(id) {
+            const peakInput = document.getElementById(`phase-${id}-peak`);
+            const rmsInput = document.getElementById(`phase-${id}-rms`);
+            rmsInput.value = (parseFloat(peakInput.value) / SQRT2).toFixed(2);
+        }
+
+        function updateAssemblyPhaseDropdowns() {
+            const phaseItems = document.querySelectorAll('#electrical-system-list .list-item');
+            const phases = Array.from(phaseItems).map(item => item.querySelector('.phase-name').value);
+
+            document.querySelectorAll('.assembly-phase-select').forEach(select => {
+                const selectedValue = select.value;
+                select.innerHTML = phases.map(p => `<option value="${p}" ${p === selectedValue ? 'selected' : ''}>${p}</option>`).join('');
+            });
+        }
+
+        function addPhase() {
+            phaseCounter++;
+            const list = document.getElementById('electrical-system-list');
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.id = `phase-${phaseCounter}`;
+            item.innerHTML = `
+            <h4>Phase ${phaseCounter}</h4>
+            <label>Name:</label>
+            <input type="text" class="phase-name" value="L${phaseCounter}" onkeyup="updateAssemblyPhaseDropdowns()">
+            <label>Phasenverschiebung (°):</label>
+            <input type="number" class="phase-shift" value="0">
+            <div class="form-row">
+                <div>
+                    <label>Spitzenstrom (A):</label>
+                    <input type="number" step="any" id="phase-${phaseCounter}-peak" class="phase-peak" value="4000" oninput="updateRms(${phaseCounter})">
+                </div>
+                <div>
+                    <label>Effektivstrom (A):</label>
+                    <input type="number" step="any" id="phase-${phaseCounter}-rms" class="phase-rms" value="${(4000 / SQRT2).toFixed(2)}" oninput="updatePeak(${phaseCounter})">
+                </div>
+            </div>
+            <button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>
+        `;
+            list.appendChild(item);
+            updateAssemblyPhaseDropdowns();
+        }
+
+        function addAssembly() {
+            assemblyCounter++;
+            const list = document.getElementById('assemblies-list');
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.id = `assembly-${assemblyCounter}`;
+
+            const railOptions = library.copperRails.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
+            const transformerOptions = library.transformers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+
+            item.innerHTML = `
+            <h4>Baugruppe ${assemblyCounter}</h4>
+            <label>Name:</label>
+            <input type="text" class="assembly-name" value="Assembly_${assemblyCounter}">
+            <label>Position X:</label>
+            <input type="number" class="pos-x" value="0">
+            <label>Position Y:</label>
+            <input type="number" class="pos-y" value="0">
+            <label>Zugehörige Phase:</label>
+            <select class="assembly-phase-select"></select>
+            <label>Kupferschiene:</label>
+            <select class="copper-rail">${railOptions}</select>
+            <label>Wandler:</label>
+            <select class="transformer">${transformerOptions}</select>
+            <button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>
+        `;
+            list.appendChild(item);
+            updateAssemblyPhaseDropdowns();
+        }
+
+        function addStandalone() {
+            standaloneCounter++;
+            const list = document.getElementById('standalone-list');
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.id = `standalone-${standaloneCounter}`;
+
+            let sheetOptions = library.transformerSheets.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+
+            item.innerHTML = `
+            <h4>Eigenständiges Bauteil ${standaloneCounter}</h4>
+            <label>Bauteil:</label>
+            <select class="standalone-name">${sheetOptions}</select>
+            <label>Position X:</label>
+            <input type="number" class="pos-x" value="0">
+            <label>Position Y:</label>
+            <input type="number" class="pos-y" value="0">
+            <button type="button" onclick="removeItem('standalone-${standaloneCounter}')">Entfernen</button>
+        `;
+            list.appendChild(item);
+        }
+
+        function removeItem(id) {
+            document.getElementById(id).remove();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            addPhase();
+            addPhase();
+            addPhase();
+            document.querySelector('#phase-2 .phase-shift').value = -120;
+            document.querySelector('#phase-3 .phase-shift').value = 120;
+
+            addAssembly();
+            addAssembly();
+            addAssembly();
+            document.querySelector('#assembly-1 .pos-x').value = -220;
+            document.querySelector('#assembly-3 .pos-x').value = 220;
+            document.querySelector('#assembly-1 .assembly-phase-select').value = "L1";
+            document.querySelector('#assembly-2 .assembly-phase-select').value = "L2";
+            document.querySelector('#assembly-3 .assembly-phase-select').value = "L3";
+
+            addStandalone();
+        });
+
+        document.getElementById('simulation-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const data = {
+                frequencyHz: document.getElementById('frequencyHz').value,
+                problemDepthM: document.getElementById('problemDepthM').value,
+                nominalPrimaryA: 4000, // Beispielwerte, könnten auch aus UI kommen
+                nominalSecondaryA: 5,
+                coreRelPermeability: document.getElementById('coreRelPermeability').value,
+                electricalSystem: [],
+                assemblies: [],
+                standAloneComponents: []
+            };
+
+            document.querySelectorAll('#electrical-system-list .list-item').forEach(item => {
+                data.electricalSystem.push({
+                    name: item.querySelector('.phase-name').value,
+                    phaseShiftDeg: parseInt(item.querySelector('.phase-shift').value),
+                    peakCurrentA: parseFloat(item.querySelector('.phase-peak').value) // Wert hier holen
+                });
+            });
+
+            document.querySelectorAll('#assemblies-list .list-item').forEach(item => {
+                data.assemblies.push({
+                    name: item.querySelector('.assembly-name').value,
+                    position: {
+                        x: parseInt(item.querySelector('.pos-x').value),
+                        y: parseInt(item.querySelector('.pos-y').value)
+                    },
+                    electricalSystemName: item.querySelector('.assembly-phase-select').value,
+                    copperRailName: item.querySelector('.copper-rail').value,
+                    transformerName: item.querySelector('.transformer').value
+                });
+            });
+
+            document.querySelectorAll('#standalone-list .list-item').forEach(item => {
+                data.standAloneComponents.push({
+                    name: item.querySelector('.standalone-name').value,
+                    position: {
+                        x: parseInt(item.querySelector('.pos-x').value),
+                        y: parseInt(item.querySelector('.pos-y').value)
+                    }
+                });
+            });
+
+            fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(response => response.json())
+                .then(result => alert(result.message));
+        });
+
+    </script>
+</body>
+
+</html>

@@ -1,4 +1,3 @@
-% oliverschmidt99/magnetfeld_simulation/magnetfeld_simulation-lab/main.m
 clear variables; close all; clc;
 addpath('C:\femm42\mfiles'); addpath('src');
 
@@ -28,7 +27,8 @@ currents = {};
 
 for i = 1:length(simConfig.electricalSystem)
     phase = simConfig.electricalSystem(i);
-    currents{end + 1} = Current(phase.name, params.peakCurrentA, phase.phaseShiftDeg); %#ok<SAGROW>
+    % KORREKTUR: Liest den Spitzenstrom jetzt aus jedem Phasen-Objekt
+    currents{end + 1} = Current(phase.name, phase.peakCurrentA, phase.phaseShiftDeg); %#ok<SAGROW>
 end
 
 params.currents = currents;
@@ -39,27 +39,39 @@ assemblies = {};
 for i = 1:length(simConfig.assemblies)
     asmCfg = simConfig.assemblies(i);
 
+    % --- Robuste Suche für Kupferschiene ---
     railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
-    if ~any(railIdx), error('Kupferschiene "%s" nicht gefunden.', asmCfg.copperRailName); end
+
+    if ~any(railIdx)
+        error('Kupferschiene "%s" wurde in der library.json nicht gefunden.', asmCfg.copperRailName);
+    end
+
     railCfg = library.copperRails(railIdx);
 
+    % --- Robuste Suche für Wandler ---
     transformerNames = cellfun(@(x) x.name, library.transformers, 'UniformOutput', false);
     transformerIdx = strcmp(transformerNames, asmCfg.transformerName);
-    if ~any(transformerIdx), error('Wandler "%s" nicht gefunden.', asmCfg.transformerName); end
+
+    if ~any(transformerIdx)
+        error('Wandler "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerName);
+    end
+
     transformerCfg = library.transformers{transformerIdx};
 
+    % Erstelle die Matlab-Objekte
     copperRail = CopperRail(railCfg);
     transformer = Transformer(transformerCfg);
 
     assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
     assemblyGroup = assemblyGroup.addComponent(copperRail);
     assemblyGroup = assemblyGroup.addComponent(transformer);
+
     assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
 end
 
 params.assemblies = assemblies;
 
-% --- NEU: Eigenständige Komponenten erstellen ---
+% --- 5. Eigenständige Komponenten erstellen ---
 standAloneComponents = {};
 
 if isfield(simConfig, 'standAloneComponents')
@@ -67,13 +79,15 @@ if isfield(simConfig, 'standAloneComponents')
     for i = 1:length(simConfig.standAloneComponents)
         compCfg = simConfig.standAloneComponents(i);
 
-        % Annahme: Wir suchen erstmal nur nach TransformerSheets
         sheetIdx = strcmp({library.transformerSheets.name}, compCfg.name);
-        if ~any(sheetIdx), error('Trafoblech "%s" nicht gefunden.', compCfg.name); end
+
+        if ~any(sheetIdx)
+            error('Eigenständiges Bauteil "%s" wurde in der library.json nicht gefunden.', compCfg.name);
+        end
+
         sheetCfg = library.transformerSheets(sheetIdx);
 
         sheet = TransformerSheet(sheetCfg);
-        % Position direkt dem Objekt zuweisen
         sheet.xPos = compCfg.position.x;
         sheet.yPos = compCfg.position.y;
 
@@ -84,7 +98,7 @@ end
 
 params.standAloneComponents = standAloneComponents;
 
-% --- 5. Run Parametric Analysis ---
+% --- 6. Run Parametric Analysis ---
 phaseAngleVector = 0:15:90;
 openfemm;
 
@@ -97,7 +111,9 @@ try
         params.phaseAngleDeg = phaseAngleVector(i);
         fprintf('--> Simulating for phase angle: %d°\n', params.phaseAngleDeg);
         runIdentifier = sprintf('%s_angle%ddeg', params.baseFilename, params.phaseAngleDeg);
+
         runFemmAnalysis(params, runIdentifier);
+
         singleRunResults = calculateResults(params);
         masterResultsTable = [masterResultsTable; singleRunResults]; %#ok<AGROW>
     end
@@ -114,7 +130,7 @@ catch ME
     rethrow(ME);
 end
 
-% --- 6. Save and Visualize Results ---
+% --- 7. Save and Visualize Results ---
 resultsCsvFile = fullfile(resultsPath, [params.baseFilename, '_summary.csv']);
 writetable(masterResultsTable, resultsCsvFile);
 fprintf('All results saved to "%s".\n', resultsCsvFile);

@@ -39,6 +39,7 @@ for i = 1:length(simConfig.assemblies)
     asmCfg = simConfig.assemblies(i);
 
     % --- ROBUSTE SUCHE mit Fehlerprüfung (KORREKTUR HIER) ---
+    % 'copperRails' is a struct array, use dot notation
     railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
 
     if ~any(railIdx)
@@ -47,13 +48,15 @@ for i = 1:length(simConfig.assemblies)
 
     railCfg = library.copperRails(railIdx);
 
-    transformerIdx = strcmp({library.transformers.name}, asmCfg.transformerName);
+    % 'transformers' is a cell array due to inconsistent 'geometry' objects, use cellfun
+    transformerNames = cellfun(@(x) x.name, library.transformers, 'UniformOutput', false);
+    transformerIdx = strcmp(transformerNames, asmCfg.transformerName);
 
     if ~any(transformerIdx)
         error('Wandler "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerName);
     end
 
-    transformerCfg = library.transformers(transformerIdx);
+    transformerCfg = library.transformers{transformerIdx};
 
     % Erstelle die Matlab-Objekte
     copperRail = CopperRail(railCfg);

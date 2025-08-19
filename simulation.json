@@ -10,29 +10,29 @@
   },
   "electricalSystem": [
     { "name": "L1", "phaseShiftDeg": 0 },
-    { "name": "L2", "phaseShiftDeg": -120 },
-    { "name": "L3", "phaseShiftDeg": 120 }
+    { "name": "L2", "phaseShiftDeg": -250 },
+    { "name": "L3", "phaseShiftDeg": 250 }
   ],
   "assemblies": [
     {
       "name": "Assembly_L1",
       "position": { "x": -220, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-      "transformerName": "CELSA_ALO-12070_4000-1A",
+      "transformerName": "Generic_Ring_Core_Example",
       "transformerSheetName": "Sheet_200x5"
     },
     {
       "name": "Assembly_L2",
       "position": { "x": 0, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-      "transformerName": "CELSA_ALO-12070_4000-1A",
+      "transformerName": "Generic_Ring_Core_Example",
       "transformerSheetName": "Sheet_200x5"
     },
     {
       "name": "Assembly_L3",
       "position": { "x": 220, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-      "transformerName": "CELSA_ALO-12070_4000-1A",
+      "transformerName": "Generic_Ring_Core_Example",
       "transformerSheetName": "Sheet_200x5"
     }
   ]

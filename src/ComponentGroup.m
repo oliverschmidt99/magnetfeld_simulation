@@ -21,6 +21,7 @@ classdef ComponentGroup
         end
 
         function drawInFemm(obj, circuitName, groupNumOffset)
+            % --- Komponenten abrufen ---
             rail = obj.findComponentByClass('CopperRail');
             transformer = obj.findComponentByClass('Transformer');
 
@@ -28,23 +29,27 @@ classdef ComponentGroup
                 error('Assembly "%s" missing rail or transformer.', obj.name);
             end
 
+            % --- Wandler-Subkomponenten abrufen ---
             outerAir = transformer.findComponentByName('OuterAir');
             core = transformer.findComponentByName('SteelCore');
             innerAir = transformer.findComponentByName('InnerAir');
             gap = transformer.findComponentByName('AirGap');
 
+            % --- Gruppennummern zuweisen ---
             rail.groupNum = groupNumOffset + 1;
             gap.groupNum = groupNumOffset + 2;
             core.groupNum = groupNumOffset + 3;
             innerAir.groupNum = groupNumOffset + 4;
             outerAir.groupNum = groupNumOffset + 5;
 
+            % --- 1. Alle Grenzen zeichnen ---
             drawBoundary(rail, obj.xPos, obj.yPos);
             drawBoundary(outerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
             drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
             drawBoundary(innerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
             drawBoundary(gap, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
 
+            % --- 2. Alle Material-Labels gezielt platzieren ---
             placeLabel(rail, obj.xPos, obj.yPos, 0, 0, circuitName, rail.material, rail.groupNum);
 
             labelX = (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
@@ -97,19 +102,4 @@ classdef ComponentGroup
 
     end
 
-end
-
-function drawBoundary(component, groupX, groupY)
-    absX = groupX + component.xPos;
-    absY = groupY + component.yPos;
-    component.geoObject.drawInFemm(absX, absY);
-end
-
-function placeLabel(component, groupX, groupY, offsetX, offsetY, circuitName, material, groupNum)
-    absX = groupX + component.xPos + offsetX;
-    absY = groupY + component.yPos + offsetY;
-    mi_addblocklabel(absX, absY);
-    mi_selectlabel(absX, absY);
-    mi_setblockprop(material, 1, 0, circuitName, 0, groupNum, 0);
-    mi_clearselected();
 end

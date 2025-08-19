@@ -26,7 +26,6 @@ function runFemmAnalysis(params, runIdentifier)
 
     end
 
-    % NEU: Materialien von eigenständigen Komponenten hinzufügen
     for i = 1:length(params.standAloneComponents)
         mats{end + 1} = params.standAloneComponents{i}.material;
     end
@@ -57,12 +56,11 @@ function runFemmAnalysis(params, runIdentifier)
         assembly.drawInFemm(circuitName, groupNumOffset);
     end
 
-    % NEU: Eigenständige Komponenten zeichnen
+    % Eigenständige Komponenten zeichnen
     for i = 1:length(params.standAloneComponents)
         comp = params.standAloneComponents{i};
         comp.groupNum = 100 + i; % Eigene Gruppennummern
-        % Verwenden der globalen drawBoundary-Funktion
-        drawBoundary(comp, 0, 0); % Position ist schon im Objekt
+        drawBoundary(comp, 0, 0);
         placeLabel(comp, 0, 0, 0, 0, '<None>', comp.material, comp.groupNum);
     end
 
@@ -79,4 +77,20 @@ function runFemmAnalysis(params, runIdentifier)
     mi_saveas(femFile);
     mi_analyze(1);
     mi_loadsolution();
+end
+
+% HILFSFUNKTIONEN HIERHIN VERSCHOBEN
+function drawBoundary(component, groupX, groupY)
+    absX = groupX + component.xPos;
+    absY = groupY + component.yPos;
+    component.geoObject.drawInFemm(absX, absY);
+end
+
+function placeLabel(component, groupX, groupY, offsetX, offsetY, circuitName, material, groupNum)
+    absX = groupX + component.xPos + offsetX;
+    absY = groupY + component.yPos + offsetY;
+    mi_addblocklabel(absX, absY);
+    mi_selectlabel(absX, absY);
+    mi_setblockprop(material, 1, 0, circuitName, 0, groupNum, 0);
+    mi_clearselected();
 end

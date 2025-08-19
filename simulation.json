@@ -18,19 +18,19 @@
       "name": "Assembly_L1",
       "position": { "x": -500, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-      "transformerName": "CELSA_ALO-20060_5000-A"
+      "transformerName": "CELSA_ALO-20060_5000-1A"
     },
     {
       "name": "Assembly_L2",
       "position": { "x": 0, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-      "transformerName": "CELSA_ALO-20060_5000-A"
+      "transformerName": "CELSA_ALO-20060_5000-1A"
     },
     {
       "name": "Assembly_L3",
       "position": { "x": 500, "y": 0 },
       "copperRailName": "RJ_4x100x10_4000A",
-      "transformerName": "CELSA_ALO-20060_5000-A"
+      "transformerName": "CELSA_ALO-20060_5000-1A"
     }
   ],
   "standAloneComponents": [

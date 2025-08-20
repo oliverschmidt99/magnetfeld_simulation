@@ -22,6 +22,8 @@ function initializeAccordion() {
       if (content.style.maxHeight) {
         content.style.maxHeight = null;
       } else {
+        // Hinzugefügt, um den Inhaltspadding korrekt anzuzeigen
+        content.classList.add("open");
         content.style.maxHeight = content.scrollHeight + "px";
       }
     });
@@ -29,14 +31,29 @@ function initializeAccordion() {
 }
 
 function initializeConfigurator() {
-  addPhase();
-  addPhase();
-  addPhase();
+  // Standardmäßig 3 Phasen und 3 Baugruppen erstellen
+  addPhase(); // L1
+  addPhase(); // L2
+  addPhase(); // L3
+
+  // Phasenwerte anpassen
   document.querySelector("#phase-2 .phase-shift").value = -120;
   document.querySelector("#phase-3 .phase-shift").value = 120;
 
-  addAssembly();
+  // Baugruppen erstellen
+  addAssembly(); // Assembly 1
+  addAssembly(); // Assembly 2
+  addAssembly(); // Assembly 3
+
+  // Positionen und Phasenzuordnung für Baugruppen anpassen
   document.querySelector("#assembly-1 .pos-x").value = -500;
+  document.querySelector("#assembly-1 .assembly-phase-select").value = "L1";
+
+  document.querySelector("#assembly-2 .pos-x").value = 0;
+  document.querySelector("#assembly-2 .assembly-phase-select").value = "L2";
+
+  document.querySelector("#assembly-3 .pos-x").value = 500;
+  document.querySelector("#assembly-3 .assembly-phase-select").value = "L3";
 
   document
     .getElementById("simulation-form")
@@ -44,7 +61,6 @@ function initializeConfigurator() {
       event.preventDefault();
       const data = gatherFormData();
 
-      // Speichere die Daten im Local Storage für die Visualisierungsseite
       localStorage.setItem("simulationConfig", JSON.stringify(data));
 
       fetch("/generate", {
@@ -77,6 +93,29 @@ function updateRms(id) {
   rmsInput.value = (parseFloat(peakInput.value) / SQRT2).toFixed(2);
 }
 
+function updateAssemblyPhaseDropdowns() {
+  const phaseItems = document.querySelectorAll(
+    "#electrical-system-list .list-item"
+  );
+  const phases = Array.from(phaseItems).map(
+    (item) => item.querySelector(".phase-name").value
+  );
+
+  document.querySelectorAll(".assembly-phase-select").forEach((select) => {
+    const selectedValue = select.value;
+    select.innerHTML = ""; // Dropdown leeren
+    phases.forEach((p) => {
+      const option = document.createElement("option");
+      option.value = p;
+      option.textContent = p;
+      if (p === selectedValue) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+  });
+}
+
 function addPhase() {
   phaseCounter++;
   const list = document.getElementById("electrical-system-list");
@@ -90,7 +129,7 @@ function addPhase() {
   item.innerHTML = `
         <h4>Phase ${phaseCounter}</h4>
         <label>Name:</label>
-        <input type="text" class="phase-name" value="L${phaseCounter}">
+        <input type="text" class="phase-name" value="L${phaseCounter}" onkeyup="updateAssemblyPhaseDropdowns()">
         <label>Phasenverschiebung (°):</label>
         <input type="number" class="phase-shift" value="0">
         <div class="form-row">
@@ -105,9 +144,10 @@ function addPhase() {
   )}" oninput="updatePeak(${phaseCounter})">
             </div>
         </div>
-        <button type="button" onclick="removeItem('phase-${phaseCounter}')">Entfernen</button>
+        <button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>
     `;
   list.appendChild(item);
+  updateAssemblyPhaseDropdowns();
 }
 
 function addAssembly() {
@@ -128,6 +168,10 @@ function addAssembly() {
         <h4>Baugruppe ${assemblyCounter}</h4>
         <label>Name:</label>
         <input type="text" class="assembly-name" value="Assembly_${assemblyCounter}">
+        
+        <label>Zugeordnete Phase:</label>
+        <select class="assembly-phase-select"></select>
+
         <label>Position X:</label>
         <input type="number" class="pos-x" value="0">
         <label>Position Y:</label>
@@ -139,6 +183,7 @@ function addAssembly() {
         <button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>
     `;
   list.appendChild(item);
+  updateAssemblyPhaseDropdowns();
 }
 
 function addStandalone() {
@@ -193,6 +238,7 @@ function gatherFormData() {
   form.querySelectorAll("#assemblies-list .list-item").forEach((item) => {
     data.assemblies.push({
       name: item.querySelector(".assembly-name").value,
+      phaseName: item.querySelector(".assembly-phase-select").value,
       position: {
         x: parseInt(item.querySelector(".pos-x").value),
         y: parseInt(item.querySelector(".pos-y").value),

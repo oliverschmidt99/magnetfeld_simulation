@@ -22,22 +22,30 @@ params.resultsPath = resultsPath;
 params.femmFilesPath = femmFilesPath;
 params.baseFilename = [timeStr, '_', simulationName];
 
-% --- 3. Create Current Objects ---
-currents = {};
+% --- 3. Create Current Objects from electricalSystem ---
+currentsMap = containers.Map;
 
 for i = 1:length(simConfig.electricalSystem)
     phase = simConfig.electricalSystem(i);
-    % KORREKTUR: Liest den Spitzenstrom jetzt aus jedem Phasen-Objekt
-    currents{end + 1} = Current(phase.name, phase.peakCurrentA, phase.phaseShiftDeg); %#ok<SAGROW>
+    currentsMap(phase.name) = Current(phase.name, phase.peakCurrentA, phase.phaseShiftDeg);
 end
 
-params.currents = currents;
+params.currents = values(currentsMap); % Store all current objects
 
-% --- 4. Create Component Assemblies ---
+% --- 4. Create Component Assemblies and assign Currents ---
 assemblies = {};
+activeCurrents = {}; % Currents that are actively used by assemblies
 
 for i = 1:length(simConfig.assemblies)
     asmCfg = simConfig.assemblies(i);
+
+    % Find the assigned current object from the map
+    if isKey(currentsMap, asmCfg.phaseName)
+        assignedCurrent = currentsMap(asmCfg.phaseName);
+        activeCurrents{end + 1} = assignedCurrent; %#ok<SAGROW>
+    else
+        error('Phase "%s" for assembly "%s" not found in electricalSystem.', asmCfg.phaseName, asmCfg.name);
+    end
 
     % --- Robuste Suche für Kupferschiene ---
     railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
@@ -66,11 +74,14 @@ for i = 1:length(simConfig.assemblies)
     assemblyGroup = assemblyGroup.addComponent(copperRail);
     assemblyGroup = assemblyGroup.addComponent(transformer);
 
+    % Store the assigned current with the assembly for later use
+    assemblyGroup.assignedCurrent = assignedCurrent;
+
     assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
 end
 
 params.assemblies = assemblies;
-
+params.activeCurrents = activeCurrents; % Overwrite with only active currents
 % --- 5. Eigenständige Komponenten erstellen ---
 standAloneComponents = {};
 

@@ -4,46 +4,114 @@
 {% block title %}Konfigurator{% endblock %}
 
 {% block content %}
-<div id="library-data" data-library='{{ library|tojson|safe }}' style="display: none;"></div>
+<script id="library-data" type="application/json">
+    {{ library|tojson|safe }}
+</script>
+
 <div class="container">
+
+    <div class="card-container" id="config-nav">
+        <div class="card" data-target="config-params">
+            <h3>Allgemeine Parameter</h3>
+            <p>Grundeinstellungen für die Simulation.</p>
+        </div>
+        <div class="card" data-target="config-phases">
+            <h3>Elektrisches System</h3>
+            <p>Phasen (L1, L2, etc.) definieren.</p>
+        </div>
+        <div class="card" data-target="config-assemblies">
+            <h3>Baugruppen</h3>
+            <p>Leiter und Wandler positionieren.</p>
+        </div>
+        <div class="card" data-target="config-standalone">
+            <h3>Eigenständige Bauteile</h3>
+            <p>Abschirmbleche etc. hinzufügen.</p>
+        </div>
+        <div class="card" data-target="config-scenarios">
+            <h3>Konfiguration</h3>
+            <p>Szenarien speichern und laden.</p>
+        </div>
+        <div class="card active" data-target="config-summary">
+            <h3>Zusammenfassung</h3>
+            <p>Übersicht und visuelle Kontrolle.</p>
+        </div>
+    </div>
+
+    <hr>
+
     <form id="simulation-form">
+        <div id="config-sections">
 
-        <div class="accordion-container">
-
-            <button type="button" class="accordion-button active">Allgemeine Simulations-Parameter</button>
-            <div class="accordion-content" style="max-height: 1000px;">
-                <div class="form-group">
-                    <label for="frequencyHz">Frequenz (Hz)</label>
-                    <input type="number" id="frequencyHz" value="50">
-                </div>
-                <div class="form-group">
-                    <label for="problemDepthM">Problem-Tiefe (mm)</label>
-                    <input type="number" step="1" id="problemDepthM" value="10">
-                </div>
-                <div class="form-group">
-                    <label for="coreRelPermeability">Relative Permeabilität (Kern)</label>
-                    <input type="number" id="coreRelPermeability" value="2500">
+            <div id="config-params" class="config-section">
+                <h2>Allgemeine Simulations-Parameter</h2>
+                <div class="form-group-wrapper">
+                    <div class="form-group">
+                        <label for="frequencyHz">Frequenz (Hz)</label>
+                        <input type="number" id="frequencyHz" value="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="problemDepthM">Problem-Tiefe (mm)</label>
+                        <input type="number" step="1" id="problemDepthM" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="coreRelPermeability">Relative Permeabilität (Kern)</label>
+                        <input type="number" id="coreRelPermeability" value="2500">
+                    </div>
                 </div>
             </div>
 
-            <button type="button" class="accordion-button">Elektrisches System (Phasen)</button>
-            <div class="accordion-content">
+            <div id="config-phases" class="config-section">
+                <h2>Elektrisches System (Phasen)</h2>
                 <div id="electrical-system-list" class="dynamic-list"></div>
                 <button type="button" onclick="addPhase()">+ Phase hinzufügen</button>
             </div>
 
-            <button type="button" class="accordion-button">Baugruppen (Assemblies)</button>
-            <div class="accordion-content">
+            <div id="config-assemblies" class="config-section">
+                <h2>Baugruppen (Assemblies)</h2>
                 <div id="assemblies-list" class="dynamic-list"></div>
                 <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
             </div>
 
-            <button type="button" class="accordion-button">Eigenständige Bauteile</button>
-            <div class="accordion-content">
+            <div id="config-standalone" class="config-section">
+                <h2>Eigenständige Bauteile</h2>
                 <div id="standalone-list" class="dynamic-list"></div>
                 <button type="button" onclick="addStandalone()">+ Bauteil hinzufügen</button>
             </div>
 
+            <div id="config-scenarios" class="config-section">
+                <h2>Szenarien verwalten</h2>
+                <div class="scenario-management">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="scenario-name">Szenario-Name</label>
+                            <input type="text" id="scenario-name" placeholder="Name für neues Szenario...">
+                        </div>
+                        <div class="form-group">
+                            <label for="saved-scenarios">Gespeicherte Szenarien</label>
+                            <select id="saved-scenarios"></select>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" id="save-scenario-btn">Szenario speichern</button>
+                        <button type="button" id="load-scenario-btn">Szenario laden</button>
+                        <button type="button" id="delete-scenario-btn" class="danger">Szenario löschen</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="config-summary" class="config-section active">
+                <h2>Zusammenfassung der Konfiguration</h2>
+                <div class="summary-container">
+                    <div class="summary-box" id="summary-output">
+                    </div>
+                    <div class="summary-box">
+                        <h3>Visuelle Vorschau</h3>
+                        <div id="visualization-container">
+                            <svg id="svg-canvas"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <hr>

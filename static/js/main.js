@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialisiert die Navigation auf jeder Seite
   handleNavSlider();
 
   if (document.getElementById("simulation-form")) {
@@ -12,15 +11,14 @@ function handleNavSlider() {
   if (!nav) return;
 
   const slider = nav.querySelector(".nav-slider");
-  const activeLink = nav.querySelector("a.active");
+  const activeNavItem = nav.querySelector(
+    ".nav-item > a.active"
+  )?.parentElement;
 
-  // Positioniert den Slider direkt unter dem aktiven Link beim Laden der Seite
-  if (activeLink) {
-    // Kurze Verzögerung, um sicherzustellen, dass der Browser das Layout berechnet hat
-    // und die CSS-Transition ausgelöst wird.
+  if (activeNavItem) {
     setTimeout(() => {
-      slider.style.width = `${activeLink.offsetWidth}px`;
-      slider.style.left = `${activeLink.offsetLeft}px`;
+      slider.style.width = `${activeNavItem.offsetWidth}px`;
+      slider.style.left = `${activeNavItem.offsetLeft}px`;
     }, 10);
   }
 }
@@ -49,7 +47,6 @@ function initializeConfiguratorTabs() {
 
 function initializeConfigurator() {
   initializeConfiguratorTabs();
-
   loadState();
 
   const form = document.getElementById("simulation-form");
@@ -402,64 +399,73 @@ function initializeDefaultSetup() {
   saveState();
 }
 
-function getScenarios() {
-  return JSON.parse(localStorage.getItem("simulationScenarios")) || {};
-}
-
-function saveScenario() {
+async function saveScenario() {
   const name = document.getElementById("scenario-name").value;
   if (!name) {
     alert("Bitte gib einen Namen für das Szenario ein.");
     return;
   }
-  const scenarios = getScenarios();
-  scenarios[name] = gatherFormData();
-  localStorage.setItem("simulationScenarios", JSON.stringify(scenarios));
-  updateScenarioList();
-  alert(`Szenario '${name}' gespeichert!`);
+  const data = gatherFormData();
+
+  const response = await fetch(`/scenarios/${name}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const result = await response.json();
+  alert(result.message || result.error);
+  if (response.ok) {
+    updateScenarioList();
+  }
 }
 
-function loadScenario() {
+async function loadScenario() {
   const select = document.getElementById("saved-scenarios");
   const name = select.value;
   if (!name) {
     alert("Bitte wähle ein Szenario zum Laden aus.");
     return;
   }
-  const scenarios = getScenarios();
-  if (scenarios[name]) {
-    loadState(scenarios[name]);
+
+  const response = await fetch(`/scenarios/${name}`);
+  const data = await response.json();
+
+  if (response.ok) {
+    loadState(data);
     document.getElementById("scenario-name").value = name;
     alert(`Szenario '${name}' geladen!`);
+  } else {
+    alert(`Fehler beim Laden: ${data.error}`);
   }
 }
 
-function deleteScenario() {
+async function deleteScenario() {
   const select = document.getElementById("saved-scenarios");
   const name = select.value;
   if (!name) {
     alert("Bitte wähle ein Szenario zum Löschen aus.");
     return;
   }
-  const scenarios = getScenarios();
-  if (scenarios[name]) {
-    if (confirm(`Möchtest du das Szenario '${name}' wirklich löschen?`)) {
-      delete scenarios[name];
-      localStorage.setItem("simulationScenarios", JSON.stringify(scenarios));
+
+  if (confirm(`Möchtest du das Szenario '${name}' wirklich löschen?`)) {
+    const response = await fetch(`/scenarios/${name}`, { method: "DELETE" });
+    const result = await response.json();
+    alert(result.message || result.error);
+    if (response.ok) {
       updateScenarioList();
-      alert(`Szenario '${name}' gelöscht!`);
     }
   }
 }
 
-function updateScenarioList() {
-  const scenarios = getScenarios();
+async function updateScenarioList() {
+  const response = await fetch("/scenarios");
+  const scenarios = await response.json();
   const select = document.getElementById("saved-scenarios");
   select.innerHTML = '<option value="">-- Szenario auswählen --</option>';
-  for (const name in scenarios) {
+  scenarios.forEach((name) => {
     const option = document.createElement("option");
     option.value = name;
     option.textContent = name;
     select.appendChild(option);
-  }
+  });
 }

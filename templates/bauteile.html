@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}Bauteil-Editor{% endblock %}
+
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Bauteile bearbeiten</h2>
+</div>
+{% endblock %}
+
+{% block content %}
+<script id="library-data" type="application/json">
+    {{ library|tojson|safe }}
+</script>
+
+<div class="container">
+    <div class="card-container">
+        <div class="card">
+            <h3>Neue Stromschiene</h3>
+            <p>Definiere eine neue Kupferschiene.</p>
+        </div>
+        <div class="card">
+            <h3>Neuer Wandler</h3>
+            <p>Erstelle einen neuen Stromwandler.</p>
+        </div>
+        <div class="card">
+            <h3>Neues Abschirmblech</h3>
+            <p>Füge ein neues Trafoblech hinzu.</p>
+        </div>
+    </div>
+    <hr>
+    <p>Der Editor zur Bearbeitung der Bauteil-Bibliothek (<code>library.json</code>) wird hier in einem zukünftigen
+        Schritt implementiert.</p>
+</div>
+{% endblock %}

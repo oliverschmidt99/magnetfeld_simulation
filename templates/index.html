@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 {% extends "base.html" %}
 
 {% block title %}Startseite - Magnetfeld Simulation{% endblock %}
@@ -16,9 +17,9 @@
             <a href="{{ url_for('configurator') }}" class="button">Zum Konfigurator</a>
         </div>
         <div class="card">
-            <h3>Visualisierung</h3>
-            <p>Sieh dir eine 2D-Vorschau deiner konfigurierten Anordnung an.</p>
-            <a href="{{ url_for('visualization') }}" class="button">Zur Visualisierung</a>
+            <h3>Simulation</h3>
+            <p>Führe hier deine Simulationen aus.</p>
+            <a href="{{ url_for('simulation') }}" class="button">Zur Simulation</a>
         </div>
         <div class="card">
             <h3>Analyse</h3>

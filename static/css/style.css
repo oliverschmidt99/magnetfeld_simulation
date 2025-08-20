@@ -8,13 +8,12 @@ body {
     min-height: 100vh;
 }
 
-/* --- NEU: Überarbeitetes Header-Layout für perfekte Zentrierung --- */
 header {
     background-color: #343a40;
     color: white;
     padding: 0 2rem;
     display: grid;
-    grid-template-columns: 1fr auto 1fr; /* Links, Mitte (auto), Rechts */
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     height: 80px;
@@ -23,29 +22,33 @@ header {
 .header-left {
     display: flex;
     align-items: center;
-    gap: 1rem; /* Abstand zwischen Logo und Titel */
+    gap: 1rem;
 }
 
 #header-logo {
-    height: 100px;
+    height: 45px;
     width: auto;
 }
 
 header h1 {
     margin: 0;
     font-size: 1.5rem;
-    white-space: nowrap; /* Verhindert Umbruch des Titels */
+    white-space: nowrap;
 }
 
 nav {
     display: flex;
-    justify-content: center; /* Zentriert die Links innerhalb der mittleren Spalte */
+    justify-content: center;
     align-items: center;
     position: relative;
     height: 100%;
 }
 
-/* .header-right rule removed: was empty */
+/* .header-right rule removed because it was empty */
+
+.nav-item {
+    position: relative;
+}
 
 nav a {
     color: white;
@@ -55,10 +58,37 @@ nav a {
     transition: color 0.3s ease-in-out;
     position: relative;
     z-index: 10;
+    display: block;
 }
 
 nav a.active {
     color: #343a40;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #343a40;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    overflow: hidden;
+    min-width: 100%;
+    z-index: 100;
+}
+
+.nav-item.has-dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu a {
+    white-space: nowrap;
+}
+
+.dropdown-menu a:hover {
+    background-color: #495057;
 }
 
 .nav-slider {
@@ -70,6 +100,21 @@ nav a.active {
     border-radius: 8px;
     z-index: 5;
     transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.sub-nav-bar {
+    background-color: #e9ecef;
+    padding: 0.75rem 2rem;
+    border-bottom: 1px solid #dee2e6;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sub-nav-bar h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #495057;
+    text-align: center;
 }
 
 main {
@@ -136,7 +181,6 @@ footer {
 footer p {
     margin: 0;
 }
-
 
 /* Form Styles */
 .form-group {

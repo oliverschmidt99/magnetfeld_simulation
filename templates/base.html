@@ -17,18 +17,37 @@
         </div>
 
         <nav id="main-nav">
-            <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">Home</a>
-            <a href="{{ url_for('configurator') }}"
-                class="{{ 'active' if request.endpoint == 'configurator' else '' }}">Konfigurator</a>
-            <a href="{{ url_for('simulation') }}"
-                class="{{ 'active' if request.endpoint == 'simulation' else '' }}">Simulation</a>
-            <a href="{{ url_for('analysis') }}"
-                class="{{ 'active' if request.endpoint == 'analysis' else '' }}">Analyse</a>
+            <div class="nav-item">
+                <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">Home</a>
+            </div>
+
+            <div class="nav-item has-dropdown">
+                <a href="{{ url_for('configurator') }}"
+                    class="{{ 'active' if request.endpoint in ['configurator', 'bauteile'] else '' }}">Konfigurator</a>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('configurator') }}">Simulation</a>
+                    <a href="{{ url_for('bauteile') }}">Bauteile</a>
+                </div>
+            </div>
+
+            <div class="nav-item">
+                <a href="{{ url_for('simulation') }}"
+                    class="{{ 'active' if request.endpoint == 'simulation' else '' }}">Simulation</a>
+            </div>
+
+            <div class="nav-item">
+                <a href="{{ url_for('analysis') }}"
+                    class="{{ 'active' if request.endpoint == 'analysis' else '' }}">Analyse</a>
+            </div>
+
             <div class="nav-slider"></div>
         </nav>
 
         <div class="header-right"></div>
     </header>
+
+    {% block sub_nav %}{% endblock %}
+
     <main>
         {% block content %}{% endblock %}
     </main>

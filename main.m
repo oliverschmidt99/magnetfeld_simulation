@@ -18,6 +18,10 @@ if ~exist(femmFilesPath, 'dir')
     fprintf('Results folder created: %s\n', femmFilesPath);
 end
 
+% --- NEU: Kopiere die verwendete Konfigurationsdatei in den Ergebnisordner ---
+copyfile('simulation.json', fullfile(resultsPath, 'simulation.json'));
+fprintf('Used simulation.json copied to results folder.\n');
+
 params.resultsPath = resultsPath;
 params.femmFilesPath = femmFilesPath;
 params.baseFilename = [timeStr, '_', simulationName];
@@ -30,16 +34,15 @@ for i = 1:length(simConfig.electricalSystem)
     currentsMap(phase.name) = Current(phase.name, phase.peakCurrentA, phase.phaseShiftDeg);
 end
 
-params.currents = values(currentsMap); % Store all current objects
+params.currents = values(currentsMap);
 
 % --- 4. Create Component Assemblies and assign Currents ---
 assemblies = {};
-activeCurrents = {}; % Currents that are actively used by assemblies
+activeCurrents = {};
 
 for i = 1:length(simConfig.assemblies)
     asmCfg = simConfig.assemblies(i);
 
-    % Find the assigned current object from the map
     if isKey(currentsMap, asmCfg.phaseName)
         assignedCurrent = currentsMap(asmCfg.phaseName);
         activeCurrents{end + 1} = assignedCurrent; %#ok<SAGROW>
@@ -47,7 +50,6 @@ for i = 1:length(simConfig.assemblies)
         error('Phase "%s" for assembly "%s" not found in electricalSystem.', asmCfg.phaseName, asmCfg.name);
     end
 
-    % --- Robuste Suche für Kupferschiene ---
     railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
 
     if ~any(railIdx)
@@ -56,7 +58,6 @@ for i = 1:length(simConfig.assemblies)
 
     railCfg = library.copperRails(railIdx);
 
-    % --- Robuste Suche für Wandler ---
     transformerNames = cellfun(@(x) x.name, library.transformers, 'UniformOutput', false);
     transformerIdx = strcmp(transformerNames, asmCfg.transformerName);
 
@@ -66,7 +67,6 @@ for i = 1:length(simConfig.assemblies)
 
     transformerCfg = library.transformers{transformerIdx};
 
-    % Erstelle die Matlab-Objekte
     copperRail = CopperRail(railCfg);
     transformer = Transformer(transformerCfg);
 
@@ -74,14 +74,14 @@ for i = 1:length(simConfig.assemblies)
     assemblyGroup = assemblyGroup.addComponent(copperRail);
     assemblyGroup = assemblyGroup.addComponent(transformer);
 
-    % Store the assigned current with the assembly for later use
     assemblyGroup.assignedCurrent = assignedCurrent;
 
     assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
 end
 
 params.assemblies = assemblies;
-params.activeCurrents = activeCurrents; % Overwrite with only active currents
+params.activeCurrents = activeCurrents;
+
 % --- 5. Eigenständige Komponenten erstellen ---
 standAloneComponents = {};
 

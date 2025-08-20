@@ -47,6 +47,7 @@
 
     <form id="simulation-form">
         <div id="config-sections">
+
             <div id="config-params" class="config-section">
                 <h2>Allgemeine Simulations-Parameter</h2>
                 <div class="form-group-wrapper">
@@ -64,21 +65,25 @@
                     </div>
                 </div>
             </div>
+
             <div id="config-phases" class="config-section">
                 <h2>Elektrisches System (Phasen)</h2>
                 <div id="electrical-system-list" class="dynamic-list"></div>
                 <button type="button" onclick="addPhase()">+ Phase hinzufügen</button>
             </div>
+
             <div id="config-assemblies" class="config-section">
                 <h2>Baugruppen (Assemblies)</h2>
                 <div id="assemblies-list" class="dynamic-list"></div>
                 <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
             </div>
+
             <div id="config-standalone" class="config-section">
                 <h2>Eigenständige Bauteile</h2>
                 <div id="standalone-list" class="dynamic-list"></div>
                 <button type="button" onclick="addStandalone()">+ Bauteil hinzufügen</button>
             </div>
+
             <div id="config-scenarios" class="config-section">
                 <h2>Szenarien verwalten</h2>
                 <div class="scenario-management">
@@ -99,6 +104,7 @@
                     </div>
                 </div>
             </div>
+
             <div id="config-summary" class="config-section active">
                 <h2>Zusammenfassung der Konfiguration</h2>
                 <div class="summary-container">
@@ -112,8 +118,14 @@
                 </div>
             </div>
         </div>
+
         <hr>
+
         <button type="submit">simulation.json erstellen</button>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/configurator.js') }}"></script>
 {% endblock %}

@@ -6,6 +6,7 @@ app = Flask(__name__)
 
 # Pfade für die Konfigurationsdateien
 CONFIG_DIR = "conf"
+LIBRARY_FILE = "library.json"
 
 # Stelle sicher, dass der conf-Ordner existiert
 if not os.path.exists(CONFIG_DIR):
@@ -19,7 +20,7 @@ def load_library_data():
     """Lädt die Bauteil-Bibliothek aus der library.json."""
     global library_data
     try:
-        with open("library.json", "r", encoding="utf-8") as f:
+        with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
             library_data = json.load(f)
     except FileNotFoundError:
         print("Fehler: library.json nicht gefunden!")
@@ -37,7 +38,7 @@ def index():
 
 @app.route("/configurator")
 def configurator():
-    """Rendert die Konfigurator-Seite (jetzt "Simulation")."""
+    """Rendert die Konfigurator-Seite."""
     if not library_data:
         load_library_data()
     return render_template("configurator.html", library=library_data)

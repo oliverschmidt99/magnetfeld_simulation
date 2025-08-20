@@ -44,7 +44,11 @@ nav {
     height: 100%;
 }
 
-/* .header-right rule removed: was empty */
+.header-right {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
 
 .nav-item {
     position: relative;
@@ -257,19 +261,19 @@ hr {
     margin: 2rem 0;
 }
 
-#config-nav .card {
+.card-container .card {
     cursor: pointer;
     transition: all 0.2s ease;
     border: 2px solid transparent;
 }
 
-#config-nav .card:hover {
+.card-container .card:hover {
     border-color: #0d6efd;
     transform: translateY(-3px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-#config-nav .card.active {
+.card-container .card.active {
     background-color: #e7f1ff;
     border-color: #0d6efd;
     color: #0d6efd;
@@ -362,4 +366,164 @@ button.danger:hover {
     width: 100%;
     height: 400px;
     background-color: #fff;
+}
+
+.component-editor {
+    display: grid;
+    grid-template-columns: 1fr; /* Standardmäßig untereinander */
+    gap: 2rem;
+}
+
+@media (min-width: 992px) {
+    .component-editor {
+        grid-template-columns: 1fr 1fr; /* Nebeneinander auf größeren Bildschirmen */
+    }
+}
+
+.component-list {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.component-item {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.component-item-info strong {
+    display: block;
+}
+
+.component-item-info span {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.component-form {
+    padding: 1.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.component-editor {
+    display: grid;
+    grid-template-columns: 1fr; /* Standardmäßig untereinander */
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+@media (min-width: 992px) {
+    .component-editor {
+        grid-template-columns: 1fr 1fr; /* Nebeneinander auf größeren Bildschirmen */
+    }
+}
+
+.component-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.component-card {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.component-card h4 {
+    margin-top: 0;
+    border-bottom: 1px solid #ced4da;
+    padding-bottom: 0.5rem;
+}
+
+.component-card-preview {
+    width: 100%;
+    height: 100px;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.component-card .tags-display {
+    margin-bottom: 1rem;
+}
+
+.component-form {
+    padding: 1.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.component-preview {
+    padding: 1.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.component-preview svg {
+    width: 100%;
+    height: 200px;
+}
+
+/* Tag-System Styles */
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    background-color: #fff;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.tag-group {
+    width: 100%;
+}
+
+.tag-group strong {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.tag-badge {
+    display: inline-block;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin: 0.2rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.tags-display .tag-badge {
+    cursor: default;
+}
+
+.tags-container .tag-badge {
+    transition: transform 0.1s;
+}
+
+.tags-container .tag-badge:hover {
+    transform: scale(1.05);
+}
+
+.tags-container .tag-badge.selected {
+    border-color: #0d6efd;
+    box-shadow: 0 0 5px rgba(13, 110, 253, 0.5);
 }

@@ -15,22 +15,54 @@
 </script>
 
 <div class="container">
-    <div class="card-container">
-        <div class="card">
-            <h3>Neue Stromschiene</h3>
-            <p>Definiere eine neue Kupferschiene.</p>
+
+    <div class="card-container" id="bauteile-nav">
+        <div class="card active" data-target="bauteil-rails">
+            <h3>Stromschienen</h3>
+            <p>Kupferschienen verwalten.</p>
         </div>
-        <div class="card">
-            <h3>Neuer Wandler</h3>
-            <p>Erstelle einen neuen Stromwandler.</p>
+        <div class="card" data-target="bauteil-transformers">
+            <h3>Wandler</h3>
+            <p>Stromwandler verwalten.</p>
         </div>
-        <div class="card">
-            <h3>Neues Abschirmblech</h3>
-            <p>Füge ein neues Trafoblech hinzu.</p>
+        <div class="card" data-target="bauteil-sheets">
+            <h3>Abschirmbleche</h3>
+            <p>Trafobleche verwalten.</p>
         </div>
     </div>
+
     <hr>
-    <p>Der Editor zur Bearbeitung der Bauteil-Bibliothek (<code>library.json</code>) wird hier in einem zukünftigen
-        Schritt implementiert.</p>
+
+    <div id="bauteil-sections">
+        <div id="bauteil-rails" class="config-section active">
+            <h2>Stromschienen (Copper Rails)</h2>
+            <div class="component-editor">
+                <div class="component-form">
+                    <h3 id="rail-form-title">Neue Stromschiene erstellen</h3>
+                    <form id="rail-form">
+                    </form>
+                </div>
+                <div class="component-preview">
+                    <h3>Live-Vorschau</h3>
+                    <svg id="rail-preview-svg"></svg>
+                </div>
+            </div>
+            <hr>
+            <h2>Vorhandene Stromschienen</h2>
+            <div class="component-list" id="rails-list"></div>
+        </div>
+        <div id="bauteil-transformers" class="config-section">
+            <h2>Wandler (Transformers)</h2>
+            <p>Dieser Bereich wird in Kürze implementiert.</p>
+        </div>
+        <div id="bauteil-sheets" class="config-section">
+            <h2>Abschirmbleche (Transformer Sheets)</h2>
+            <p>Dieser Bereich wird in Kürze implementiert.</p>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/bauteile.js') }}"></script>
 {% endblock %}

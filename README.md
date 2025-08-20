@@ -77,24 +77,33 @@ Hier sind die nächsten geplanten Schritte zur Verbesserung des Projekts:
 
 - **Verbesserung der Web-Visualisierung**:
 
+  - https://github.com/oliverschmidt99/philipshue-day_routine aus dem Repository die Grafische oberfläche hinzufügen.
+  - https://github.com/oliverschmidt99/weihnachtspost_rj/ aus dem Repository die struktur übernehmen, dass es mehrere HTML seiten gibt.
+
   - Zoom- und Pan-Funktionalität in der SVG-Grafik implementieren.
   - Detailliertere Informationen zu den Bauteilen bei Mouse-Over anzeigen.
   - Einblendung eines Koordinatengitters zur besseren Orientierung.
 
 - **Bauteil-Bibliothek erweitern**:
 
-  - Weitere gängige Stromschienen und Wandler zur `library.json` hinzufügen.
+  - Weitere Stromschienen und Wandler zur `library.json` hinzufügen aus der Excelliste.
   - Unterstützung für Ringkernwandler (`RingTransformer.m`) in der Web-UI und Simulation integrieren.
   - Eine eigene Oberfläche zur Erstellung und Bearbeitung von Bauteilen direkt im Web-UI schaffen.
+
+- **Konfigurator anpassen**
+
+  - Ein Elektrisches System (Phasen) soll einer Kupferschiene hinzugefügt werden.
+    - Erstellen individuelle Phasen mit spezifischen Parametern (z.B. Name:, Phasenverschiebung (°), Spitzenstrom (A), Effektivstrom (A)).
+    - Das Elektischesystem soll dann einer Kupferschiene zugeordnet werden.
 
 - **Auswertung der Simulationen**:
 
   - Einen neuen Reiter "Ergebnisse" auf der Webseite hinzufügen.
   - Die generierten Plots und CSV-Daten direkt auf der Webseite anzeigen.
   - Interaktive Diagramme (z.B. mit Plotly.js) zur Analyse der Ergebnisse.
+  - Aus den .ans Dateien von Femm eine Visualisierung der Ergebnisse darstellen.
 
 - **Simulationsszenarien verwalten**:
 
   - Eine Funktion zum Speichern und Laden von verschiedenen Konfigurationen (Szenarien) implementieren.
   - Ein Dropdown-Menü auf der Startseite, um gespeicherte Szenarien schnell zu laden.
-

@@ -40,6 +40,33 @@
                 <div class="component-form">
                     <h3 id="rail-form-title">Neue Stromschiene erstellen</h3>
                     <form id="rail-form">
+                        <input type="hidden" id="rail-original-name">
+                        <div class="form-group">
+                            <label for="rail-name">Name</label>
+                            <input type="text" id="rail-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="rail-manufacturer">Hersteller</label>
+                            <input type="text" id="rail-manufacturer">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="rail-width">Breite (mm)</label>
+                                <input type="number" id="rail-width" value="40">
+                            </div>
+                            <div class="form-group">
+                                <label for="rail-height">Höhe (mm)</label>
+                                <input type="number" id="rail-height" value="10">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Tags</label>
+                            <div id="rail-tags-container" class="tags-container"></div>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit">Speichern</button>
+                            <button type="button" id="rail-clear-btn">Formular leeren</button>
+                        </div>
                     </form>
                 </div>
                 <div class="component-preview">

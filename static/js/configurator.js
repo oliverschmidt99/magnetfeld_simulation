@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initializeConfigurator() {
-  // Ruft jetzt die globale Funktion aus main.js auf
   initializeCardNavigation("config-nav", "config-sections");
   loadState();
 

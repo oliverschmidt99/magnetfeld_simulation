@@ -4,28 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-let localLibrary = {}; // Lokale Kopie der Bibliothek
-
-const PREDEFINED_TAGS = {
-  manufacturer: {
-    "310_CELSA": "#BF8F00",
-    "320_MBS": "#548235",
-    "330_Ritz": "#C65911",
-    "340_Redur": "#305496",
-  },
-  current: [
-    "600 A",
-    "800 A",
-    "1000 A",
-    "1250 A",
-    "1600 A",
-    "2000 A",
-    "2500 A",
-    "3200 A",
-    "4000 A",
-    "5000 A",
-  ],
-};
+let localLibrary = {};
+let currentEditingTags = [];
 
 function initializeBauteilEditor() {
   const libraryDataElement = document.getElementById("library-data");
@@ -33,15 +13,15 @@ function initializeBauteilEditor() {
     ? JSON.parse(libraryDataElement.textContent)
     : {};
 
-  // Ruft jetzt die globale Funktion aus main.js auf
   initializeCardNavigation("bauteile-nav", "bauteil-sections");
 
   const railForm = document.getElementById("rail-form");
   if (railForm) {
     railForm.addEventListener("submit", handleSaveComponent);
-    document.getElementById("rail-clear-btn").addEventListener("click", () => {
-      clearRailForm();
-    });
+    document
+      .getElementById("rail-clear-btn")
+      .addEventListener("click", clearRailForm);
+
     document
       .getElementById("rail-width")
       .addEventListener("input", () =>
@@ -52,9 +32,23 @@ function initializeBauteilEditor() {
       .addEventListener("input", () =>
         renderComponentPreview(gatherRailFormData(), "rail-preview-svg")
       );
+
+    document
+      .querySelector(".add-tags-btn")
+      .addEventListener("click", openTagModal);
   }
 
-  renderTagSelectors();
+  document
+    .getElementById("modal-cancel-btn")
+    .addEventListener("click", closeTagModal);
+  document
+    .getElementById("modal-save-btn")
+    .addEventListener("click", saveTagsFromModal);
+  document
+    .getElementById("tag-search-input")
+    .addEventListener("input", filterTagsInModal);
+
+  populateFilterDropdowns();
   renderComponentLists();
   renderComponentPreview({ width: 40, height: 10 }, "rail-preview-svg");
 }
@@ -63,33 +57,75 @@ function renderComponentLists() {
   const railsList = document.getElementById("rails-list");
   if (!railsList) return;
 
-  railsList.innerHTML = "<h3>Vorhandene Stromschienen</h3>";
+  const searchTerm = document.getElementById("rail-search").value.toLowerCase();
+  const selectedTag = document.getElementById("rail-filter-tag").value;
+  const selectedManufacturer = document.getElementById(
+    "rail-filter-manufacturer"
+  ).value;
 
-  (localLibrary.copperRails || []).forEach((rail, index) => {
-    const card = document.createElement("div");
-    card.className = "component-card";
-    const previewId = `rail-card-preview-${index}`;
+  const filteredRails = (localLibrary.copperRails || []).filter((rail) => {
+    const nameMatch = rail.name.toLowerCase().includes(searchTerm);
+    const tagMatch =
+      !selectedTag || (rail.tags && rail.tags.includes(selectedTag));
+    const manufacturerMatch =
+      !selectedManufacturer || rail.manufacturer === selectedManufacturer;
+    return nameMatch && tagMatch && manufacturerMatch;
+  });
 
-    card.innerHTML = `
-            <h4>${rail.name}</h4>
-            <svg id="${previewId}" class="component-card-preview"></svg>
-            <div class="component-item-info">
-                <span>${rail.width} x ${rail.height} mm</span>
-            </div>
-            <div class="tags-display">
-                ${(rail.tags || []).map((tag) => getTagBadge(tag)).join("")}
-            </div>
-            <div class="button-group">
-                <button type="button" class="edit-btn" data-name="${
-                  rail.name
-                }" data-type="copperRails">Bearbeiten</button>
-                <button type="button" class="danger delete-btn" data-name="${
-                  rail.name
-                }" data-type="copperRails">Löschen</button>
+  railsList.innerHTML = "";
+
+  if (filteredRails.length === 0) {
+    railsList.innerHTML =
+      '<p style="text-align: center; color: #6c757d;">Keine Bauteile entsprechen den Filterkriterien.</p>';
+    return;
+  }
+
+  filteredRails.forEach((rail, index) => {
+    const item = document.createElement("div");
+    item.className = "accordion-item";
+    const previewId = `rail-accordion-preview-${index}`;
+
+    item.innerHTML = `
+            <button type="button" class="accordion-button component-accordion-btn">
+                <div class="tags-display">
+                    ${(rail.tags || []).map((tag) => getTagBadge(tag)).join("")}
+                </div>
+                <strong class="component-item-name">${rail.name}</strong>
+                <span class="component-item-manufacturer">${
+                  rail.manufacturer || ""
+                }</span>
+                <span class="component-item-dims">${rail.width} x ${
+      rail.height
+    } mm</span>
+            </button>
+            <div class="accordion-content">
+                <div class="component-card-preview-container">
+                    <svg id="${previewId}" class="component-card-preview"></svg>
+                    <div class="button-group">
+                        <button type="button" class="edit-btn" data-name="${
+                          rail.name
+                        }" data-type="copperRails">Bearbeiten</button>
+                        <button type="button" class="danger delete-btn" data-name="${
+                          rail.name
+                        }" data-type="copperRails">Löschen</button>
+                    </div>
+                </div>
             </div>
         `;
-    railsList.appendChild(card);
+    railsList.appendChild(item);
     renderComponentPreview(rail, previewId);
+  });
+
+  document.querySelectorAll(".component-accordion-btn").forEach((btn) => {
+    btn.addEventListener("click", function () {
+      this.classList.toggle("active");
+      const content = this.nextElementSibling;
+      if (content.style.maxHeight) {
+        content.style.maxHeight = null;
+      } else {
+        content.style.maxHeight = content.scrollHeight + "px";
+      }
+    });
   });
 
   document
@@ -98,6 +134,35 @@ function renderComponentLists() {
   document
     .querySelectorAll(".delete-btn")
     .forEach((btn) => btn.addEventListener("click", handleDeleteComponent));
+}
+
+function populateFilterDropdowns() {
+  const allTags = new Set();
+  const allManufacturers = new Set();
+
+  (localLibrary.copperRails || []).forEach((rail) => {
+    (rail.tags || []).forEach((tag) => allTags.add(tag));
+    if (rail.manufacturer) allManufacturers.add(rail.manufacturer);
+  });
+
+  const tagFilter = document.getElementById("rail-filter-tag");
+  tagFilter.innerHTML = '<option value="">Nach Tag filtern...</option>';
+  Array.from(allTags)
+    .sort()
+    .forEach((tag) => {
+      tagFilter.innerHTML += `<option value="${tag}">${tag}</option>`;
+    });
+
+  const manufacturerFilter = document.getElementById(
+    "rail-filter-manufacturer"
+  );
+  manufacturerFilter.innerHTML =
+    '<option value="">Nach Hersteller filtern...</option>';
+  Array.from(allManufacturers)
+    .sort()
+    .forEach((manufacturer) => {
+      manufacturerFilter.innerHTML += `<option value="${manufacturer}">${manufacturer}</option>`;
+    });
 }
 
 function populateEditForm(event) {
@@ -117,15 +182,10 @@ function populateEditForm(event) {
     document.getElementById("rail-width").value = component.width;
     document.getElementById("rail-height").value = component.height;
 
-    const tagContainer = document.getElementById("rail-tags-container");
-    tagContainer.querySelectorAll(".tag-badge").forEach((badge) => {
-      if ((component.tags || []).includes(badge.textContent)) {
-        badge.classList.add("selected");
-      } else {
-        badge.classList.remove("selected");
-      }
-    });
+    currentEditingTags = [...(component.tags || [])];
+    updateSelectedTagsDisplay("rail-tags-selection", currentEditingTags);
     renderComponentPreview(component, "rail-preview-svg");
+    window.scrollTo(0, 0);
   }
 }
 
@@ -140,9 +200,7 @@ async function handleSaveComponent(event) {
     width: parseFloat(form.querySelector("#rail-width").value),
     height: parseFloat(form.querySelector("#rail-height").value),
     material: "Copper",
-    tags: Array.from(
-      document.querySelectorAll("#rail-tags-container .tag-badge.selected")
-    ).map((b) => b.textContent),
+    tags: currentEditingTags,
   };
 
   const originalName =
@@ -160,6 +218,7 @@ async function handleSaveComponent(event) {
   if (response.ok) {
     localLibrary = result.library;
     renderComponentLists();
+    populateFilterDropdowns();
     clearRailForm();
   }
 }
@@ -181,18 +240,21 @@ async function handleDeleteComponent(event) {
     if (response.ok) {
       localLibrary = result.library;
       renderComponentLists();
+      populateFilterDropdowns();
     }
   }
 }
 
 function renderTagSelectors() {
-  const container = document.getElementById("rail-tags-container");
+  const container = document.getElementById("modal-tag-list");
   if (!container) return;
   container.innerHTML = "";
 
   let manufacturerHtml = '<div class="tag-group"><strong>Hersteller</strong>';
   for (const [name, color] of Object.entries(PREDEFINED_TAGS.manufacturer)) {
-    manufacturerHtml += getTagBadge(name, color);
+    manufacturerHtml += `<span class="tag-badge" style="background-color: ${color}; color: ${getTextColor(
+      color
+    )};">${name}</span>`;
   }
   manufacturerHtml += "</div>";
   container.innerHTML += manufacturerHtml;
@@ -200,69 +262,46 @@ function renderTagSelectors() {
   const currentColors = generateColorPalette(PREDEFINED_TAGS.current.length);
   let currentHtml = '<div class="tag-group"><strong>Strom</strong>';
   PREDEFINED_TAGS.current.forEach((current, index) => {
-    currentHtml += getTagBadge(current, currentColors[index]);
+    currentHtml += `<span class="tag-badge" style="background-color: ${
+      currentColors[index]
+    }; color: ${getTextColor(currentColors[index])};">${current}</span>`;
   });
   currentHtml += "</div>";
   container.innerHTML += currentHtml;
-
-  container.querySelectorAll(".tag-badge").forEach((badge) => {
-    badge.addEventListener("click", () => badge.classList.toggle("selected"));
-  });
 }
 
-function getTagBadge(tag, color) {
-  if (!color) {
-    color =
-      PREDEFINED_TAGS.manufacturer[tag] ||
-      generateColorPalette(PREDEFINED_TAGS.current.length)[
-        PREDEFINED_TAGS.current.indexOf(tag)
-      ];
+function updateSelectedTagsDisplay(containerId, tags) {
+  const displayContainer = document.getElementById(containerId);
+  displayContainer.innerHTML = "";
+
+  if (tags.length > 0) {
+    tags.forEach((tag) => {
+      const badge = document.createElement("span");
+      badge.innerHTML = getTagBadge(tag);
+      const badgeElement = badge.firstElementChild;
+
+      const removeBtn = document.createElement("span");
+      removeBtn.className = "remove-tag";
+      removeBtn.innerHTML = "&times;";
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        currentEditingTags = currentEditingTags.filter((t) => t !== tag);
+        renderTagsInModal(currentEditingTags);
+      };
+
+      badgeElement.appendChild(removeBtn);
+      displayContainer.appendChild(badgeElement);
+    });
   }
-  const textColor = getTextColor(color);
-  return `<span class="tag-badge" style="background-color: ${color}; color: ${textColor};">${tag}</span>`;
-}
 
-function getTextColor(hexcolor) {
-  if (!hexcolor) return "#000000";
-  const r = parseInt(hexcolor.substr(1, 2), 16);
-  const g = parseInt(hexcolor.substr(3, 2), 16);
-  const b = parseInt(hexcolor.substr(5, 2), 16);
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  return yiq >= 128 ? "#000000" : "#FFFFFF";
-}
-
-function generateColorPalette(numColors) {
-  const colors = [];
-  if (numColors === 0) return colors;
-  const nGroups = 3;
-  let nPerGroup = Math.floor(numColors / nGroups);
-  let remainder = numColors % nGroups;
-  const groupSizes = [nPerGroup, nPerGroup, nPerGroup];
-  for (let i = 0; i < remainder; i++) groupSizes[i]++;
-
-  const maps = [
-    (i, s) =>
-      `rgb(${Math.round((0 + 0.5 * (i / (s - 1 || 1))) * 255)}, ${Math.round(
-        (0 + 0.8 * (i / (s - 1 || 1))) * 255
-      )}, ${Math.round((0.5 + 0.5 * (i / (s - 1 || 1))) * 255)})`,
-    (i, s) =>
-      `rgb(${Math.round((0 + 0.6 * (i / (s - 1 || 1))) * 255)}, ${Math.round(
-        (0.4 + 0.6 * (i / (s - 1 || 1))) * 255
-      )}, ${Math.round((0 + 0.6 * (i / (s - 1 || 1))) * 255)})`,
-    (i, s) =>
-      `rgb(${Math.round((0.6 + 0.4 * (i / (s - 1 || 1))) * 255)}, ${Math.round(
-        (0 + 0.6 * (i / (s - 1 || 1))) * 255
-      )}, ${Math.round((0 + 0.6 * (i / (s - 1 || 1))) * 255)})`,
-  ];
-
-  for (let i = 0; i < groupSizes[0]; i++)
-    colors.push(maps[0](i, groupSizes[0]));
-  for (let i = 0; i < groupSizes[1]; i++)
-    colors.push(maps[1](i, groupSizes[1]));
-  for (let i = 0; i < groupSizes[2]; i++)
-    colors.push(maps[2](i, groupSizes[2]));
-
-  return colors;
+  if (containerId === "rail-tags-selection") {
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "add-tags-btn";
+    addButton.textContent = "+ Tags hinzufügen";
+    addButton.onclick = openTagModal;
+    displayContainer.appendChild(addButton);
+  }
 }
 
 function renderComponentPreview(component, svgId) {
@@ -308,8 +347,60 @@ function clearRailForm() {
   document.getElementById("rail-original-name").value = "";
   document.getElementById("rail-form-title").textContent =
     "Neue Stromschiene erstellen";
-  form
-    .querySelectorAll(".tag-badge.selected")
-    .forEach((b) => b.classList.remove("selected"));
+  currentEditingTags = [];
+  updateSelectedTagsDisplay("rail-tags-selection", currentEditingTags);
   renderComponentPreview({ width: 40, height: 10 }, "rail-preview-svg");
+}
+
+function openTagModal() {
+  renderTagsInModal(currentEditingTags);
+  document.getElementById("tag-modal").style.display = "flex";
+}
+
+function closeTagModal() {
+  document.getElementById("tag-modal").style.display = "none";
+  document.getElementById("tag-search-input").value = "";
+}
+
+function saveTagsFromModal() {
+  updateSelectedTagsDisplay("rail-tags-selection", currentEditingTags);
+  closeTagModal();
+}
+
+function renderTagsInModal(selectedTags = []) {
+  const container = document.getElementById("modal-tag-list");
+  if (!container) return;
+
+  renderTagSelectors();
+  updateSelectedTagsDisplay("modal-selected-tags", selectedTags);
+
+  container.querySelectorAll(".tag-badge").forEach((badge) => {
+    const tagName = badge.textContent;
+    if (selectedTags.includes(tagName)) {
+      badge.classList.add("selected");
+    }
+    badge.addEventListener("click", () => {
+      if (currentEditingTags.includes(tagName)) {
+        currentEditingTags = currentEditingTags.filter((t) => t !== tagName);
+        badge.classList.remove("selected");
+      } else {
+        currentEditingTags.push(tagName);
+        badge.classList.add("selected");
+      }
+      updateSelectedTagsDisplay("modal-selected-tags", currentEditingTags);
+    });
+  });
+}
+
+function filterTagsInModal() {
+  const filter = document
+    .getElementById("tag-search-input")
+    .value.toLowerCase();
+  document.querySelectorAll("#modal-tag-list .tag-badge").forEach((badge) => {
+    if (badge.textContent.toLowerCase().includes(filter)) {
+      badge.style.display = "inline-flex";
+    } else {
+      badge.style.display = "none";
+    }
+  });
 }

@@ -6,6 +6,7 @@ app = Flask(__name__)
 
 # Pfade für die Konfigurationsdateien
 CONFIG_DIR = "conf"
+LIBRARY_FILE = "library.json"
 
 # Stelle sicher, dass der conf-Ordner existiert
 if not os.path.exists(CONFIG_DIR):
@@ -19,7 +20,7 @@ def load_library_data():
     """Lädt die Bauteil-Bibliothek aus der library.json."""
     global library_data
     try:
-        with open("library.json", "r", encoding="utf-8") as f:
+        with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
             library_data = json.load(f)
     except FileNotFoundError:
         print("Fehler: library.json nicht gefunden!")
@@ -61,6 +62,73 @@ def simulation():
 def analysis():
     """Rendert die Analyse-Seite."""
     return render_template("analysis.html")
+
+
+# --- Route zur Verwaltung der Bauteil-Bibliothek ---
+
+
+@app.route("/library", methods=["POST"])
+def update_library():
+    """Fügt Bauteile zur library.json hinzu, aktualisiert oder löscht sie."""
+    try:
+        # Lade die aktuellste Version der Bibliothek
+        with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
+            lib = json.load(f)
+
+        data = request.json
+        action = data.get("action")
+        comp_type = data.get("type")
+        component = data.get("component")
+        original_name = data.get("originalName")
+
+        if action == "save":
+            # Finde die Liste des entsprechenden Bauteiltyps
+            component_list = lib.get(comp_type)
+            if component_list is None:
+                return jsonify({"error": "Unbekannter Bauteiltyp"}), 400
+
+            # Prüfen, ob ein Bauteil mit diesem Namen bereits existiert (für die Aktualisierung)
+            existing_index = -1
+            for i, item in enumerate(component_list):
+                if item.get("name") == original_name:
+                    existing_index = i
+                    break
+
+            if existing_index != -1:
+                # Bauteil aktualisieren
+                component_list[existing_index] = component
+            else:
+                # Neues Bauteil hinzufügen
+                component_list.append(component)
+
+            message = (
+                "Bauteil erfolgreich aktualisiert."
+                if existing_index != -1
+                else "Bauteil erfolgreich hinzugefügt."
+            )
+
+        elif action == "delete":
+            component_list = lib.get(comp_type, [])
+            # Filtere das zu löschende Element heraus
+            lib[comp_type] = [
+                item for item in component_list if item.get("name") != original_name
+            ]
+            message = "Bauteil erfolgreich gelöscht."
+
+        else:
+            return jsonify({"error": "Unbekannte Aktion"}), 400
+
+        # Schreibe die Änderungen zurück in die Datei
+        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
+            json.dump(lib, f, indent=4)
+
+        # Lade die globalen Bibliotheksdaten neu
+        load_library_data()
+
+        return jsonify({"message": message, "library": lib})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # --- Routen für Szenarien-Dateiverwaltung ---

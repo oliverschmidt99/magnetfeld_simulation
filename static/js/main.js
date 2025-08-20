@@ -35,7 +35,10 @@ function initializeConfiguratorTabs() {
       cards.forEach((c) => c.classList.remove("active"));
 
       const targetId = card.dataset.target;
-      document.getElementById(targetId).classList.add("active");
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        targetElement.classList.add("active");
+      }
       card.classList.add("active");
 
       if (targetId === "config-summary") {
@@ -50,13 +53,8 @@ function initializeConfigurator() {
   loadState();
 
   const form = document.getElementById("simulation-form");
-  form.addEventListener("input", saveState);
-  form.addEventListener("click", (e) => {
-    if (e.target.tagName === "BUTTON" && e.target.type === "button") {
-      setTimeout(saveState, 50);
-    }
-  });
 
+  // Event Listener für Szenarien
   document
     .getElementById("save-scenario-btn")
     .addEventListener("click", saveScenario);
@@ -92,13 +90,17 @@ let standaloneCounter = 0;
 function updatePeak(id, type) {
   const rmsInput = document.getElementById(`${type}-${id}-rms`);
   const peakInput = document.getElementById(`${type}-${id}-peak`);
-  peakInput.value = (parseFloat(rmsInput.value) * SQRT2).toFixed(2);
+  if (rmsInput && peakInput) {
+    peakInput.value = (parseFloat(rmsInput.value) * SQRT2).toFixed(2);
+  }
 }
 
 function updateRms(id, type) {
   const peakInput = document.getElementById(`${type}-${id}-peak`);
   const rmsInput = document.getElementById(`${type}-${id}-rms`);
-  rmsInput.value = (parseFloat(peakInput.value) / SQRT2).toFixed(2);
+  if (peakInput && rmsInput) {
+    rmsInput.value = (parseFloat(peakInput.value) / SQRT2).toFixed(2);
+  }
 }
 
 function updateAssemblyPhaseDropdowns() {
@@ -198,7 +200,8 @@ function addStandalone(data = {}) {
 }
 
 function removeItem(id) {
-  document.getElementById(id).remove();
+  const item = document.getElementById(id);
+  if (item) item.remove();
 }
 
 function gatherFormData() {
@@ -331,17 +334,19 @@ function updateVisualization(data) {
     });
 }
 
-function saveState() {
-  const data = gatherFormData();
-  localStorage.setItem("latestSimConfig", JSON.stringify(data));
-}
-
 function loadState(data = null) {
   const configData =
     data || JSON.parse(localStorage.getItem("latestSimConfig"));
-  document.getElementById("electrical-system-list").innerHTML = "";
-  document.getElementById("assemblies-list").innerHTML = "";
-  document.getElementById("standalone-list").innerHTML = "";
+
+  const elsList = document.getElementById("electrical-system-list");
+  const asmList = document.getElementById("assemblies-list");
+  const stdList = document.getElementById("standalone-list");
+
+  if (!elsList || !asmList || !stdList) return;
+
+  elsList.innerHTML = "";
+  asmList.innerHTML = "";
+  stdList.innerHTML = "";
   phaseCounter = 0;
   assemblyCounter = 0;
   standaloneCounter = 0;
@@ -396,7 +401,6 @@ function initializeDefaultSetup() {
 
   updateAssemblyPhaseDropdowns();
   updateScenarioList();
-  saveState();
 }
 
 async function saveScenario() {

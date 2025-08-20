@@ -44,7 +44,9 @@ nav {
     height: 100%;
 }
 
-/* .header-right rule removed because it was empty */
+.header-right {
+    /* Leerer Container für Balance */
+}
 
 .nav-item {
     position: relative;

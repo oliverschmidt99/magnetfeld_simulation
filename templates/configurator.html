@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}Konfigurator{% endblock %}
+
+{% block content %}
+<div id="library-data" data-library='{{ library|tojson|safe }}' style="display: none;"></div>
+<div class="container">
+    <form id="simulation-form">
+
+        <div class="accordion-container">
+
+            <button type="button" class="accordion-button active">Allgemeine Simulations-Parameter</button>
+            <div class="accordion-content" style="max-height: 1000px;">
+                <div class="form-group">
+                    <label for="frequencyHz">Frequenz (Hz)</label>
+                    <input type="number" id="frequencyHz" value="50">
+                </div>
+                <div class="form-group">
+                    <label for="problemDepthM">Problem-Tiefe (mm)</label>
+                    <input type="number" step="1" id="problemDepthM" value="10">
+                </div>
+                <div class="form-group">
+                    <label for="coreRelPermeability">Relative Permeabilität (Kern)</label>
+                    <input type="number" id="coreRelPermeability" value="2500">
+                </div>
+            </div>
+
+            <button type="button" class="accordion-button">Elektrisches System (Phasen)</button>
+            <div class="accordion-content">
+                <div id="electrical-system-list" class="dynamic-list"></div>
+                <button type="button" onclick="addPhase()">+ Phase hinzufügen</button>
+            </div>
+
+            <button type="button" class="accordion-button">Baugruppen (Assemblies)</button>
+            <div class="accordion-content">
+                <div id="assemblies-list" class="dynamic-list"></div>
+                <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
+            </div>
+
+            <button type="button" class="accordion-button">Eigenständige Bauteile</button>
+            <div class="accordion-content">
+                <div id="standalone-list" class="dynamic-list"></div>
+                <button type="button" onclick="addStandalone()">+ Bauteil hinzufügen</button>
+            </div>
+
+        </div>
+
+        <hr>
+
+        <button type="submit">simulation.json erstellen</button>
+    </form>
+</div>
+{% endblock %}

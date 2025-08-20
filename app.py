@@ -23,10 +23,28 @@ def load_library_data():
 
 @app.route("/")
 def index():
-    """Rendert die Hauptseite mit den Dropdown-Menüs."""
+    """Rendert die Startseite."""
+    return render_template("index.html")
+
+
+@app.route("/configurator")
+def configurator():
+    """Rendert die Konfigurator-Seite."""
     if not library_data:
         load_library_data()
-    return render_template("index.html", library=library_data)
+    return render_template("configurator.html", library=library_data)
+
+
+@app.route("/visualization")
+def visualization():
+    """Rendert die Visualisierungs-Seite."""
+    return render_template("visualization.html")
+
+
+@app.route("/analysis")
+def analysis():
+    """Rendert die Analyse-Seite."""
+    return render_template("analysis.html")
 
 
 @app.route("/generate", methods=["POST"])

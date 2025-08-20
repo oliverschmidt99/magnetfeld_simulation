@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}Visualisierung{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div id="visualization-container">
+        <h2>2D-Vorschau der Anordnung</h2>
+        <p>Dies ist eine Vorschau der Konfiguration aus dem Local Storage. Aktualisiere sie, nachdem du Änderungen im
+            Konfigurator vorgenommen hast.</p>
+        <button type="button" onclick="updateVisualization()">Visualisierung aktualisieren</button>
+        <svg id="svg-canvas"></svg>
+    </div>
+</div>
+{% endblock %}

@@ -71,7 +71,7 @@ function resultsTable = calculateResults(params)
         % WICHTIG: Passe den Namen 'sec_circuit_name' an den Namen an, den du
         % im FEMM-Modell für den Sekundär-Circuit vergeben hast.
 
-        sec_circuit_name = [conductorCol{i}]; % e.g., 'PhaseA_sec'
+        sec_circuit_name = [conductorCol{i}]; % e.g.,'PhaseA_sec'
         circuit_props = mo_getcircuitproperties(sec_circuit_name);
         iSecComplex = circuit_props(1) + 1j * circuit_props(2); % Strom (Real + Imaginär)
         iSecResults(i) = abs(iSecComplex);

@@ -1,8 +1,29 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialisiert die Navigation auf jeder Seite
+  handleNavSlider();
+
   if (document.getElementById("simulation-form")) {
     initializeConfigurator();
   }
 });
+
+function handleNavSlider() {
+  const nav = document.getElementById("main-nav");
+  if (!nav) return;
+
+  const slider = nav.querySelector(".nav-slider");
+  const activeLink = nav.querySelector("a.active");
+
+  // Positioniert den Slider direkt unter dem aktiven Link beim Laden der Seite
+  if (activeLink) {
+    // Kurze Verzögerung, um sicherzustellen, dass der Browser das Layout berechnet hat
+    // und die CSS-Transition ausgelöst wird.
+    setTimeout(() => {
+      slider.style.width = `${activeLink.offsetWidth}px`;
+      slider.style.left = `${activeLink.offsetLeft}px`;
+    }, 10);
+  }
+}
 
 function initializeConfiguratorTabs() {
   const cards = document.querySelectorAll("#config-nav .card");
@@ -344,7 +365,6 @@ function loadState(data = null) {
   configData.standAloneComponents.forEach((comp) => addStandalone(comp));
 
   updateAssemblyPhaseDropdowns();
-  // Set selected phase for each assembly after all phases are created
   configData.assemblies.forEach((assembly, index) => {
     const select = document.querySelector(
       `#assembly-${index + 1} .assembly-phase-select`
@@ -409,6 +429,7 @@ function loadScenario() {
   const scenarios = getScenarios();
   if (scenarios[name]) {
     loadState(scenarios[name]);
+    document.getElementById("scenario-name").value = name;
     alert(`Szenario '${name}' geladen!`);
   }
 }

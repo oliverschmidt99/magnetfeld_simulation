@@ -10,19 +10,30 @@
 
 <body>
     <header>
-        <h1>Simulations-Konfigurator</h1>
-        <nav>
-            <a href="{{ url_for('index') }}">Home</a>
-            <a href="{{ url_for('configurator') }}">Konfigurator</a>
-            <a href="{{ url_for('simulation') }}">Simulation</a>
-            <a href="{{ url_for('analysis') }}">Analyse</a>
+        <div class="header-left">
+            <img src="{{ url_for('static', filename='img/logo_rolf-janssen_2024.svg') }}" alt="Rolf Janssen Logo"
+                id="header-logo">
+            <h1>Simulations-Konfigurator</h1>
+        </div>
+
+        <nav id="main-nav">
+            <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">Home</a>
+            <a href="{{ url_for('configurator') }}"
+                class="{{ 'active' if request.endpoint == 'configurator' else '' }}">Konfigurator</a>
+            <a href="{{ url_for('simulation') }}"
+                class="{{ 'active' if request.endpoint == 'simulation' else '' }}">Simulation</a>
+            <a href="{{ url_for('analysis') }}"
+                class="{{ 'active' if request.endpoint == 'analysis' else '' }}">Analyse</a>
+            <div class="nav-slider"></div>
         </nav>
+
+        <div class="header-right"></div>
     </header>
     <main>
         {% block content %}{% endblock %}
     </main>
     <footer>
-        <p>&copy; 2024 Dein Name</p>
+        <p>&copy; Oliver Schmidt</p>
     </footer>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

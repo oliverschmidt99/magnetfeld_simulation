@@ -45,7 +45,9 @@ nav {
 }
 
 .header-right {
-    /* Leerer Container für Balance */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .nav-item {
@@ -275,30 +277,10 @@ hr {
 }
 
 /* Bauteil-Editor Styles */
-.component-editor {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
-@media (min-width: 992px) {
-    .component-editor {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
 .component-form, .component-preview {
     padding: 1.5rem;
     border: 1px solid #dee2e6;
     border-radius: 8px;
-}
-
-.component-preview {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
 }
 
 .component-preview svg {
@@ -513,4 +495,51 @@ button.secondary {
 }
 button.secondary:hover {
     background-color: #5a6268;
+}
+
+/* Neue Stile für kompaktes Layout */
+.component-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.component-preview {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: center;
+    max-height: 250px; /* Vorschau kompakt */
+    overflow: auto;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Zwei Spalten */
+    gap: 1rem;
+}
+
+.form-section {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.component-form .form-group {
+    margin-bottom: 0.5rem;
+}
+
+.component-form .form-group label {
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.component-form .form-group input, 
+.component-form .form-group select, 
+.component-form .form-group textarea {
+    width: 100%;
+    padding: 0.25rem;
+    font-size: 0.85rem;
 }

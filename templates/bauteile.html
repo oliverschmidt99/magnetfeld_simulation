@@ -37,52 +37,102 @@
 
         <div id="bauteil-rails" class="config-section active">
             <div class="component-editor">
+
+                <div class="component-preview">
+                    <h3>Live-Vorschau</h3>
+                    <svg id="rail-preview-svg"></svg>
+                </div>
+
                 <div class="component-form">
                     <h3 id="rail-form-title">Neue Stromschiene erstellen</h3>
                     <form id="rail-form">
                         <input type="hidden" id="rail-original-name">
-                        <div class="form-group">
-                            <label for="rail-name">Name</label>
-                            <input type="text" id="rail-name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="rail-manufacturer">Hersteller</label>
-                            <input type="text" id="rail-manufacturer">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="rail-width">Breite (mm)</label>
-                                <input type="number" id="rail-width" value="40">
+
+                        <div class="form-grid">
+                            <div class="form-section">
+                                <h4>Allgemeine Produktinformationen</h4>
+
+                                <div class="form-group">
+                                    <label for="rail-name">Name (Eindeutige ID)</label>
+                                    <input type="text" id="rail-name" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="rail-productName">Produktbezeichnung</label>
+                                    <input type="text" id="rail-productName">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="rail-manufacturer">Hersteller</label>
+                                    <input type="text" id="rail-manufacturer">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="rail-eanNumber">EAN</label>
+                                    <input type="text" id="rail-eanNumber">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="rail-sellingPrice">Verkaufspreis (€)</label>
+                                    <input type="number" step="0.01" id="rail-sellingPrice">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="rail-purchasePrice">Einkaufspreis (€)</label>
+                                    <input type="number" step="0.01" id="rail-purchasePrice">
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="rail-height">Höhe (mm)</label>
-                                <input type="number" id="rail-height" value="10">
+
+                            <div class="form-section">
+                                <h4>Spezifische Produktinformationen</h4>
+
+                                <fieldset>
+                                    <legend>Elektrische Eigenschaften</legend>
+                                    <div class="form-group">
+                                        <label for="rail-voltage">Spannung (V)</label>
+                                        <input type="number" id="rail-voltage">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="rail-current">Strom (A)</label>
+                                        <input type="number" id="rail-current">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="rail-power">Leistung (W)</label>
+                                        <input type="number" id="rail-power">
+                                    </div>
+                                </fieldset>
+
+                                <fieldset>
+                                    <legend>Geometrie</legend>
+                                    <div class="form-group">
+                                        <label for="rail-length">Länge (mm)</label>
+                                        <input type="number" id="rail-length">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="rail-width">Breite (mm)</label>
+                                        <input type="number" id="rail-width">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="rail-height">Höhe (mm)</label>
+                                        <input type="number" id="rail-height">
+                                    </div>
+                                </fieldset>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Tags</label>
-                            <div id="rail-tags-selection" class="tags-input-container">
-                                <button type="button" class="add-tags-btn">+ Tags hinzufügen</button>
-                            </div>
-                        </div>
+
                         <div class="button-group">
                             <button type="submit">Speichern</button>
                             <button type="button" id="rail-clear-btn">Formular leeren</button>
                         </div>
                     </form>
                 </div>
-                <div class="component-preview">
-                    <h3>Live-Vorschau</h3>
-                    <svg id="rail-preview-svg"></svg>
-                </div>
             </div>
-
             <hr>
 
             <h2>Vorhandene Stromschienen</h2>
-            <div class="component-list-accordion" id="rails-list">
-            </div>
+            <div class="component-list-accordion" id="rails-list"></div>
         </div>
+
 
         <div id="bauteil-transformers" class="config-section">
             <h2>Wandler (Transformers)</h2>

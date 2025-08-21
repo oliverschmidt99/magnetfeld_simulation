@@ -22,27 +22,27 @@ function initializeBauteilEditor() {
       .getElementById("rail-clear-btn")
       .addEventListener("click", clearRailForm);
 
-    railForm.addEventListener("input", () =>
-      renderComponentPreview(
-        gatherRailFormData().specificProductInformation.geometry,
-        "rail-preview-svg"
-      )
-    );
+    railForm.addEventListener("input", () => {
+      const geoData = gatherRailFormData().specificProductInformation.geometry;
+      renderComponentPreview(geoData, "rail-preview-svg");
+    });
 
-    document
-      .querySelector(".add-tags-btn")
-      .addEventListener("click", openTagModal);
+    // Fehlerbehebung: Suche den Button innerhalb des Formulars
+    const addTagsBtn = railForm.querySelector(".add-tags-btn");
+    if (addTagsBtn) {
+      addTagsBtn.addEventListener("click", openTagModal);
+    }
   }
 
-  document
-    .getElementById("modal-cancel-btn")
-    .addEventListener("click", closeTagModal);
-  document
-    .getElementById("modal-save-btn")
-    .addEventListener("click", saveTagsFromModal);
-  document
-    .getElementById("tag-search-input")
-    .addEventListener("input", filterTagsInModal);
+  const modalCancelBtn = document.getElementById("modal-cancel-btn");
+  if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeTagModal);
+
+  const modalSaveBtn = document.getElementById("modal-save-btn");
+  if (modalSaveBtn) modalSaveBtn.addEventListener("click", saveTagsFromModal);
+
+  const tagSearchInput = document.getElementById("tag-search-input");
+  if (tagSearchInput)
+    tagSearchInput.addEventListener("input", filterTagsInModal);
 
   renderComponentLists("copperRails", "rails-list");
   renderComponentPreview({ width: 40, height: 10 }, "rail-preview-svg");
@@ -96,7 +96,15 @@ function renderComponentLists(typeKey, listId) {
   });
 
   listContainer.querySelectorAll(".component-accordion-btn").forEach((btn) => {
-    /* ... Logik ... */
+    btn.addEventListener("click", () => {
+      const content = btn.nextElementSibling;
+      btn.classList.toggle("active");
+      if (content.style.maxHeight) {
+        content.style.maxHeight = null;
+      } else {
+        content.style.maxHeight = content.scrollHeight + "px";
+      }
+    });
   });
   listContainer
     .querySelectorAll(".edit-btn")
@@ -116,20 +124,35 @@ function populateEditForm(event) {
     );
     if (!component) return;
 
-    const info = component.templateProductInformation;
-    const spec = component.specificProductInformation;
-    const geo = spec.geometry;
+    const info = component.templateProductInformation || {};
+    const spec = component.specificProductInformation || {};
+    const electric = spec.electricInformation || {};
+    const geo = spec.geometry || {};
 
     document.getElementById(
       "rail-form-title"
     ).textContent = `Stromschiene bearbeiten: ${name}`;
     document.getElementById("rail-original-name").value = name;
-    document.getElementById("rail-name").value = info.name;
-    document.getElementById("rail-productName").value = info.productName;
-    document.getElementById("rail-manufacturer").value = info.manufacturer;
-    document.getElementById("rail-width").value = geo.width;
-    document.getElementById("rail-height").value = geo.height;
-    document.getElementById("rail-material").value = spec.material;
+
+    // Allgemeine Produktinformationen
+    document.getElementById("rail-name").value = info.name || "";
+    document.getElementById("rail-productName").value = info.productName || "";
+    document.getElementById("rail-manufacturer").value =
+      info.manufacturer || "";
+    document.getElementById("rail-eanNumber").value = info.eanNumber || "";
+    document.getElementById("rail-sellingPrice").value =
+      info.sellingPrice || "";
+    document.getElementById("rail-purchasePrice").value =
+      info.purchasePrice || "";
+
+    // Spezifische Produktinformationen
+    document.getElementById("rail-voltage").value = electric.voltage || "";
+    document.getElementById("rail-current").value = electric.current || "";
+    document.getElementById("rail-power").value = electric.power || "";
+
+    document.getElementById("rail-length").value = geo.length || "";
+    document.getElementById("rail-width").value = geo.width || "";
+    document.getElementById("rail-height").value = geo.height || "";
 
     currentEditingTags = [...(info.tags || [])];
     updateSelectedTagsDisplay("rail-tags-selection", currentEditingTags);
@@ -221,6 +244,7 @@ function renderTagSelectors() {
 
 function updateSelectedTagsDisplay(containerId, tags) {
   const displayContainer = document.getElementById(containerId);
+  if (!displayContainer) return;
   displayContainer.innerHTML = "";
 
   if (tags.length > 0) {
@@ -290,12 +314,20 @@ function gatherRailFormData() {
       name: form.querySelector("#rail-name").value,
       productName: form.querySelector("#rail-productName").value,
       manufacturer: form.querySelector("#rail-manufacturer").value,
+      eanNumber: form.querySelector("#rail-eanNumber").value,
+      sellingPrice: form.querySelector("#rail-sellingPrice").value,
+      purchasePrice: form.querySelector("#rail-purchasePrice").value,
       tags: currentEditingTags,
     },
     specificProductInformation: {
-      material: form.querySelector("#rail-material").value,
+      electricInformation: {
+        voltage: form.querySelector("#rail-voltage").value,
+        current: form.querySelector("#rail-current").value,
+        power: form.querySelector("#rail-power").value,
+      },
       geometry: {
         type: "Rectangle",
+        length: parseFloat(form.querySelector("#rail-length").value),
         width: parseFloat(form.querySelector("#rail-width").value),
         height: parseFloat(form.querySelector("#rail-height").value),
       },

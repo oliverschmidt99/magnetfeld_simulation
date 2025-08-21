@@ -1,7 +1,3 @@
-Na klar, hier ist ein Entwurf für eine `README.md`-Datei für dein Repository. Ich habe alle deine Anmerkungen und die besprochenen Punkte berücksichtigt. Du kannst den Text einfach kopieren und in eine neue Datei namens `README.md` in deinem Projektverzeichnis einfügen.
-
----
-
 # Magnetfeld-Simulation für Stromwandler-Systeme
 
 Dieses Projekt dient zur Simulation und Analyse von magnetischen Feldern in 3-Phasen-Systemen, die aus Stromschienen und Stromwandlern bestehen. Die Simulation wird durch **MATLAB** gesteuert, das seinerseits die Open-Source-Software **FEMM (Finite Element Method Magnetics)** für die eigentliche Feld-Berechnung nutzt.

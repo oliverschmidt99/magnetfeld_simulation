@@ -121,7 +121,6 @@ function renderComponentLists(typeKey, listId, previewFn) {
     const geo = spec.geometry;
     const previewId = `${typeKey}-accordion-preview-${index}`;
 
-    // KORREKTUR: Korrekten Prefix (Singular) für den Button bestimmen
     const prefix =
       typeKey === "copperRails"
         ? "rail"
@@ -183,9 +182,12 @@ function populateEditForm(event) {
   const form = document.getElementById(`${prefix}-form`);
   if (!form) return;
 
-  form.querySelector(
-    `#${prefix}-form-title`
-  ).textContent = `Bauteil bearbeiten: ${name}`;
+  // KORREKTUR: Suche nach der ID im gesamten Dokument
+  const formTitle = document.getElementById(`${prefix}-form-title`);
+  if (formTitle) {
+    formTitle.textContent = `Bauteil bearbeiten: ${name}`;
+  }
+
   form.querySelector(`#${prefix}-original-name`).value = name;
   form.dataset.uniqueNumber =
     component.templateProductInformation.uniqueNumber || "";
@@ -383,8 +385,8 @@ function clearForm(prefix, typeKey) {
   const form = document.getElementById(`${prefix}-form`);
   form.reset();
   form.querySelector(`#${prefix}-original-name`).value = "";
-  form.querySelector(
-    `#${prefix}-form-title`
+  document.getElementById(
+    `${prefix}-form-title`
   ).textContent = `Neues Bauteil erstellen`;
   form.dataset.uniqueNumber = "";
   currentEditingTags = [];

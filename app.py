@@ -22,12 +22,17 @@ def load_library_data():
     try:
         with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
             library_data = json.load(f)
-    except FileNotFoundError:
-        print("Fehler: library.json nicht gefunden!")
-        library_data = {"copperRails": [], "transformers": [], "transformerSheets": []}
-    except json.JSONDecodeError:
-        print("Fehler: library.json ist keine valide JSON-Datei!")
-        library_data = {"copperRails": [], "transformers": [], "transformerSheets": []}
+    except (FileNotFoundError, json.JSONDecodeError):
+        print(
+            f"Warnung: '{LIBRARY_FILE}' nicht gefunden oder fehlerhaft. Erstelle leere Bibliothek."
+        )
+        library_data = {
+            "components": {
+                "copperRails": [],
+                "transformers": [],
+                "transformerSheets": [],
+            }
+        }
 
 
 @app.route("/")
@@ -71,60 +76,53 @@ def analysis():
 def update_library():
     """Fügt Bauteile zur library.json hinzu, aktualisiert oder löscht sie."""
     try:
-        # Lade die aktuellste Version der Bibliothek
         with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
             lib = json.load(f)
 
         data = request.json
         action = data.get("action")
-        comp_type = data.get("type")
-        component = data.get("component")
+        comp_type_key = data.get("type")  # z.B. "copperRails"
+        component_data = data.get("component")
         original_name = data.get("originalName")
 
-        if action == "save":
-            # Finde die Liste des entsprechenden Bauteiltyps
-            component_list = lib.get(comp_type)
-            if component_list is None:
-                return jsonify({"error": "Unbekannter Bauteiltyp"}), 400
+        if comp_type_key not in lib.get("components", {}):
+            return jsonify({"error": "Unbekannter Bauteiltyp"}), 400
 
-            # Prüfen, ob ein Bauteil mit diesem Namen bereits existiert (für die Aktualisierung)
+        component_list = lib["components"][comp_type_key]
+
+        if action == "save":
             existing_index = -1
             for i, item in enumerate(component_list):
-                if item.get("name") == original_name:
+                if (
+                    item.get("templateProductInformation", {}).get("name")
+                    == original_name
+                ):
                     existing_index = i
                     break
 
             if existing_index != -1:
-                # Bauteil aktualisieren
-                component_list[existing_index] = component
+                component_list[existing_index] = component_data
+                message = "Bauteil erfolgreich aktualisiert."
             else:
-                # Neues Bauteil hinzufügen
-                component_list.append(component)
-
-            message = (
-                "Bauteil erfolgreich aktualisiert."
-                if existing_index != -1
-                else "Bauteil erfolgreich hinzugefügt."
-            )
+                component_list.append(component_data)
+                message = "Bauteil erfolgreich hinzugefügt."
 
         elif action == "delete":
-            component_list = lib.get(comp_type, [])
-            # Filtere das zu löschende Element heraus
-            lib[comp_type] = [
-                item for item in component_list if item.get("name") != original_name
+            lib["components"][comp_type_key] = [
+                item
+                for item in component_list
+                if item.get("templateProductInformation", {}).get("name")
+                != original_name
             ]
             message = "Bauteil erfolgreich gelöscht."
 
         else:
             return jsonify({"error": "Unbekannte Aktion"}), 400
 
-        # Schreibe die Änderungen zurück in die Datei
         with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
             json.dump(lib, f, indent=4)
 
-        # Lade die globalen Bibliotheksdaten neu
         load_library_data()
-
         return jsonify({"message": message, "library": lib})
 
     except Exception as e:
@@ -182,7 +180,7 @@ def handle_scenario(name):
         try:
             os.remove(filepath)
             return jsonify({"message": f"Szenario '{safe_name}' erfolgreich gelöscht."})
-        except FileNotFoundError:
+        except Exception as e:
             return jsonify({"error": "Szenario nicht gefunden"}), 404
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -211,7 +209,8 @@ def generate_simulation_json():
 def get_transformer_components(t, pos):
     """Extrahiert sicher die geometrischen Teile eines Wandlers."""
     components = []
-    geo = t.get("geometry", {})
+    specific_info = t.get("specificProductInformation", {})
+    geo = specific_info.get("geometry", {})
     pos_x = pos.get("x", 0)
     pos_y = pos.get("y", 0)
 
@@ -277,36 +276,45 @@ def visualize_setup():
     form_data = request.json
     svg_elements = []
 
+    all_components = library_data.get("components", {})
+    all_rails = all_components.get("copperRails", [])
+    all_transformers = all_components.get("transformers", [])
+    all_sheets = all_components.get("transformerSheets", [])
+
     for asm_data in form_data.get("assemblies", []):
         rail_name = asm_data.get("copperRailName")
         transformer_name = asm_data.get("transformerName")
         pos = asm_data.get("position", {"x": 0, "y": 0})
+
         transformer = next(
             (
                 t
-                for t in library_data.get("transformers", [])
-                if t.get("name") == transformer_name
+                for t in all_transformers
+                if t.get("templateProductInformation", {}).get("name")
+                == transformer_name
             ),
             None,
         )
         if transformer:
             svg_elements.extend(get_transformer_components(transformer, pos))
+
         rail = next(
             (
                 r
-                for r in library_data.get("copperRails", [])
-                if r.get("name") == rail_name
+                for r in all_rails
+                if r.get("templateProductInformation", {}).get("name") == rail_name
             ),
             None,
         )
         if rail:
+            geo = rail.get("specificProductInformation", {}).get("geometry", {})
             svg_elements.append(
                 {
                     "type": "rect",
-                    "x": pos.get("x", 0) - rail.get("width", 0) / 2,
-                    "y": pos.get("y", 0) - rail.get("height", 0) / 2,
-                    "width": rail.get("width", 0),
-                    "height": rail.get("height", 0),
+                    "x": pos.get("x", 0) - geo.get("width", 0) / 2,
+                    "y": pos.get("y", 0) - geo.get("height", 0) / 2,
+                    "width": geo.get("width", 0),
+                    "height": geo.get("height", 0),
                     "fill": "#b87333",
                     "label": rail_name,
                 }
@@ -318,19 +326,20 @@ def visualize_setup():
         sheet = next(
             (
                 s
-                for s in library_data.get("transformerSheets", [])
-                if s.get("name") == comp_name
+                for s in all_sheets
+                if s.get("templateProductInformation", {}).get("name") == comp_name
             ),
             None,
         )
         if sheet:
+            geo = sheet.get("specificProductInformation", {}).get("geometry", {})
             svg_elements.append(
                 {
                     "type": "rect",
-                    "x": pos.get("x", 0) - sheet.get("width", 0) / 2,
-                    "y": pos.get("y", 0) - sheet.get("height", 0) / 2,
-                    "width": sheet.get("width", 0),
-                    "height": sheet.get("height", 0),
+                    "x": pos.get("x", 0) - geo.get("width", 0) / 2,
+                    "y": pos.get("y", 0) - geo.get("height", 0) / 2,
+                    "width": geo.get("width", 0),
+                    "height": geo.get("height", 0),
                     "fill": "#a9a9a9",
                     "label": comp_name,
                 }
@@ -341,4 +350,4 @@ def visualize_setup():
 
 if __name__ == "__main__":
     load_library_data()
-    app.run(host="0.0.0.0", port=7070, debug=True)
+    app.run(port=7070, debug=True)

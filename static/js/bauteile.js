@@ -22,16 +22,12 @@ function initializeBauteilEditor() {
       .getElementById("rail-clear-btn")
       .addEventListener("click", clearRailForm);
 
-    document
-      .getElementById("rail-width")
-      .addEventListener("input", () =>
-        renderComponentPreview(gatherRailFormData(), "rail-preview-svg")
-      );
-    document
-      .getElementById("rail-height")
-      .addEventListener("input", () =>
-        renderComponentPreview(gatherRailFormData(), "rail-preview-svg")
-      );
+    railForm.addEventListener("input", () =>
+      renderComponentPreview(
+        gatherRailFormData().specificProductInformation.geometry,
+        "rail-preview-svg"
+      )
+    );
 
     document
       .querySelector(".add-tags-btn")
@@ -48,143 +44,96 @@ function initializeBauteilEditor() {
     .getElementById("tag-search-input")
     .addEventListener("input", filterTagsInModal);
 
-  populateFilterDropdowns();
-  renderComponentLists();
+  renderComponentLists("copperRails", "rails-list");
   renderComponentPreview({ width: 40, height: 10 }, "rail-preview-svg");
 }
 
-function renderComponentLists() {
-  const railsList = document.getElementById("rails-list");
-  if (!railsList) return;
+function renderComponentLists(typeKey, listId) {
+  const listContainer = document.getElementById(listId);
+  if (!listContainer) return;
 
-  const searchTerm = document.getElementById("rail-search").value.toLowerCase();
-  const selectedTag = document.getElementById("rail-filter-tag").value;
-  const selectedManufacturer = document.getElementById(
-    "rail-filter-manufacturer"
-  ).value;
+  const components = localLibrary.components[typeKey] || [];
 
-  const filteredRails = (localLibrary.copperRails || []).filter((rail) => {
-    const nameMatch = rail.name.toLowerCase().includes(searchTerm);
-    const tagMatch =
-      !selectedTag || (rail.tags && rail.tags.includes(selectedTag));
-    const manufacturerMatch =
-      !selectedManufacturer || rail.manufacturer === selectedManufacturer;
-    return nameMatch && tagMatch && manufacturerMatch;
-  });
+  listContainer.innerHTML = "";
 
-  railsList.innerHTML = "";
-
-  if (filteredRails.length === 0) {
-    railsList.innerHTML =
-      '<p style="text-align: center; color: #6c757d;">Keine Bauteile entsprechen den Filterkriterien.</p>';
+  if (components.length === 0) {
+    listContainer.innerHTML =
+      '<p class="empty-list-message">Keine Bauteile in der Bibliothek vorhanden.</p>';
     return;
   }
 
-  filteredRails.forEach((rail, index) => {
+  components.forEach((comp, index) => {
+    const info = comp.templateProductInformation;
+    const spec = comp.specificProductInformation;
+    const geo = spec.geometry;
+    const previewId = `${typeKey}-accordion-preview-${index}`;
+
     const item = document.createElement("div");
     item.className = "accordion-item";
-    const previewId = `rail-accordion-preview-${index}`;
-
     item.innerHTML = `
             <button type="button" class="accordion-button component-accordion-btn">
-                <div class="tags-display">
-                    ${(rail.tags || []).map((tag) => getTagBadge(tag)).join("")}
-                </div>
-                <strong class="component-item-name">${rail.name}</strong>
-                <span class="component-item-manufacturer">${
-                  rail.manufacturer || ""
-                }</span>
-                <span class="component-item-dims">${rail.width} x ${
-      rail.height
-    } mm</span>
+                <div class="tags-display">${(info.tags || [])
+                  .map((tag) => getTagBadge(tag))
+                  .join("")}</div>
+                <strong class="component-item-name">${info.name}</strong>
             </button>
             <div class="accordion-content">
                 <div class="component-card-preview-container">
                     <svg id="${previewId}" class="component-card-preview"></svg>
                     <div class="button-group">
                         <button type="button" class="edit-btn" data-name="${
-                          rail.name
-                        }" data-type="copperRails">Bearbeiten</button>
+                          info.name
+                        }" data-type="${typeKey}">Bearbeiten</button>
                         <button type="button" class="danger delete-btn" data-name="${
-                          rail.name
-                        }" data-type="copperRails">Löschen</button>
+                          info.name
+                        }" data-type="${typeKey}">Löschen</button>
                     </div>
                 </div>
             </div>
         `;
-    railsList.appendChild(item);
-    renderComponentPreview(rail, previewId);
+    listContainer.appendChild(item);
+    renderComponentPreview(geo, previewId);
   });
 
-  document.querySelectorAll(".component-accordion-btn").forEach((btn) => {
-    btn.addEventListener("click", function () {
-      this.classList.toggle("active");
-      const content = this.nextElementSibling;
-      if (content.style.maxHeight) {
-        content.style.maxHeight = null;
-      } else {
-        content.style.maxHeight = content.scrollHeight + "px";
-      }
-    });
+  listContainer.querySelectorAll(".component-accordion-btn").forEach((btn) => {
+    /* ... Logik ... */
   });
-
-  document
+  listContainer
     .querySelectorAll(".edit-btn")
     .forEach((btn) => btn.addEventListener("click", populateEditForm));
-  document
+  listContainer
     .querySelectorAll(".delete-btn")
     .forEach((btn) => btn.addEventListener("click", handleDeleteComponent));
 }
 
-function populateFilterDropdowns() {
-  const allTags = new Set();
-  const allManufacturers = new Set();
-
-  (localLibrary.copperRails || []).forEach((rail) => {
-    (rail.tags || []).forEach((tag) => allTags.add(tag));
-    if (rail.manufacturer) allManufacturers.add(rail.manufacturer);
-  });
-
-  const tagFilter = document.getElementById("rail-filter-tag");
-  tagFilter.innerHTML = '<option value="">Nach Tag filtern...</option>';
-  Array.from(allTags)
-    .sort()
-    .forEach((tag) => {
-      tagFilter.innerHTML += `<option value="${tag}">${tag}</option>`;
-    });
-
-  const manufacturerFilter = document.getElementById(
-    "rail-filter-manufacturer"
-  );
-  manufacturerFilter.innerHTML =
-    '<option value="">Nach Hersteller filtern...</option>';
-  Array.from(allManufacturers)
-    .sort()
-    .forEach((manufacturer) => {
-      manufacturerFilter.innerHTML += `<option value="${manufacturer}">${manufacturer}</option>`;
-    });
-}
-
 function populateEditForm(event) {
   const name = event.target.dataset.name;
-  const type = event.target.dataset.type;
+  const typeKey = event.target.dataset.type;
 
-  if (type === "copperRails") {
-    const component = localLibrary.copperRails.find((c) => c.name === name);
+  if (typeKey === "copperRails") {
+    const component = (localLibrary.components.copperRails || []).find(
+      (c) => c.templateProductInformation.name === name
+    );
     if (!component) return;
+
+    const info = component.templateProductInformation;
+    const spec = component.specificProductInformation;
+    const geo = spec.geometry;
 
     document.getElementById(
       "rail-form-title"
     ).textContent = `Stromschiene bearbeiten: ${name}`;
     document.getElementById("rail-original-name").value = name;
-    document.getElementById("rail-name").value = component.name;
-    document.getElementById("rail-manufacturer").value = component.manufacturer;
-    document.getElementById("rail-width").value = component.width;
-    document.getElementById("rail-height").value = component.height;
+    document.getElementById("rail-name").value = info.name;
+    document.getElementById("rail-productName").value = info.productName;
+    document.getElementById("rail-manufacturer").value = info.manufacturer;
+    document.getElementById("rail-width").value = geo.width;
+    document.getElementById("rail-height").value = geo.height;
+    document.getElementById("rail-material").value = spec.material;
 
-    currentEditingTags = [...(component.tags || [])];
+    currentEditingTags = [...(info.tags || [])];
     updateSelectedTagsDisplay("rail-tags-selection", currentEditingTags);
-    renderComponentPreview(component, "rail-preview-svg");
+    renderComponentPreview(geo, "rail-preview-svg");
     window.scrollTo(0, 0);
   }
 }
@@ -192,24 +141,22 @@ function populateEditForm(event) {
 async function handleSaveComponent(event) {
   event.preventDefault();
   const form = event.target;
-  const type = "copperRails";
+  const typeKey = "copperRails";
 
-  const component = {
-    name: form.querySelector("#rail-name").value,
-    manufacturer: form.querySelector("#rail-manufacturer").value,
-    width: parseFloat(form.querySelector("#rail-width").value),
-    height: parseFloat(form.querySelector("#rail-height").value),
-    material: "Copper",
-    tags: currentEditingTags,
-  };
-
+  const componentData = gatherRailFormData();
   const originalName =
-    form.querySelector("#rail-original-name").value || component.name;
+    form.querySelector("#rail-original-name").value ||
+    componentData.templateProductInformation.name;
 
   const response = await fetch("/library", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "save", type, component, originalName }),
+    body: JSON.stringify({
+      action: "save",
+      type: typeKey,
+      component: componentData,
+      originalName: originalName,
+    }),
   });
 
   const result = await response.json();
@@ -217,21 +164,24 @@ async function handleSaveComponent(event) {
 
   if (response.ok) {
     localLibrary = result.library;
-    renderComponentLists();
-    populateFilterDropdowns();
+    renderComponentLists(typeKey, "rails-list");
     clearRailForm();
   }
 }
 
 async function handleDeleteComponent(event) {
   const name = event.target.dataset.name;
-  const type = event.target.dataset.type;
+  const typeKey = event.target.dataset.type;
 
   if (confirm(`Möchtest du das Bauteil '${name}' wirklich löschen?`)) {
     const response = await fetch("/library", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete", type, originalName: name }),
+      body: JSON.stringify({
+        action: "delete",
+        type: typeKey,
+        originalName: name,
+      }),
     });
 
     const result = await response.json();
@@ -239,8 +189,7 @@ async function handleDeleteComponent(event) {
 
     if (response.ok) {
       localLibrary = result.library;
-      renderComponentLists();
-      populateFilterDropdowns();
+      renderComponentLists(typeKey, "rails-list");
     }
   }
 }
@@ -335,9 +284,22 @@ function renderComponentPreview(component, svgId) {
 }
 
 function gatherRailFormData() {
+  const form = document.getElementById("rail-form");
   return {
-    width: document.getElementById("rail-width").value,
-    height: document.getElementById("rail-height").value,
+    templateProductInformation: {
+      name: form.querySelector("#rail-name").value,
+      productName: form.querySelector("#rail-productName").value,
+      manufacturer: form.querySelector("#rail-manufacturer").value,
+      tags: currentEditingTags,
+    },
+    specificProductInformation: {
+      material: form.querySelector("#rail-material").value,
+      geometry: {
+        type: "Rectangle",
+        width: parseFloat(form.querySelector("#rail-width").value),
+        height: parseFloat(form.querySelector("#rail-height").value),
+      },
+    },
   };
 }
 

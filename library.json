@@ -113,6 +113,36 @@
                         "innerHeight": -7.3
                     }
                 }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "Test",
+                    "productName": "Test",
+                    "manufacturer": "Test",
+                    "tags": [],
+                    "uniqueNumber": "b758c"
+                },
+                "specificProductInformation": {
+                    "coreMaterial": "M-36 Steel",
+                    "gapMaterial": "Air",
+                    "depth": 30,
+                    "electrical": {
+                        "primaryRatedCurrentA": 5000,
+                        "secondaryRatedCurrentA": 1,
+                        "burdenVA": 10
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "outerAirWidth": 65,
+                        "outerAirHeight": 35,
+                        "coreOuterWidth": 60,
+                        "coreOuterHeight": 30,
+                        "coreInnerWidth": 55,
+                        "coreInnerHeight": 25,
+                        "innerWidth": 50,
+                        "innerHeight": 20
+                    }
+                }
             }
         ],
         "transformerSheets": [
@@ -129,6 +159,23 @@
                         "type": "Rectangle",
                         "width": 200,
                         "height": 5
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "5",
+                    "productName": "",
+                    "manufacturer": "Standard",
+                    "tags": [],
+                    "uniqueNumber": "00120"
+                },
+                "specificProductInformation": {
+                    "material": "M-36 Steel",
+                    "geometry": {
+                        "type": "Rectangle",
+                        "width": null,
+                        "height": null
                     }
                 }
             }

@@ -39,7 +39,10 @@
             <div class="component-editor">
 
                 <div class="component-preview">
-                    <h3>Live-Vorschau</h3>
+                    <div class="preview-header">
+                        <h3>Live-Vorschau</h3>
+                        <button id="zoom-preview-btn" title="Vorschau vergrößern">🔍</button>
+                    </div>
                     <svg id="rail-preview-svg"></svg>
                 </div>
 
@@ -144,6 +147,13 @@
             <p>Dieser Bereich wird in Kürze implementiert.</p>
         </div>
 
+    </div>
+</div>
+
+<div id="preview-modal-overlay" class="modal-overlay" style="display: none;">
+    <div class="preview-modal-content">
+        <button id="preview-modal-close" class="modal-close-btn">&times;</button>
+        <svg id="modal-preview-svg"></svg>
     </div>
 </div>
 

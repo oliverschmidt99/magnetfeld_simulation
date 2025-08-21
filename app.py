@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
@@ -7,13 +8,15 @@ app = Flask(__name__)
 # Pfade für die Konfigurationsdateien
 CONFIG_DIR = "conf"
 LIBRARY_FILE = "library.json"
+TAGS_FILE = "tags.json"  # Neue Datei für Tags
 
-# Stelle sicher, dass der conf-Ordner existiert
+# Stelle sicher, dass die Ordner existieren
 if not os.path.exists(CONFIG_DIR):
     os.makedirs(CONFIG_DIR)
 
-# Globale Variable zum Speichern der Bibliotheksdaten
+# Globale Variablen zum Speichern der Daten
 library_data = {}
+tags_data = {}
 
 
 def load_library_data():
@@ -23,9 +26,6 @@ def load_library_data():
         with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
             library_data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        print(
-            f"Warnung: '{LIBRARY_FILE}' nicht gefunden oder fehlerhaft. Erstelle leere Bibliothek."
-        )
         library_data = {
             "components": {
                 "copperRails": [],
@@ -35,38 +35,84 @@ def load_library_data():
         }
 
 
+def load_tags_data():
+    """Lädt die Tag-Daten aus der tags.json."""
+    global tags_data
+    try:
+        with open(TAGS_FILE, "r", encoding="utf-8") as f:
+            tags_data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        tags_data = {"categories": []}
+
+
+def save_tags_data():
+    """Speichert die Tag-Daten in die tags.json."""
+    with open(TAGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(tags_data, f, indent=4)
+
+
+def generate_unique_id():
+    """Erzeugt eine 5-stellige hexadezimale ID."""
+    return secrets.token_hex(3)[:5]
+
+
+@app.before_request
+def before_first_request():
+    load_library_data()
+    load_tags_data()
+
+
 @app.route("/")
 def index():
-    """Rendert die Startseite."""
     return render_template("index.html")
 
 
 @app.route("/configurator")
 def configurator():
-    """Rendert die Konfigurator-Seite."""
-    if not library_data:
-        load_library_data()
     return render_template("configurator.html", library=library_data)
 
 
 @app.route("/bauteile")
 def bauteile():
-    """Rendert die neue Seite für den Bauteil-Editor."""
-    if not library_data:
-        load_library_data()
     return render_template("bauteile.html", library=library_data)
+
+
+@app.route("/settings")
+def settings():
+    """Rendert die neue Einstellungsseite."""
+    return render_template("settings.html")
 
 
 @app.route("/simulation")
 def simulation():
-    """Rendert die Simulations-Konfigurationsseite."""
     return render_template("simulation.html")
 
 
 @app.route("/analysis")
 def analysis():
-    """Rendert die Analyse-Seite."""
     return render_template("analysis.html")
+
+
+# --- API für Tags ---
+
+
+@app.route("/api/tags", methods=["GET"])
+def get_tags():
+    """Gibt die komplette Tag-Struktur zurück."""
+    return jsonify(tags_data)
+
+
+@app.route("/api/tags", methods=["POST"])
+def update_tags():
+    """Zentrale Funktion zum Aktualisieren der Tags."""
+    global tags_data
+    try:
+        data = request.json
+        tags_data = data
+        save_tags_data()
+        return jsonify({"message": "Tags erfolgreich aktualisiert.", "tags": tags_data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # --- Route zur Verwaltung der Bauteil-Bibliothek ---
@@ -92,18 +138,32 @@ def update_library():
 
         if action == "save":
             existing_index = -1
-            for i, item in enumerate(component_list):
-                if (
-                    item.get("templateProductInformation", {}).get("name")
-                    == original_name
-                ):
-                    existing_index = i
-                    break
+            if original_name:
+                for i, item in enumerate(component_list):
+                    if (
+                        item.get("templateProductInformation", {}).get("name")
+                        == original_name
+                    ):
+                        existing_index = i
+                        break
 
             if existing_index != -1:
+                # Behalte die alte uniqueNumber, falls vorhanden, sonst erstelle eine neue
+                uid = (
+                    component_list[existing_index]
+                    .get("templateProductInformation", {})
+                    .get("uniqueNumber")
+                )
+                if not uid:
+                    uid = generate_unique_id()
+                component_data["templateProductInformation"]["uniqueNumber"] = uid
                 component_list[existing_index] = component_data
                 message = "Bauteil erfolgreich aktualisiert."
             else:
+                # Füge eine neue uniqueNumber hinzu
+                component_data["templateProductInformation"][
+                    "uniqueNumber"
+                ] = generate_unique_id()
                 component_list.append(component_data)
                 message = "Bauteil erfolgreich hinzugefügt."
 
@@ -180,7 +240,7 @@ def handle_scenario(name):
         try:
             os.remove(filepath)
             return jsonify({"message": f"Szenario '{safe_name}' erfolgreich gelöscht."})
-        except Exception as e:
+        except FileNotFoundError:
             return jsonify({"error": "Szenario nicht gefunden"}), 404
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -349,5 +409,4 @@ def visualize_setup():
 
 
 if __name__ == "__main__":
-    load_library_data()
     app.run(port=7070, debug=True)

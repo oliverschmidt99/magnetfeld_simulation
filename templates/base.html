@@ -41,6 +41,11 @@
                     class="{{ 'active' if request.endpoint == 'analysis' else '' }}">Analyse</a>
             </div>
 
+            <div class="nav-item">
+                <a href="{{ url_for('settings') }}"
+                    class="{{ 'active' if request.endpoint == 'settings' else '' }}">Einstellungen</a>
+            </div>
+
             <div class="nav-slider"></div>
         </nav>
 

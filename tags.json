@@ -1,0 +1,70 @@
+{
+    "categories": [
+        {
+            "name": "Hersteller",
+            "tags": [
+                {
+                    "name": "310_CELSA",
+                    "color": "#A0C4FF"
+                },
+                {
+                    "color": "#FFD6A5",
+                    "name": "320_MBS"
+                },
+                {
+                    "color": "#C65911",
+                    "name": "330_Ritz"
+                },
+                {
+                    "color": "#305496",
+                    "name": "340_Redur"
+                }
+            ]
+        },
+        {
+            "name": "Strom",
+            "tags": [
+                {
+                    "color": "#FFADAD",
+                    "name": "600 A"
+                },
+                {
+                    "color": "#FFD6A5",
+                    "name": "800 A"
+                },
+                {
+                    "color": "#FDFFB6",
+                    "name": "1000 A"
+                },
+                {
+                    "color": "#CAFFBF",
+                    "name": "1250 A"
+                },
+                {
+                    "color": "#9BF6FF",
+                    "name": "1600 A"
+                },
+                {
+                    "color": "#A0C4FF",
+                    "name": "2000 A"
+                },
+                {
+                    "color": "#BDB2FF",
+                    "name": "2500 A"
+                },
+                {
+                    "color": "#FFC6FF",
+                    "name": "3200 A"
+                },
+                {
+                    "color": "#FFADAD",
+                    "name": "4000 A"
+                },
+                {
+                    "color": "#FFD6A5",
+                    "name": "5000 A"
+                }
+            ]
+        }
+    ]
+}

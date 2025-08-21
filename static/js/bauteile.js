@@ -6,8 +6,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 let localLibrary = {};
 let currentEditingTags = [];
+// let allTagsData = {}; // DIESE ZEILE WURDE ENTFERNT, UM DEN FEHLER ZU BEHEBEN
 
-function initializeBauteilEditor() {
+async function initializeBauteilEditor() {
+  await loadTags(); // Lade die Tags, bevor der Editor initialisiert wird
+
   const libraryDataElement = document.getElementById("library-data");
   localLibrary = libraryDataElement
     ? JSON.parse(libraryDataElement.textContent)
@@ -27,12 +30,26 @@ function initializeBauteilEditor() {
       renderComponentPreview(geoData, "rail-preview-svg");
     });
 
-    // Fehlerbehebung: Suche den Button innerhalb des Formulars
     const addTagsBtn = railForm.querySelector(".add-tags-btn");
     if (addTagsBtn) {
       addTagsBtn.addEventListener("click", openTagModal);
     }
   }
+
+  document.getElementById("zoom-preview-btn").addEventListener("click", () => {
+    const geoData = gatherRailFormData().specificProductInformation.geometry;
+    const modal = document.getElementById("preview-modal-overlay");
+    const svg = document.getElementById("modal-preview-svg");
+    modal.style.display = "flex";
+    renderComponentPreview(geoData, "modal-preview-svg", true); // Mit Gitter rendern
+    enablePanZoom(svg);
+  });
+
+  document
+    .getElementById("preview-modal-close")
+    .addEventListener("click", () => {
+      document.getElementById("preview-modal-overlay").style.display = "none";
+    });
 
   const modalCancelBtn = document.getElementById("modal-cancel-btn");
   if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeTagModal);
@@ -45,7 +62,7 @@ function initializeBauteilEditor() {
     tagSearchInput.addEventListener("input", filterTagsInModal);
 
   renderComponentLists("copperRails", "rails-list");
-  renderComponentPreview({ width: 40, height: 10 }, "rail-preview-svg");
+  renderComponentPreview({ width: 40, height: 10 }, "rail-preview-svg", true);
 }
 
 function renderComponentLists(typeKey, listId) {
@@ -133,17 +150,26 @@ function populateEditForm(event) {
       "rail-form-title"
     ).textContent = `Stromschiene bearbeiten: ${name}`;
     document.getElementById("rail-original-name").value = name;
+    document.getElementById("rail-form").dataset.uniqueNumber =
+      info.uniqueNumber || "";
 
     // Allgemeine Produktinformationen
     document.getElementById("rail-name").value = info.name || "";
     document.getElementById("rail-productName").value = info.productName || "";
     document.getElementById("rail-manufacturer").value =
       info.manufacturer || "";
+    document.getElementById("rail-manufacturerNumber").value =
+      info.manufacturerNumber || "";
+    document.getElementById("rail-companyNumber").value =
+      info.companyNumber || "";
     document.getElementById("rail-eanNumber").value = info.eanNumber || "";
+    document.getElementById("rail-additionalInfo").value =
+      info.additionalInfo || "";
     document.getElementById("rail-sellingPrice").value =
       info.sellingPrice || "";
     document.getElementById("rail-purchasePrice").value =
       info.purchasePrice || "";
+    document.getElementById("rail-condition").value = info.condition || "new";
 
     // Spezifische Produktinformationen
     document.getElementById("rail-voltage").value = electric.voltage || "";
@@ -222,24 +248,14 @@ function renderTagSelectors() {
   if (!container) return;
   container.innerHTML = "";
 
-  let manufacturerHtml = '<div class="tag-group"><strong>Hersteller</strong>';
-  for (const [name, color] of Object.entries(PREDEFINED_TAGS.manufacturer)) {
-    manufacturerHtml += `<span class="tag-badge" style="background-color: ${color}; color: ${getTextColor(
-      color
-    )};">${name}</span>`;
-  }
-  manufacturerHtml += "</div>";
-  container.innerHTML += manufacturerHtml;
-
-  const currentColors = generateColorPalette(PREDEFINED_TAGS.current.length);
-  let currentHtml = '<div class="tag-group"><strong>Strom</strong>';
-  PREDEFINED_TAGS.current.forEach((current, index) => {
-    currentHtml += `<span class="tag-badge" style="background-color: ${
-      currentColors[index]
-    }; color: ${getTextColor(currentColors[index])};">${current}</span>`;
+  (allTagsData.categories || []).forEach((category) => {
+    let categoryHtml = `<div class="tag-group"><strong>${category.name}</strong>`;
+    (category.tags || []).forEach((tag) => {
+      categoryHtml += getTagBadge(tag.name);
+    });
+    categoryHtml += "</div>";
+    container.innerHTML += categoryHtml;
   });
-  currentHtml += "</div>";
-  container.innerHTML += currentHtml;
 }
 
 function updateSelectedTagsDisplay(containerId, tags) {
@@ -249,20 +265,23 @@ function updateSelectedTagsDisplay(containerId, tags) {
 
   if (tags.length > 0) {
     tags.forEach((tag) => {
-      const badge = document.createElement("span");
-      badge.innerHTML = getTagBadge(tag);
-      const badgeElement = badge.firstElementChild;
+      const badgeHTML = getTagBadge(tag);
+      const badgeWrapper = document.createElement("span");
+      badgeWrapper.innerHTML = badgeHTML;
+      const badgeElement = badgeWrapper.firstElementChild;
 
-      const removeBtn = document.createElement("span");
-      removeBtn.className = "remove-tag";
-      removeBtn.innerHTML = "&times;";
-      removeBtn.onclick = (e) => {
-        e.stopPropagation();
-        currentEditingTags = currentEditingTags.filter((t) => t !== tag);
-        renderTagsInModal(currentEditingTags);
-      };
+      if (containerId === "modal-selected-tags") {
+        const removeBtn = document.createElement("span");
+        removeBtn.className = "remove-tag";
+        removeBtn.innerHTML = "&times;";
+        removeBtn.onclick = (e) => {
+          e.stopPropagation();
+          currentEditingTags = currentEditingTags.filter((t) => t !== tag);
+          renderTagsInModal(currentEditingTags);
+        };
+        badgeElement.appendChild(removeBtn);
+      }
 
-      badgeElement.appendChild(removeBtn);
       displayContainer.appendChild(badgeElement);
     });
   }
@@ -277,7 +296,7 @@ function updateSelectedTagsDisplay(containerId, tags) {
   }
 }
 
-function renderComponentPreview(component, svgId) {
+function renderComponentPreview(component, svgId, withGrid = false) {
   const svg = document.getElementById(svgId);
   if (!svg) return;
   svg.innerHTML = "";
@@ -285,38 +304,202 @@ function renderComponentPreview(component, svgId) {
   const width = parseFloat(component.width) || 0;
   const height = parseFloat(component.height) || 0;
 
+  const padding = 50;
+  const viewWidth = (width > 0 ? width : 100) + 2 * padding;
+  const viewHeight = (height > 0 ? height : 100) + 2 * padding;
+
+  svg.setAttribute("viewBox", `0 0 ${viewWidth} ${viewHeight}`);
+
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  defs.innerHTML = `
+        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>
+        <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+            <path d="M 10 0 L 0 0 0 10" fill="none" class="grid-line" />
+        </pattern>
+        <pattern id="grid-major" width="50" height="50" patternUnits="userSpaceOnUse">
+            <rect width="50" height="50" fill="url(#grid)" />
+            <path d="M 50 0 L 0 0 0 50" fill="none" class="grid-line-major" />
+        </pattern>
+    `;
+  svg.appendChild(defs);
+
+  if (withGrid) {
+    const gridRect = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "rect"
+    );
+    gridRect.setAttribute("width", "100%");
+    gridRect.setAttribute("height", "100%");
+    gridRect.setAttribute("fill", "url(#grid-major)");
+    svg.appendChild(gridRect);
+  }
+
   if (width <= 0 || height <= 0) return;
 
-  const padding = 20;
-  const svgWidth = Math.max(width, height) + 2 * padding;
-  const svgHeight = svgWidth;
-
-  svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
-
   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  const x = (svgWidth - width) / 2;
-  const y = (svgHeight - height) / 2;
-
-  rect.setAttribute("x", x);
-  rect.setAttribute("y", y);
+  const rectX = (viewWidth - width) / 2;
+  const rectY = (viewHeight - height) / 2;
+  rect.setAttribute("x", rectX);
+  rect.setAttribute("y", rectY);
   rect.setAttribute("width", width);
   rect.setAttribute("height", height);
   rect.setAttribute("fill", "#b87333");
   rect.setAttribute("stroke", "#343a40");
-  rect.setAttribute("stroke-width", "1");
+  rect.setAttribute("stroke-width", "0.5");
   svg.appendChild(rect);
+
+  const createDimension = (p1, p2, p3, p4, text) => {
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("class", "dimension");
+
+    const extLine1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "line"
+    );
+    extLine1.setAttribute("x1", p1.x);
+    extLine1.setAttribute("y1", p1.y);
+    extLine1.setAttribute("x2", p3.x);
+    extLine1.setAttribute("y2", p3.y);
+    group.appendChild(extLine1);
+
+    const extLine2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "line"
+    );
+    extLine2.setAttribute("x1", p2.x);
+    extLine2.setAttribute("y1", p2.y);
+    extLine2.setAttribute("x2", p4.x);
+    extLine2.setAttribute("y2", p4.y);
+    group.appendChild(extLine2);
+
+    const dimLine = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "line"
+    );
+    dimLine.setAttribute("x1", p3.x);
+    dimLine.setAttribute("y1", p3.y);
+    dimLine.setAttribute("x2", p4.x);
+    dimLine.setAttribute("y2", p4.y);
+    dimLine.setAttribute("marker-start", "url(#arrow)");
+    dimLine.setAttribute("marker-end", "url(#arrow)");
+    group.appendChild(dimLine);
+
+    const textElem = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "text"
+    );
+    textElem.textContent = text;
+    const textX = p3.x + (p4.x - p3.x) / 2;
+    const textY = p3.y + (p4.y - p3.y) / 2;
+
+    if (p3.x === p4.x) {
+      textElem.setAttribute("x", textX - 5);
+      textElem.setAttribute("y", textY);
+      textElem.setAttribute("text-anchor", "end");
+      textElem.setAttribute("dominant-baseline", "middle");
+    } else {
+      textElem.setAttribute("x", textX);
+      textElem.setAttribute("y", textY - 5);
+      textElem.setAttribute("text-anchor", "middle");
+    }
+    group.appendChild(textElem);
+    svg.appendChild(group);
+  };
+
+  const offset = 25;
+  createDimension(
+    { x: rectX, y: rectY + height },
+    { x: rectX + width, y: rectY + height },
+    { x: rectX, y: rectY + height + offset },
+    { x: rectX + width, y: rectY + height + offset },
+    `${width} mm`
+  );
+
+  createDimension(
+    { x: rectX + width, y: rectY },
+    { x: rectX + width, y: rectY + height },
+    { x: rectX + width + offset, y: rectY },
+    { x: rectX + width + offset, y: rectY + height },
+    `${height} mm`
+  );
+}
+
+function enablePanZoom(svg) {
+  let pan = false;
+  let point = { x: 0, y: 0 };
+  let viewbox = { x: 0, y: 0, w: svg.clientWidth, h: svg.clientHeight };
+  const viewBoxAttr = svg.getAttribute("viewBox").split(" ").map(Number);
+  viewbox.x = viewBoxAttr[0];
+  viewbox.y = viewBoxAttr[1];
+  viewbox.w = viewBoxAttr[2];
+  viewbox.h = viewBoxAttr[3];
+
+  svg.addEventListener("mousedown", (e) => {
+    pan = true;
+    point.x = e.clientX;
+    point.y = e.clientY;
+  });
+
+  svg.addEventListener("mousemove", (e) => {
+    if (!pan) return;
+    const dx = e.clientX - point.x;
+    const dy = e.clientY - point.y;
+    viewbox.x -= dx * (viewbox.w / svg.clientWidth);
+    viewbox.y -= dy * (viewbox.h / svg.clientHeight);
+    svg.setAttribute(
+      "viewBox",
+      `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
+    );
+    point.x = e.clientX;
+    point.y = e.clientY;
+  });
+
+  svg.addEventListener("mouseup", () => {
+    pan = false;
+  });
+  svg.addEventListener("mouseleave", () => {
+    pan = false;
+  });
+
+  svg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const w = viewbox.w;
+    const h = viewbox.h;
+    const mx = e.offsetX;
+    const my = e.offsetY;
+    const dw = w * Math.sign(e.deltaY) * 0.1;
+    const dh = h * Math.sign(e.deltaY) * 0.1;
+    const dx = (dw * mx) / svg.clientWidth;
+    const dy = (dh * my) / svg.clientHeight;
+    viewbox = {
+      x: viewbox.x + dx,
+      y: viewbox.y + dy,
+      w: viewbox.w - dw,
+      h: viewbox.h - dh,
+    };
+    svg.setAttribute(
+      "viewBox",
+      `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
+    );
+  });
 }
 
 function gatherRailFormData() {
   const form = document.getElementById("rail-form");
-  return {
+  const uniqueNumber = form.dataset.uniqueNumber || null;
+
+  const data = {
     templateProductInformation: {
       name: form.querySelector("#rail-name").value,
       productName: form.querySelector("#rail-productName").value,
       manufacturer: form.querySelector("#rail-manufacturer").value,
+      manufacturerNumber: form.querySelector("#rail-manufacturerNumber").value,
+      companyNumber: form.querySelector("#rail-companyNumber").value,
       eanNumber: form.querySelector("#rail-eanNumber").value,
+      additionalInfo: form.querySelector("#rail-additionalInfo").value,
       sellingPrice: form.querySelector("#rail-sellingPrice").value,
       purchasePrice: form.querySelector("#rail-purchasePrice").value,
+      condition: form.querySelector("#rail-condition").value,
       tags: currentEditingTags,
     },
     specificProductInformation: {
@@ -327,12 +510,19 @@ function gatherRailFormData() {
       },
       geometry: {
         type: "Rectangle",
+        material: "Copper",
         length: parseFloat(form.querySelector("#rail-length").value),
         width: parseFloat(form.querySelector("#rail-width").value),
         height: parseFloat(form.querySelector("#rail-height").value),
       },
     },
   };
+
+  if (uniqueNumber) {
+    data.templateProductInformation.uniqueNumber = uniqueNumber;
+  }
+
+  return data;
 }
 
 function clearRailForm() {
@@ -341,6 +531,7 @@ function clearRailForm() {
   document.getElementById("rail-original-name").value = "";
   document.getElementById("rail-form-title").textContent =
     "Neue Stromschiene erstellen";
+  form.dataset.uniqueNumber = "";
   currentEditingTags = [];
   updateSelectedTagsDisplay("rail-tags-selection", currentEditingTags);
   renderComponentPreview({ width: 40, height: 10 }, "rail-preview-svg");
@@ -362,26 +553,34 @@ function saveTagsFromModal() {
 }
 
 function renderTagsInModal(selectedTags = []) {
-  const container = document.getElementById("modal-tag-list");
-  if (!container) return;
+  const mainListContainer = document.getElementById("modal-tag-list");
+  if (!mainListContainer) return;
+  mainListContainer.innerHTML = "";
 
-  renderTagSelectors();
+  (allTagsData.categories || []).forEach((category) => {
+    let categoryHtml = `<div class="tag-group"><strong>${category.name}</strong>`;
+    (category.tags || []).forEach((tag) => {
+      categoryHtml += getTagBadge(tag.name);
+    });
+    categoryHtml += "</div>";
+    mainListContainer.innerHTML += categoryHtml;
+  });
+
   updateSelectedTagsDisplay("modal-selected-tags", selectedTags);
 
-  container.querySelectorAll(".tag-badge").forEach((badge) => {
-    const tagName = badge.textContent;
+  mainListContainer.querySelectorAll(".tag-badge").forEach((badge) => {
+    const tagName = badge.textContent.trim();
     if (selectedTags.includes(tagName)) {
       badge.classList.add("selected");
     }
+
     badge.addEventListener("click", () => {
       if (currentEditingTags.includes(tagName)) {
         currentEditingTags = currentEditingTags.filter((t) => t !== tagName);
-        badge.classList.remove("selected");
       } else {
         currentEditingTags.push(tagName);
-        badge.classList.add("selected");
       }
-      updateSelectedTagsDisplay("modal-selected-tags", currentEditingTags);
+      renderTagsInModal(currentEditingTags);
     });
   });
 }

@@ -13,15 +13,23 @@
 <div class="container">
     <div class="analysis-controls">
         <div class="form-group">
-            <label for="run-select">Simulationslauf auswählen:</label>
-            <select id="run-select"></select>
+            <label for="run-select">1. Simulationslauf auswählen:</label>
+            <select id="run-select">
+                <option value="">-- Bitte auswählen --</option>
+            </select>
         </div>
         <div class="form-group">
-            <label for="angle-slider" id="angle-label">Phasenwinkel: 0°</label>
-            <input type="range" id="angle-slider" min="0" max="180" step="15" value="0" disabled>
+            <label for="file-select">2. Ergebnisdatei auswählen:</label>
+            <select id="file-select" disabled>
+                <option value="">-- Wähle zuerst einen Lauf --</option>
+            </select>
         </div>
     </div>
+    <hr>
     <div id="visualization-container">
+        <div id="visualization-placeholder">
+            <p>Wähle einen Simulationslauf und eine Ergebnisdatei aus, um die Visualisierung anzuzeigen.</p>
+        </div>
         <svg id="analysis-svg"></svg>
     </div>
 </div>

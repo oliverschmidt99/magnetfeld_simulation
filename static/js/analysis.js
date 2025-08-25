@@ -4,18 +4,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-let currentRunData = null;
-
 async function initializeAnalysisPage() {
   const runSelect = document.getElementById("run-select");
-  const angleSlider = document.getElementById("angle-slider");
-  const angleLabel = document.getElementById("angle-label");
+  const fileSelect = document.getElementById("file-select");
+  const placeholder = document.getElementById("visualization-placeholder");
 
   // Lade die verfügbaren Simulationsläufe
   try {
     const response = await fetch("/analysis/runs");
     const runs = await response.json();
-    runSelect.innerHTML = '<option value="">-- Lauf auswählen --</option>';
     runs.forEach((run) => {
       const option = document.createElement("option");
       option.value = run;
@@ -26,54 +23,81 @@ async function initializeAnalysisPage() {
     console.error("Simulationsläufe konnten nicht geladen werden:", e);
   }
 
+  // Event Listener für die Auswahl des Simulationslaufs
   runSelect.addEventListener("change", async () => {
     const runDir = runSelect.value;
-    if (!runDir) {
+    clearVisualization();
+    fileSelect.innerHTML =
+      '<option value="">-- Wähle zuerst einen Lauf --</option>';
+    fileSelect.disabled = true;
+
+    if (!runDir) return;
+
+    // Lade die Dateiliste für den ausgewählten Lauf
+    try {
+      const response = await fetch(`/analysis/files/${runDir}`);
+      const files = await response.json();
+
+      if (files.length > 0) {
+        fileSelect.innerHTML =
+          '<option value="">-- Ergebnisdatei auswählen --</option>';
+        files.forEach((file) => {
+          const option = document.createElement("option");
+          option.value = file;
+          option.textContent = file;
+          fileSelect.appendChild(option);
+        });
+        fileSelect.disabled = false;
+      } else {
+        fileSelect.innerHTML =
+          '<option value="">-- Keine .ans-Dateien gefunden --</option>';
+      }
+    } catch (e) {
+      console.error("Dateiliste konnte nicht geladen werden:", e);
+      fileSelect.innerHTML =
+        '<option value="">-- Fehler beim Laden --</option>';
+    }
+  });
+
+  // Event Listener für die Auswahl der Ergebnisdatei
+  fileSelect.addEventListener("change", () => {
+    const runDir = runSelect.value;
+    const filename = fileSelect.value;
+    if (!runDir || !filename) {
       clearVisualization();
       return;
     }
-    angleSlider.disabled = false;
-    await loadAndDrawAngle(runDir, angleSlider.value);
-  });
-
-  angleSlider.addEventListener("input", () => {
-    const runDir = runSelect.value;
-    const angle = angleSlider.value;
-    angleLabel.textContent = `Phasenwinkel: ${angle}°`;
-    if (runDir) {
-      loadAndDrawAngle(runDir, angle);
-    }
+    placeholder.style.display = "none";
+    loadAndDrawFile(runDir, filename);
   });
 }
 
 function clearVisualization() {
-  const svg = d3.select("#analysis-svg");
-  svg.selectAll("*").remove();
-  document.getElementById("angle-slider").disabled = true;
-  document.getElementById("angle-label").textContent = "Phasenwinkel: 0°";
+  d3.select("#analysis-svg").selectAll("*").remove();
+  document.getElementById("visualization-placeholder").style.display = "block";
 }
 
-async function loadAndDrawAngle(runDir, angle) {
+async function loadAndDrawFile(runDir, filename) {
   try {
-    // KORRIGIERT: Robuste Erstellung des Dateinamens.
-    // Wir nehmen jetzt einfach den Teil des Verzeichnisnamens nach dem "/"
-    const baseFilename = runDir.split("/")[1];
-    const filename = `${baseFilename}_angle${angle}deg.ans`;
     const filepath = `${runDir}/femm_files/${filename}`;
-
     const response = await fetch(`/analysis/data/${filepath}`);
-    if (!response.ok)
-      throw new Error(
-        `Datei nicht gefunden oder Serverfehler: ${response.statusText}`
-      );
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || `Serverfehler: ${response.statusText}`);
+    }
 
     const data = await response.json();
+    if (!data.nodes || data.nodes.length === 0) {
+      throw new Error(
+        "Die vom Server empfangenen Daten enthalten keine Knotenpunkte."
+      );
+    }
     drawVisualization(data);
   } catch (error) {
     console.error("Fehler beim Laden oder Zeichnen der Visualisierung:", error);
-    d3.select("#analysis-svg").html(
-      `<text x="20" y="40" fill="red">Fehler: ${error.message}</text>`
-    );
+    clearVisualization();
+    const placeholder = document.getElementById("visualization-placeholder");
+    placeholder.innerHTML = `<p style="color: red;"><strong>Fehler:</strong> ${error.message}</p>`;
   }
 }
 
@@ -81,24 +105,25 @@ function drawVisualization(data) {
   const svg = d3.select("#analysis-svg");
   svg.selectAll("*").remove();
 
-  const margin = { top: 20, right: 20, bottom: 20, left: 20 };
-  const width =
-    svg.node().getBoundingClientRect().width - margin.left - margin.right;
-
   // Finde die Grenzen der Geometrie, um die Skalierung zu bestimmen
   const xExtent = d3.extent(data.nodes, (d) => d[0]);
   const yExtent = d3.extent(data.nodes, (d) => d[1]);
+
+  // Überprüfe, ob die Grenzen gültig sind
+  if (xExtent.includes(undefined) || yExtent.includes(undefined)) {
+    console.error("Ungültige Geometriegrenzen, Visualisierung abgebrochen.");
+    return;
+  }
+
   const geoWidth = xExtent[1] - xExtent[0];
   const geoHeight = yExtent[1] - yExtent[0];
-
-  const height = width * (geoHeight / geoWidth);
 
   svg.attr("viewBox", `${xExtent[0]} ${yExtent[0]} ${geoWidth} ${geoHeight}`);
 
   const g = svg.append("g");
 
   // Skala für die Farbgebung basierend auf der Flussdichte (B)
-  const bMax = d3.max(data.elements, (d) => d.b_mag);
+  const bMax = d3.max(data.elements, (d) => d.b_mag) || 1;
   const colorScale = d3
     .scaleSequential(d3.interpolateViridis)
     .domain([0, bMax]);
@@ -113,9 +138,7 @@ function drawVisualization(data) {
       (d) =>
         `M ${d.nodes[0][0]},${d.nodes[0][1]} L ${d.nodes[1][0]},${d.nodes[1][1]} L ${d.nodes[2][0]},${d.nodes[2][1]} Z`
     )
-    .attr("fill", (d) => colorScale(d.b_mag))
-    .attr("stroke", "#555")
-    .attr("stroke-width", 0.05);
+    .attr("fill", (d) => colorScale(d.b_mag));
 
   // Zeichne die Feldlinien (Isolinien des Vektorpotenzials A)
   g.selectAll("path.fieldline")

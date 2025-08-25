@@ -16,7 +16,8 @@ function plotResults(csvFile, resultsPath, baseFilename)
     for i = 1:numConductors
         conductorName = uniqueConductors{i};
         conductorData = data(strcmp(data.conductor, conductorName), :);
-        plot(conductorData.phaseAngle, abs(conductorData.iSecFinalA), markers{mod(i - 1, length(markers)) + 1}, ...
+        % KORRIGIERT: 'iSecFinalA' zu 'iSecAbs_A' geändert, um dem neuen Spaltennamen zu entsprechen.
+        plot(conductorData.phaseAngle, abs(conductorData.iSecAbs_A), markers{mod(i - 1, length(markers)) + 1}, ...
             'LineWidth', 1.5, 'DisplayName', ['Isec ' conductorName], 'Color', colors(i, :));
     end
 

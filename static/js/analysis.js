@@ -5,10 +5,21 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 let currentRunData = [];
+let chartInstance = null;
+let allConductors = [];
+
+// Farbpalette für die Diagrammlinien
+const chartColors = [
+  "#3b82f6",
+  "#ef4444",
+  "#22c55e",
+  "#a855f7",
+  "#f97316",
+  "#14b8a6",
+];
 
 async function initializeAnalysisPage() {
   const runSelect = document.getElementById("run-select");
-  const yAxisSelect = document.getElementById("y-axis-select");
 
   // Lade die verfügbaren Simulationsläufe
   try {
@@ -27,16 +38,18 @@ async function initializeAnalysisPage() {
   // Event Listener für die Auswahl des Simulationslaufs
   runSelect.addEventListener("change", async () => {
     const runDir = runSelect.value;
+    const checkboxContainer = document.getElementById("y-axis-checkboxes");
+    checkboxContainer.innerHTML =
+      '<p class="text-muted">-- Lade Daten... --</p>';
     clearChart();
-    yAxisSelect.innerHTML =
-      '<option value="">-- Wähle zuerst einen Lauf --</option>';
-    yAxisSelect.disabled = true;
 
-    if (!runDir) return;
+    if (!runDir) {
+      checkboxContainer.innerHTML =
+        '<p class="text-muted">-- Wähle zuerst einen Lauf --</p>';
+      return;
+    }
 
-    // Lade die CSV-Daten für den ausgewählten Lauf
     try {
-      // KORRIGIERT: Baue die URL jetzt mit separaten Teilen, um 404-Fehler zu vermeiden.
       const [dateDir, timeDir] = runDir.split("/");
       const response = await fetch(
         `/analysis/summary_csv/${dateDir}/${timeDir}`
@@ -45,113 +58,154 @@ async function initializeAnalysisPage() {
 
       if (data && data.length > 0) {
         currentRunData = data;
-        // Fülle die Y-Achsen-Auswahl mit den Spaltennamen der CSV
-        const headers = Object.keys(data[0]);
-        yAxisSelect.innerHTML =
-          '<option value="">-- Messgröße auswählen --</option>';
-        headers.forEach((header) => {
-          // Schließe die X-Achse und irrelevante Spalten aus
-          if (header !== "phaseAngle" && header !== "conductor") {
-            const option = document.createElement("option");
-            option.value = header;
-            option.textContent = header;
-            yAxisSelect.appendChild(option);
-          }
+        allConductors = [...new Set(data.map((d) => d.conductor))];
+
+        const headers = Object.keys(data[0]).filter(
+          (h) => h !== "phaseAngle" && h !== "conductor"
+        );
+
+        checkboxContainer.innerHTML = "";
+        headers.forEach((header, index) => {
+          const div = document.createElement("div");
+          div.className = "checkbox-group";
+          const id = `check-${index}`;
+          div.innerHTML = `
+                        <input type="checkbox" id="${id}" value="${header}">
+                        <label for="${id}">${header}</label>
+                    `;
+          checkboxContainer.appendChild(div);
+          div.querySelector("input").addEventListener("change", drawChart);
         });
-        yAxisSelect.disabled = false;
       } else {
-        yAxisSelect.innerHTML =
-          '<option value="">-- Keine Daten gefunden --</option>';
+        checkboxContainer.innerHTML =
+          '<p class="text-muted">-- Keine Daten gefunden --</p>';
       }
     } catch (e) {
       console.error("CSV-Daten konnten nicht geladen werden:", e);
     }
   });
-
-  // Event Listener für die Auswahl der Y-Achse
-  yAxisSelect.addEventListener("change", () => {
-    const yAxisKey = yAxisSelect.value;
-    if (!yAxisKey) {
-      clearChart();
-      return;
-    }
-    drawChart(currentRunData, "phaseAngle", yAxisKey);
-  });
 }
 
 function clearChart() {
-  d3.select("#chart-container").selectAll("*").remove();
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
   document.getElementById("visualization-placeholder").style.display = "block";
 }
 
-function drawChart(data, xKey, yKey) {
-  clearChart();
+function drawChart() {
+  const selectedMetrics = Array.from(
+    document.querySelectorAll("#y-axis-checkboxes input:checked")
+  ).map((cb) => cb.value);
+
+  if (selectedMetrics.length === 0) {
+    clearChart();
+    return;
+  }
+
   document.getElementById("visualization-placeholder").style.display = "none";
 
-  // Abmessungen und Ränder für das Diagramm
-  const margin = { top: 20, right: 30, bottom: 50, left: 60 };
-  const width = 800 - margin.left - margin.right;
-  const height = 400 - margin.top - margin.bottom;
+  const datasets = [];
+  let yAxis1Used = false;
+  let yAxis2Used = false;
+  const yAxisUnits = {};
 
-  // SVG-Element zum Container hinzufügen
-  const svg = d3
-    .select("#chart-container")
-    .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+  allConductors.forEach((conductor, condIndex) => {
+    const conductorData = currentRunData.filter(
+      (d) => d.conductor === conductor
+    );
+    const color = chartColors[condIndex % chartColors.length];
 
-  // Skalen für X- und Y-Achse definieren
-  const x = d3
-    .scaleLinear()
-    .domain(d3.extent(data, (d) => d[xKey]))
-    .range([0, width]);
+    selectedMetrics.forEach((metric) => {
+      const unit = metric.split("_").pop(); // z.B. 'A', 'T', 'J'
+      let yAxisID = "y1";
 
-  const y = d3
-    .scaleLinear()
-    .domain([
-      d3.min(data, (d) => d[yKey]) * 0.9,
-      d3.max(data, (d) => d[yKey]) * 1.1,
-    ])
-    .range([height, 0]);
+      // Weisen den Achsen Einheiten zu, um Skalierungsprobleme zu vermeiden
+      if (!yAxis1Used || yAxisUnits.y1 === unit) {
+        yAxisID = "y1";
+        yAxis1Used = true;
+        yAxisUnits.y1 = unit;
+      } else if (!yAxis2Used || yAxisUnits.y2 === unit) {
+        yAxisID = "y2";
+        yAxis2Used = true;
+        yAxisUnits.y2 = unit;
+      } else {
+        // Fallback, wenn mehr als 2 Einheitentypen ausgewählt werden
+        yAxisID = "y1";
+      }
 
-  // X-Achse zum SVG hinzufügen
-  svg
-    .append("g")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x))
-    .append("text")
-    .attr("y", 40)
-    .attr("x", width / 2)
-    .attr("text-anchor", "middle")
-    .attr("fill", "currentColor")
-    .text("Phasenwinkel (°)");
+      datasets.push({
+        label: `${conductor} - ${metric}`,
+        data: conductorData.map((d) => ({ x: d.phaseAngle, y: d[metric] })),
+        borderColor: color,
+        backgroundColor: color,
+        yAxisID: yAxisID,
+        tension: 0.1,
+        borderWidth: 2,
+        pointRadius: 3,
+        hidden: allConductors.length > 1, // Blendet bei Multi-Leiter-Ansicht erstmal aus
+      });
+    });
+  });
 
-  // Y-Achse zum SVG hinzufügen
-  svg
-    .append("g")
-    .call(d3.axisLeft(y))
-    .append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("y", -margin.left + 20)
-    .attr("x", -height / 2)
-    .attr("text-anchor", "middle")
-    .attr("fill", "currentColor")
-    .text(yKey);
+  const scales = {
+    x: {
+      type: "linear",
+      title: { display: true, text: "Phasenwinkel (°)" },
+    },
+    y1: {
+      type: "linear",
+      position: "left",
+      title: { display: true, text: `Messgröße 1 (${yAxisUnits.y1 || ""})` },
+    },
+  };
 
-  // Liniengenerator erstellen
-  const line = d3
-    .line()
-    .x((d) => x(d[xKey]))
-    .y((d) => y(d[yKey]));
+  if (yAxis2Used) {
+    scales.y2 = {
+      type: "linear",
+      position: "right",
+      title: { display: true, text: `Messgröße 2 (${yAxisUnits.y2 || ""})` },
+      grid: { drawOnChartArea: false }, // Nur Haupt-Grid anzeigen
+    };
+  }
 
-  // Datenpfad (die Linie) zum SVG hinzufügen
-  svg
-    .append("path")
-    .datum(data)
-    .attr("fill", "none")
-    .attr("stroke", "steelblue")
-    .attr("stroke-width", 2)
-    .attr("d", line);
+  if (chartInstance) {
+    chartInstance.data.datasets = datasets;
+    chartInstance.options.scales = scales;
+    chartInstance.update();
+  } else {
+    const ctx = document.getElementById("analysis-chart").getContext("2d");
+    chartInstance = new Chart(ctx, {
+      type: "line",
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: scales,
+        plugins: {
+          legend: {
+            position: "top",
+            onClick: (e, legendItem, legend) => {
+              // Standard-Verhalten für Klick auf Legende beibehalten
+              Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
+
+              // Zusätzliche Logik: Bei Klick auf einen Leiter alle zugehörigen Metriken ein-/ausblenden
+              const conductorName = legendItem.text.split(" - ")[0];
+              const isHidden = !legendItem.hidden;
+
+              legend.chart.data.datasets.forEach((dataset) => {
+                if (dataset.label.startsWith(conductorName)) {
+                  dataset.hidden = isHidden;
+                }
+              });
+              legend.chart.update();
+            },
+          },
+          tooltip: { mode: "index", intersect: false },
+        },
+        interaction: { mode: "index", intersect: false },
+      },
+    });
+  }
 }

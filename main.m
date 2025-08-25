@@ -3,158 +3,118 @@ addpath('C:\femm42\mfiles'); addpath('src');
 
 % --- 1. Load Configuration ---
 library = jsondecode(fileread('library.json'));
-simConfig = jsondecode(fileread('simulation_run.json'));
+runData = jsondecode(fileread('simulation_run.json'));
+simConfig = runData;
+scenarioParams = runData.scenarioParams;
 params = simConfig.simulationParams;
 
 % --- 2. Setup Results Directory ---
-simulationName = 'Parametric_Analysis';
-
-if isfield(simConfig, 'scenarioParams') && isfield(simConfig.scenarioParams, 'type')
-    simulationName = simConfig.scenarioParams.type;
-end
-
-dateStr = datestr(now, 'yyyymmdd'); %#ok<DATST>
-timeStr = datestr(now, 'HHMMSS'); %#ok<DATST>
-resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationName]);
+currentTime = datetime('now');
+dateStr = datestr(currentTime, 'yyyymmdd');
+timeStr = datestr(currentTime, 'HHMMSS');
+resultsPath = fullfile('res', dateStr, [timeStr, '_', scenarioParams.type]);
 femmFilesPath = fullfile(resultsPath, 'femm_files');
-
-if ~exist(femmFilesPath, 'dir')
-    mkdir(femmFilesPath);
-    fprintf('Results folder created: %s\n', femmFilesPath);
-end
-
+if ~exist(femmFilesPath, 'dir'), mkdir(femmFilesPath); end
 copyfile('simulation_run.json', fullfile(resultsPath, 'simulation_run.json'));
-fprintf('Used simulation_run.json copied to results folder.\n');
-
-params.resultsPath = resultsPath;
 params.femmFilesPath = femmFilesPath;
-params.baseFilename = [timeStr, '_', simulationName];
 
-% --- 3. Create Current Objects from electricalSystem ---
-currentsMap = containers.Map;
+fprintf('--- Starting Simulation: %s ---\n', scenarioParams.type);
+fprintf('Results will be saved to: %s\n', resultsPath);
 
-for i = 1:length(simConfig.electricalSystem)
-    phase = simConfig.electricalSystem(i);
-    currentsMap(phase.name) = Current(phase.name, phase.peakCurrentA, phase.phaseShiftDeg);
-end
+% --- 3. Master Result Table ---
+masterResultsTable = table();
+tic;
 
-params.currents = values(currentsMap);
-
-% --- 4. Create Component Assemblies and assign Currents ---
-assemblies = {};
-activeCurrents = {};
-
-for i = 1:length(simConfig.assemblies)
-    asmCfg = simConfig.assemblies(i);
-
-    if isKey(currentsMap, asmCfg.phaseName)
-        assignedCurrent = currentsMap(asmCfg.phaseName);
-        activeCurrents{end + 1} = assignedCurrent; %#ok<SAGROW>
-    else
-        error('Phase "%s" for assembly "%s" not found in electricalSystem.', asmCfg.phaseName, asmCfg.name);
-    end
-
-    rails = library.components.copperRails;
-
-    if isstruct(rails)
-        rails = num2cell(rails);
-    end
-
-    railNames = cellfun(@(x) x.templateProductInformation.name, rails, 'UniformOutput', false);
-    railIdx = strcmp(railNames, asmCfg.copperRailName);
-
-    if ~any(railIdx)
-        error('Kupferschiene "%s" wurde in der library.json nicht gefunden.', asmCfg.copperRailName);
-    end
-
-    railCfg = rails{railIdx};
-
-    transformers = library.components.transformers;
-
-    if isstruct(transformers)
-        transformers = num2cell(transformers);
-    end
-
-    transformerNames = cellfun(@(x) x.templateProductInformation.name, transformers, 'UniformOutput', false);
-    transformerIdx = strcmp(transformerNames, asmCfg.transformerName);
-
-    if ~any(transformerIdx)
-        error('Wandler "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerName);
-    end
-
-    transformerCfg = transformers{transformerIdx};
-
-    copperRail = CopperRail(railCfg);
-    transformer = Transformer(transformerCfg);
-    assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
-    assemblyGroup = assemblyGroup.addComponent(copperRail);
-    assemblyGroup = assemblyGroup.addComponent(transformer);
-    assemblyGroup.assignedCurrent = assignedCurrent;
-    assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
-end
-
-params.assemblies = assemblies;
-params.activeCurrents = activeCurrents;
-
-% --- 5. Eigenständige Komponenten erstellen ---
-standAloneComponents = {};
-
-if isfield(simConfig, 'standAloneComponents')
-
-    for i = 1:length(simConfig.standAloneComponents)
-        compCfg = simConfig.standAloneComponents(i);
-
-        sheets = library.components.transformerSheets;
-
-        if isstruct(sheets)
-            sheets = num2cell(sheets);
-        end
-
-        sheetNames = cellfun(@(x) x.templateProductInformation.name, sheets, 'UniformOutput', false);
-        sheetIdx = strcmp(sheetNames, compCfg.name);
-
-        if ~any(sheetIdx)
-            error('Eigenständiges Bauteil "%s" wurde in der library.json nicht gefunden.', compCfg.name);
-        end
-
-        sheetCfg = sheets{sheetIdx};
-
-        sheet = TransformerSheet(sheetCfg);
-        sheet.xPos = compCfg.position.x;
-        sheet.yPos = compCfg.position.y;
-        standAloneComponents{end + 1} = sheet; %#ok<SAGROW>
-    end
-
-end
-
-params.standAloneComponents = standAloneComponents;
-
-% --- 6. Run Parametric Analysis ---
-phaseAngleVector = 0:15:180;
-openfemm(1); % KORRIGIERT: Startet FEMM im unsichtbaren Modus
+% --- 4. Open FEMM ---
+openfemm(1);
 
 try
-    masterResultsTable = table();
-    tic;
-    fprintf('Starting simulation series for %d phase angles...\n', length(phaseAngleVector));
+    % --- 5. Main Simulation Logic ---
+    phaseAngleVector = scenarioParams.phaseStart:scenarioParams.phaseStepSize:scenarioParams.phaseEnd;
 
-    for i = 1:length(phaseAngleVector)
-        params.phaseAngleDeg = phaseAngleVector(i);
-        fprintf('--> Simulating for phase angle: %d°\n', params.phaseAngleDeg);
-        runIdentifier = sprintf('%s_angle%ddeg', params.baseFilename, params.phaseAngleDeg);
+    switch scenarioParams.type
+        case 'none'
+            fprintf('Running simple phase sweep...\n');
+            masterResultsTable = runPhaseSweep(simConfig, library, params, phaseAngleVector, '', []);
 
-        runFemmAnalysis(params, runIdentifier);
+        case 'current'
+            fprintf('Running current variation...\n');
+            currentVector = scenarioParams.start:scenarioParams.stepSize:scenarioParams.end;
 
-        singleRunResults = calculateResults(params);
-        masterResultsTable = [masterResultsTable; singleRunResults]; %#ok<AGROW>
+            for i = 1:length(currentVector)
+                current = currentVector(i);
+                fprintf('\n>> Current Step %d/%d: %.2f A\n', i, length(currentVector), current);
+
+                stepConfig = simConfig;
+
+                for j = 1:length(stepConfig.electricalSystem)
+                    stepConfig.electricalSystem(j).peakCurrentA = current;
+                end
+
+                stepResults = runPhaseSweep(stepConfig, library, params, phaseAngleVector, {'current_A'}, current);
+                masterResultsTable = [masterResultsTable; stepResults]; %#ok<AGROW>
+            end
+
+        case {'distance', 'shielding'}
+
+            if strcmp(scenarioParams.type, 'distance')
+                fprintf('Running distance variation...\n');
+            else
+                fprintf('Running shielding variation...\n');
+            end
+
+            startX = scenarioParams.x_start;
+            startY = scenarioParams.y_start;
+            endX = scenarioParams.x_end;
+            endY = scenarioParams.y_end;
+            totalDist = sqrt((endX - startX) ^ 2 + (endY - startY) ^ 2);
+            numSteps = floor(totalDist / scenarioParams.stepSize) + 1;
+
+            xVector = linspace(startX, endX, numSteps);
+            yVector = linspace(startY, endY, numSteps);
+
+            for i = 1:numSteps
+                posX = xVector(i);
+                posY = yVector(i);
+                fprintf('\n>> Position Step %d/%d: (%.2f, %.2f) mm\n', i, numSteps, posX, posY);
+
+                stepConfig = simConfig;
+
+                if strcmp(scenarioParams.type, 'distance')
+                    idx = scenarioParams.assemblyIndex + 1;
+                    stepConfig.assemblies(idx).position.x = posX;
+                    stepConfig.assemblies(idx).position.y = posY;
+                else % shielding
+                    sheetName = scenarioParams.sheetName;
+
+                    compNames = cellfun(@(x) x.name, stepConfig.standAloneComponents, 'UniformOutput', false);
+                    sheetIdx = find(strcmp(compNames, sheetName));
+
+                    if isempty(sheetIdx)
+                        newSheet = struct('name', sheetName, 'position', struct('x', posX, 'y', posY));
+
+                        if isempty(stepConfig.standAloneComponents)
+                            stepConfig.standAloneComponents = newSheet;
+                        else
+                            stepConfig.standAloneComponents(end + 1) = newSheet;
+                        end
+
+                    else
+                        stepConfig.standAloneComponents(sheetIdx).position.x = posX;
+                        stepConfig.standAloneComponents(sheetIdx).position.y = posY;
+                    end
+
+                end
+
+                stepResults = runPhaseSweep(stepConfig, library, params, phaseAngleVector, {'position_x_mm', 'position_y_mm'}, [posX, posY]);
+                masterResultsTable = [masterResultsTable; stepResults]; %#ok<AGROW>
+            end
+
     end
 
-    fprintf('Simulation series finished.\n');
+    % --- 6. Cleanup and Save ---
     totalDurationSec = toc;
-    h = floor(totalDurationSec / 3600);
-    m = floor(mod(totalDurationSec, 3600) / 60);
-    s = floor(mod(totalDurationSec, 60));
-    fprintf('\nTotal simulation time: %d h %d min %d sec\n', h, m, s);
+    fprintf('\n--- Simulation series finished. Total time: %.2f seconds ---\n', totalDurationSec);
     closefemm;
 catch ME
     closefemm;
@@ -162,9 +122,13 @@ catch ME
 end
 
 % --- 7. Save and Visualize Results ---
-resultsCsvFile = fullfile(resultsPath, [params.baseFilename, '_summary.csv']);
-writetable(masterResultsTable, resultsCsvFile);
-fprintf('All results saved to "%s".\n', resultsCsvFile);
+if ~isempty(masterResultsTable)
+    resultsCsvFile = fullfile(resultsPath, [timeStr, '_', scenarioParams.type, '_summary.csv']);
+    writetable(masterResultsTable, resultsCsvFile);
+    fprintf('All results saved to "%s".\n', resultsCsvFile);
+    plotResults(resultsCsvFile, resultsPath, [timeStr, '_', scenarioParams.type]);
+else
+    fprintf('Warning: No results were generated.\n');
+end
 
-plotResults(resultsCsvFile, resultsPath, params.baseFilename);
 disp('--- Simulation workflow completed successfully ---');

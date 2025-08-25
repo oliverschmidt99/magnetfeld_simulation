@@ -25,10 +25,10 @@ def run_simulation():
         save_data("simulation_run.json", config)
 
         matlab_command = "run('main.m'); exit;"
-        project_dir = os.path.dirname(os.path.abspath(__file__)).parent
-        subprocess.Popen(
-            [MATLAB_EXECUTABLE, "-batch", matlab_command], cwd=project_dir, shell=True
-        )
+        # KORRIGIERT: os.path.dirname zweimal anwenden, um zum Projekt-Root zu gelangen.
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        subprocess.Popen([MATLAB_EXECUTABLE, "-batch", matlab_command], cwd=project_dir)
 
         return jsonify({"message": "Simulation im Hintergrund gestartet."})
     except (IOError, TypeError, subprocess.SubprocessError, KeyError) as e:

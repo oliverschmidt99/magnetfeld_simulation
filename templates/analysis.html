@@ -1,41 +1,65 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
 
-{% block title %}CSV-Analyse{% endblock %}
+{% block title %}Analyse der Simulationsergebnisse{% endblock %}
 
 {% block sub_nav %}
 <div class="sub-nav-bar">
-    <h2>Analyse der CSV-Ergebnisse</h2>
+    <h2>Analyse der Simulationsergebnisse</h2>
 </div>
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="analysis-controls">
-        <div class="form-group">
+        <div class="form-group" style="flex: 2;">
             <label for="run-select">1. Simulationslauf auswählen:</label>
             <select id="run-select">
                 <option value="">-- Bitte auswählen --</option>
             </select>
         </div>
-        <div class="form-group">
-            <label for="y-axis-select">2. Messgröße (Y-Achse) auswählen:</label>
-            <select id="y-axis-select" disabled>
-                <option value="">-- Wähle zuerst einen Lauf --</option>
-            </select>
+        <div class="form-group" style="flex: 3;">
+            <label>2. Messgrößen (Y-Achsen) auswählen:</label>
+            <div id="y-axis-checkboxes" class="checkbox-container">
+                <p class="text-muted">-- Wähle zuerst einen Lauf --</p>
+            </div>
         </div>
     </div>
     <hr>
-    <div id="visualization-container">
+    <div id="visualization-container" style="height: 600px; position: relative;">
         <div id="visualization-placeholder">
-            <p>Wähle einen Simulationslauf und eine Messgröße aus, um das Diagramm anzuzeigen.</p>
+            <p>Wähle einen Simulationslauf und eine oder mehrere Messgrößen aus, um das Diagramm anzuzeigen.</p>
         </div>
-        <div id="chart-container"></div>
+        <div id="chart-container" style="height: 100%;">
+            <canvas id="analysis-chart"></canvas>
+        </div>
     </div>
 </div>
+
+<style>
+    .analysis-controls {
+        display: flex;
+        gap: 2rem;
+        align-items: flex-start;
+    }
+
+    .checkbox-container {
+        max-height: 150px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        padding: 1rem;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+    }
+
+    .checkbox-container .checkbox-group {
+        display: block;
+    }
+</style>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
 {% endblock %}

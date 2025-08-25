@@ -8,7 +8,6 @@ let currentConfigData = null;
 let libraryData = null;
 
 async function initializeSimulationPage() {
-  // Lade zuerst die Bibliothek, damit wir die Bauteile kennen
   await fetch("/library")
     .then((res) => res.json())
     .then((data) => {
@@ -16,7 +15,6 @@ async function initializeSimulationPage() {
       populateSheetDropdown();
     });
 
-  // Lade dann die Liste der gespeicherten Szenarien
   await updateScenarioList();
 
   document
@@ -98,11 +96,10 @@ function populateAssemblyDropdown(assemblies = []) {
 
   assemblies.forEach((asm, index) => {
     const option = document.createElement("option");
-    option.value = index; // Wir verwenden den Index, um die Baugruppe zu identifizieren
+    option.value = index;
     option.textContent = asm.name || `Baugruppe ${index + 1}`;
     select.appendChild(option);
 
-    // Setze Startwerte basierend auf der geladenen Konfiguration
     if (index === 0) {
       document.getElementById("distance-x-start").value = asm.position.x;
       document.getElementById("distance-y-start").value = asm.position.y;
@@ -138,6 +135,16 @@ async function runSimulation(event) {
   const analysisType = document.getElementById("analysis-type").value;
   let scenarioParams = { type: analysisType };
 
+  scenarioParams.phaseStart = parseFloat(
+    document.getElementById("phase-start").value
+  );
+  scenarioParams.phaseEnd = parseFloat(
+    document.getElementById("phase-end").value
+  );
+  scenarioParams.phaseStepSize = parseFloat(
+    document.getElementById("phase-step-size").value
+  );
+
   if (analysisType === "current") {
     scenarioParams.start = parseFloat(
       document.getElementById("current-start").value
@@ -145,8 +152,8 @@ async function runSimulation(event) {
     scenarioParams.end = parseFloat(
       document.getElementById("current-end").value
     );
-    scenarioParams.steps = parseInt(
-      document.getElementById("current-steps").value
+    scenarioParams.stepSize = parseFloat(
+      document.getElementById("current-step-size").value
     );
   } else if (analysisType === "distance") {
     scenarioParams.assemblyIndex = parseInt(
@@ -164,8 +171,8 @@ async function runSimulation(event) {
     scenarioParams.y_end = parseFloat(
       document.getElementById("distance-y-end").value
     );
-    scenarioParams.steps = parseInt(
-      document.getElementById("distance-steps").value
+    scenarioParams.stepSize = parseFloat(
+      document.getElementById("distance-step-size").value
     );
   } else if (analysisType === "shielding") {
     scenarioParams.sheetName = document.getElementById("shielding-sheet").value;
@@ -181,8 +188,8 @@ async function runSimulation(event) {
     scenarioParams.y_end = parseFloat(
       document.getElementById("shielding-y-end").value
     );
-    scenarioParams.steps = parseInt(
-      document.getElementById("shielding-steps").value
+    scenarioParams.stepSize = parseFloat(
+      document.getElementById("shielding-step-size").value
     );
   }
 
@@ -197,11 +204,9 @@ async function runSimulation(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-
     const result = await response.json();
-
     if (response.ok) {
-      statusDiv.textContent = `Erfolg: ${result.message}. Die 'simulation_run.json' ist bereit.`;
+      statusDiv.textContent = `Erfolg: ${result.message}. Starte nun MATLAB, um die Berechnung auszuführen.`;
     } else {
       statusDiv.textContent = `Fehler: ${result.error}`;
     }

@@ -1,16 +1,13 @@
 # server/analysis.py
 """
 Blueprint für die Analyse- und Visualisierungs-Endpunkte.
-
-Enthält Routen zum Auflisten von Simulationsläufen, zum Parsen von .ans-Dateien
-und zum Generieren der Konfigurator-Vorschau.
 """
 import os
 from flask import Blueprint, jsonify, request
 from werkzeug.utils import safe_join
 from server.utils import (
     RESULTS_DIR,
-    parse_ans_file,
+    parse_fem_ans_files,
     calculate_b_field,
     get_contour_lines,
     load_data,
@@ -35,15 +32,40 @@ def list_runs():
     return jsonify(runs)
 
 
+@analysis_bp.route("/analysis/files/<path:run_dir>")
+def list_files_in_run(run_dir):
+    """Listet alle .ans-Dateien in einem bestimmten Simulationslauf auf."""
+    try:
+        safe_run_path = safe_join(os.path.abspath(RESULTS_DIR), run_dir)
+        if not safe_run_path or not os.path.isdir(safe_run_path):
+            return jsonify({"error": "Ungültiger Pfad"}), 404
+
+        femm_files_path = os.path.join(safe_run_path, "femm_files")
+        if not os.path.isdir(femm_files_path):
+            return jsonify([])
+
+        ans_files = sorted(
+            [f for f in os.listdir(femm_files_path) if f.endswith(".ans")]
+        )
+        return jsonify(ans_files)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @analysis_bp.route("/analysis/data/<path:filepath>")
 def get_analysis_data(filepath):
-    """Parst eine .ans-Datei und gibt die Plot-Daten als JSON zurück."""
+    """Parst eine .ans- und .fem-Datei und gibt die Plot-Daten als JSON zurück."""
     try:
-        safe_path = safe_join(os.path.abspath(RESULTS_DIR), filepath)
-        if not safe_path or not os.path.exists(safe_path):
-            return jsonify({"error": "Dateipfad ungültig"}), 404
+        # Pfade für beide Dateien erstellen
+        ans_path = safe_join(os.path.abspath(RESULTS_DIR), filepath)
+        fem_path = ans_path.replace(".ans", ".fem")
 
-        nodes, elements, solution = parse_ans_file(safe_path)
+        if not all(
+            [ans_path, fem_path, os.path.exists(ans_path), os.path.exists(fem_path)]
+        ):
+            return jsonify({"error": ".ans- oder .fem-Datei nicht gefunden"}), 404
+
+        nodes, elements, solution = parse_fem_ans_files(fem_path, ans_path)
         if not all([nodes, elements, solution]):
             return jsonify({"error": "Datei konnte nicht geparst werden."}), 500
 
@@ -74,7 +96,7 @@ def get_analysis_data(filepath):
                 "field_lines": field_lines,
             }
         )
-    except (IOError, KeyError, ValueError) as e:
+    except Exception as e:
         return jsonify({"error": f"Fehler bei Dateiverarbeitung: {e}"}), 500
 
 

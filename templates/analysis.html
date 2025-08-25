@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
 
-{% block title %}Analyse{% endblock %}
+{% block title %}CSV-Analyse{% endblock %}
 
 {% block sub_nav %}
 <div class="sub-nav-bar">
-    <h2>Analyse der Simulationsergebnisse</h2>
+    <h2>Analyse der CSV-Ergebnisse</h2>
 </div>
 {% endblock %}
 
@@ -19,8 +19,8 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="file-select">2. Ergebnisdatei auswählen:</label>
-            <select id="file-select" disabled>
+            <label for="y-axis-select">2. Messgröße (Y-Achse) auswählen:</label>
+            <select id="y-axis-select" disabled>
                 <option value="">-- Wähle zuerst einen Lauf --</option>
             </select>
         </div>
@@ -28,9 +28,9 @@
     <hr>
     <div id="visualization-container">
         <div id="visualization-placeholder">
-            <p>Wähle einen Simulationslauf und eine Ergebnisdatei aus, um die Visualisierung anzuzeigen.</p>
+            <p>Wähle einen Simulationslauf und eine Messgröße aus, um das Diagramm anzuzeigen.</p>
         </div>
-        <svg id="analysis-svg"></svg>
+        <div id="chart-container"></div>
     </div>
 </div>
 {% endblock %}

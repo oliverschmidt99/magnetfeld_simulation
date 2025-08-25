@@ -36,70 +36,91 @@ def generate_unique_id():
     return secrets.token_hex(3)[:5]
 
 
-def parse_ans_file(filepath):
-    """Liest eine .ans-Datei von FEMM und extrahiert Knoten, Elemente und die Lösung."""
+def parse_fem_ans_files(fem_path, ans_path):
+    """
+    Liest die Geometrie aus einer .fem-Datei und die Lösung aus einer .ans-Datei.
+    """
     nodes, elements, solution = {}, [], {}
-    mode = None
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip().lower()
-            if not line:
-                continue
-            if "[numnodes]" in line:
-                mode = "nodes"
-            elif "[numelements]" in line:
-                mode = "elements"
-            elif "[numcircuits]" in line:
-                mode = "circuits"
-            elif "[solution]" in line:
-                mode = "solution"
-                solution_counter = 0
-            else:
-                try:
-                    if mode == "nodes":
-                        parts = line.split()
-                        if len(parts) >= 3:
-                            nodes[int(parts[0])] = (float(parts[1]), float(parts[2]))
-                    elif mode == "elements":
-                        parts = line.split()
-                        if len(parts) >= 4:
-                            elements.append(tuple(int(p) for p in parts[:3]))
-                    elif mode == "solution":
-                        parts = line.split()
-                        if parts:
-                            solution[solution_counter] = float(parts[0])
-                            solution_counter += 1
-                except (ValueError, IndexError):
-                    continue
+    print(f"\n--- DEBUG: Lese Geometrie aus: {fem_path} ---")
+
+    # 1. Geometrie aus .fem-Datei lesen
+    try:
+        with open(fem_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        # Extrahiert den Block zwischen [Nodes] und [NumElements]
+        node_block = re.search(
+            r"\[Nodes\](.*?)\[NumElements\]", content, re.DOTALL | re.IGNORECASE
+        ).group(1)
+        for line in node_block.strip().split("\n"):
+            parts = line.split()
+            if len(parts) >= 3:
+                nodes[int(parts[0])] = (float(parts[1]), float(parts[2]))
+
+        # Extrahiert den Block zwischen [Elements] und [NumBlockLabels]
+        element_block = re.search(
+            r"\[Elements\](.*?)\[NumBlockLabels\]", content, re.DOTALL | re.IGNORECASE
+        ).group(1)
+        for line in element_block.strip().split("\n"):
+            parts = line.split()
+            if len(parts) >= 7:  # Standard .fem element line has 7 columns
+                elements.append(tuple(int(p) for p in parts[3:6]))
+    except (AttributeError, FileNotFoundError) as e:
+        print(f"FEHLER: Konnte Geometrie aus .fem-Datei nicht lesen: {e}")
+        return {}, [], {}
+
+    print(f"--- DEBUG: Lese Lösung aus: {ans_path} ---")
+    # 2. Lösung aus .ans-Datei lesen
+    try:
+        with open(ans_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        solution_block = re.search(
+            r"\[Solution\](.*)", content, re.DOTALL | re.IGNORECASE
+        ).group(1)
+        for i, line in enumerate(solution_block.strip().split("\n")):
+            if line.strip():
+                solution[i] = float(line.split()[0])
+    except (AttributeError, FileNotFoundError) as e:
+        print(f"FEHLER: Konnte Lösung aus .ans-Datei nicht lesen: {e}")
+        return nodes, elements, {}
+
+    print(
+        f"DEBUG: Parsing beendet. Gefunden: {len(nodes)} Knoten, {len(elements)} Elemente, {len(solution)} Lösungspunkte."
+    )
     return nodes, elements, solution
 
 
 def calculate_b_field(p1, p2, p3, a1, a2, a3):
-    """Berechnet Bx und By für ein Dreieckselement."""
-    y21, y32, y13 = p2[1] - p1[1], p3[1] - p2[1], p1[1] - p3[1]
-    x12, x23, x31 = p1[0] - p2[0], p2[0] - p3[0], p3[0] - p1[0]
-    area2 = p1[0] * y32 + p2[0] * y13 + p3[0] * y21
-    if abs(area2) < 1e-12:
-        return 0, 0
-    bx = (y21 * a3 + y32 * a1 + y13 * a2) / area2
-    by = (x12 * a3 + x23 * a1 + x31 * a2) / area2
-    return bx, by
+    """Berechnet die mittlere Flussdichte (Bx, By) für ein Dreieck."""
+    det = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p3[0] - p1[0]) * (p2[1] - p1[1])
+    if abs(det) < 1e-12:
+        return (0.0, 0.0)
+
+    # B = (dA/dy, -dA/dx)
+    # This is the correct 2D curl for scalar potential A
+    bx = ((p1[1] - p2[1]) * a3 + (p2[1] - p3[1]) * a1 + (p3[1] - p1[1]) * a2) / det
+    by = -((p2[0] - p1[0]) * a3 + (p3[0] - p2[0]) * a1 + (p1[0] - p3[0]) * a2) / det
+    return (bx, by)
 
 
 def get_contour_lines(nodes, elements, solution, num_levels=30):
-    """Erzeugt Isolinien für das Vektorpotential A."""
+    """Erzeugt Isolinien (Feldlinien) für das Vektorpotential A."""
     lines = []
     if not solution:
         return []
     min_a, max_a = min(solution.values()), max(solution.values())
     if abs(max_a - min_a) < 1e-9:
         return []
+
     levels = [min_a + (max_a - min_a) * i / num_levels for i in range(1, num_levels)]
+
     for n1, n2, n3 in elements:
         points = [nodes.get(i) for i in (n1, n2, n3)]
         potentials = [solution.get(i) for i in (n1, n2, n3)]
-        if not all(points) or not all(p is not None for p in potentials):
+        if not all(p is not None for p in points) or not all(
+            p is not None for p in potentials
+        ):
             continue
+
         for level in levels:
             sides = []
             for i in range(3):

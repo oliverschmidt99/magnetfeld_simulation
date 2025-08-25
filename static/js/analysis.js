@@ -1,13 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("analysis-svg")) {
+  if (document.getElementById("chart-container")) {
     initializeAnalysisPage();
   }
 });
 
+let currentRunData = [];
+
 async function initializeAnalysisPage() {
   const runSelect = document.getElementById("run-select");
-  const fileSelect = document.getElementById("file-select");
-  const placeholder = document.getElementById("visualization-placeholder");
+  const yAxisSelect = document.getElementById("y-axis-select");
 
   // Lade die verfügbaren Simulationsläufe
   try {
@@ -26,127 +27,131 @@ async function initializeAnalysisPage() {
   // Event Listener für die Auswahl des Simulationslaufs
   runSelect.addEventListener("change", async () => {
     const runDir = runSelect.value;
-    clearVisualization();
-    fileSelect.innerHTML =
+    clearChart();
+    yAxisSelect.innerHTML =
       '<option value="">-- Wähle zuerst einen Lauf --</option>';
-    fileSelect.disabled = true;
+    yAxisSelect.disabled = true;
 
     if (!runDir) return;
 
-    // Lade die Dateiliste für den ausgewählten Lauf
+    // Lade die CSV-Daten für den ausgewählten Lauf
     try {
-      const response = await fetch(`/analysis/files/${runDir}`);
-      const files = await response.json();
+      // KORRIGIERT: Baue die URL jetzt mit separaten Teilen, um 404-Fehler zu vermeiden.
+      const [dateDir, timeDir] = runDir.split("/");
+      const response = await fetch(
+        `/analysis/summary_csv/${dateDir}/${timeDir}`
+      );
+      const data = await response.json();
 
-      if (files.length > 0) {
-        fileSelect.innerHTML =
-          '<option value="">-- Ergebnisdatei auswählen --</option>';
-        files.forEach((file) => {
-          const option = document.createElement("option");
-          option.value = file;
-          option.textContent = file;
-          fileSelect.appendChild(option);
+      if (data && data.length > 0) {
+        currentRunData = data;
+        // Fülle die Y-Achsen-Auswahl mit den Spaltennamen der CSV
+        const headers = Object.keys(data[0]);
+        yAxisSelect.innerHTML =
+          '<option value="">-- Messgröße auswählen --</option>';
+        headers.forEach((header) => {
+          // Schließe die X-Achse und irrelevante Spalten aus
+          if (header !== "phaseAngle" && header !== "conductor") {
+            const option = document.createElement("option");
+            option.value = header;
+            option.textContent = header;
+            yAxisSelect.appendChild(option);
+          }
         });
-        fileSelect.disabled = false;
+        yAxisSelect.disabled = false;
       } else {
-        fileSelect.innerHTML =
-          '<option value="">-- Keine .ans-Dateien gefunden --</option>';
+        yAxisSelect.innerHTML =
+          '<option value="">-- Keine Daten gefunden --</option>';
       }
     } catch (e) {
-      console.error("Dateiliste konnte nicht geladen werden:", e);
-      fileSelect.innerHTML =
-        '<option value="">-- Fehler beim Laden --</option>';
+      console.error("CSV-Daten konnten nicht geladen werden:", e);
     }
   });
 
-  // Event Listener für die Auswahl der Ergebnisdatei
-  fileSelect.addEventListener("change", () => {
-    const runDir = runSelect.value;
-    const filename = fileSelect.value;
-    if (!runDir || !filename) {
-      clearVisualization();
+  // Event Listener für die Auswahl der Y-Achse
+  yAxisSelect.addEventListener("change", () => {
+    const yAxisKey = yAxisSelect.value;
+    if (!yAxisKey) {
+      clearChart();
       return;
     }
-    placeholder.style.display = "none";
-    loadAndDrawFile(runDir, filename);
+    drawChart(currentRunData, "phaseAngle", yAxisKey);
   });
 }
 
-function clearVisualization() {
-  d3.select("#analysis-svg").selectAll("*").remove();
+function clearChart() {
+  d3.select("#chart-container").selectAll("*").remove();
   document.getElementById("visualization-placeholder").style.display = "block";
 }
 
-async function loadAndDrawFile(runDir, filename) {
-  try {
-    const filepath = `${runDir}/femm_files/${filename}`;
-    const response = await fetch(`/analysis/data/${filepath}`);
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || `Serverfehler: ${response.statusText}`);
-    }
+function drawChart(data, xKey, yKey) {
+  clearChart();
+  document.getElementById("visualization-placeholder").style.display = "none";
 
-    const data = await response.json();
-    if (!data.nodes || data.nodes.length === 0) {
-      throw new Error(
-        "Die vom Server empfangenen Daten enthalten keine Knotenpunkte."
-      );
-    }
-    drawVisualization(data);
-  } catch (error) {
-    console.error("Fehler beim Laden oder Zeichnen der Visualisierung:", error);
-    clearVisualization();
-    const placeholder = document.getElementById("visualization-placeholder");
-    placeholder.innerHTML = `<p style="color: red;"><strong>Fehler:</strong> ${error.message}</p>`;
-  }
-}
+  // Abmessungen und Ränder für das Diagramm
+  const margin = { top: 20, right: 30, bottom: 50, left: 60 };
+  const width = 800 - margin.left - margin.right;
+  const height = 400 - margin.top - margin.bottom;
 
-function drawVisualization(data) {
-  const svg = d3.select("#analysis-svg");
-  svg.selectAll("*").remove();
+  // SVG-Element zum Container hinzufügen
+  const svg = d3
+    .select("#chart-container")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Finde die Grenzen der Geometrie, um die Skalierung zu bestimmen
-  const xExtent = d3.extent(data.nodes, (d) => d[0]);
-  const yExtent = d3.extent(data.nodes, (d) => d[1]);
+  // Skalen für X- und Y-Achse definieren
+  const x = d3
+    .scaleLinear()
+    .domain(d3.extent(data, (d) => d[xKey]))
+    .range([0, width]);
 
-  // Überprüfe, ob die Grenzen gültig sind
-  if (xExtent.includes(undefined) || yExtent.includes(undefined)) {
-    console.error("Ungültige Geometriegrenzen, Visualisierung abgebrochen.");
-    return;
-  }
+  const y = d3
+    .scaleLinear()
+    .domain([
+      d3.min(data, (d) => d[yKey]) * 0.9,
+      d3.max(data, (d) => d[yKey]) * 1.1,
+    ])
+    .range([height, 0]);
 
-  const geoWidth = xExtent[1] - xExtent[0];
-  const geoHeight = yExtent[1] - yExtent[0];
+  // X-Achse zum SVG hinzufügen
+  svg
+    .append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .append("text")
+    .attr("y", 40)
+    .attr("x", width / 2)
+    .attr("text-anchor", "middle")
+    .attr("fill", "currentColor")
+    .text("Phasenwinkel (°)");
 
-  svg.attr("viewBox", `${xExtent[0]} ${yExtent[0]} ${geoWidth} ${geoHeight}`);
+  // Y-Achse zum SVG hinzufügen
+  svg
+    .append("g")
+    .call(d3.axisLeft(y))
+    .append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", -margin.left + 20)
+    .attr("x", -height / 2)
+    .attr("text-anchor", "middle")
+    .attr("fill", "currentColor")
+    .text(yKey);
 
-  const g = svg.append("g");
+  // Liniengenerator erstellen
+  const line = d3
+    .line()
+    .x((d) => x(d[xKey]))
+    .y((d) => y(d[yKey]));
 
-  // Skala für die Farbgebung basierend auf der Flussdichte (B)
-  const bMax = d3.max(data.elements, (d) => d.b_mag) || 1;
-  const colorScale = d3
-    .scaleSequential(d3.interpolateViridis)
-    .domain([0, bMax]);
-
-  // Zeichne die Dreiecks-Elemente des Netzes
-  g.selectAll("path.element")
-    .data(data.elements)
-    .enter()
+  // Datenpfad (die Linie) zum SVG hinzufügen
+  svg
     .append("path")
-    .attr(
-      "d",
-      (d) =>
-        `M ${d.nodes[0][0]},${d.nodes[0][1]} L ${d.nodes[1][0]},${d.nodes[1][1]} L ${d.nodes[2][0]},${d.nodes[2][1]} Z`
-    )
-    .attr("fill", (d) => colorScale(d.b_mag));
-
-  // Zeichne die Feldlinien (Isolinien des Vektorpotenzials A)
-  g.selectAll("path.fieldline")
-    .data(data.field_lines)
-    .enter()
-    .append("path")
-    .attr("d", (d) => `M ${d[0][0]},${d[0][1]} L ${d[1][0]},${d[1][1]}`)
-    .attr("stroke", "white")
-    .attr("stroke-width", 0.3)
-    .attr("fill", "none");
+    .datum(data)
+    .attr("fill", "none")
+    .attr("stroke", "steelblue")
+    .attr("stroke-width", 2)
+    .attr("d", line);
 }

@@ -1,178 +1,185 @@
 {
-  "components": {
-    "copperRails": [
-      {
-        "templateProductInformation": {
-          "name": "RJ_40x10_600A",
-          "productName": "Kupferschiene 40x10",
-          "manufacturer": "Rolf Janssen",
-          "manufacturerNumber": "4411",
-          "companyNumber": "",
-          "eanNumber": "",
-          "additionalInfo": "",
-          "sellingPrice": "",
-          "purchasePrice": "",
-          "condition": "new",
-          "tags": [],
-          "uniqueNumber": "3921e"
-        },
-        "specificProductInformation": {
-          "electricInformation": {
-            "voltage": "",
-            "current": "",
-            "power": ""
-          },
-          "geometry": {
-            "type": "Rectangle",
-            "material": "Copper",
-            "length": null,
-            "width": 40,
-            "height": 10
-          }
-        }
-      },
-      {
-        "templateProductInformation": {
-          "name": "RJ_50x10_800A",
-          "manufacturer": "Rolf Janssen",
-          "productName": "Kupferschiene 50x10",
-          "tags": ["800 A", "Rolf Janssen"]
-        },
-        "specificProductInformation": {
-          "geometry": {
-            "type": "Rectangle",
-            "material": "Copper",
-            "width": 50,
-            "height": 10
-          }
-        }
-      },
-      {
-        "templateProductInformation": {
-          "name": "1",
-          "productName": "",
-          "manufacturer": "",
-          "manufacturerNumber": "",
-          "companyNumber": "",
-          "eanNumber": "",
-          "additionalInfo": "",
-          "sellingPrice": "",
-          "purchasePrice": "",
-          "condition": "new",
-          "tags": [],
-          "uniqueNumber": "8e567"
-        },
-        "specificProductInformation": {
-          "electricInformation": {
-            "voltage": "",
-            "current": "",
-            "power": ""
-          },
-          "geometry": {
-            "type": "Rectangle",
-            "material": "Copper",
-            "length": null,
-            "width": 10,
-            "height": 10
-          }
-        }
-      }
-    ],
-    "transformers": [
-      {
-        "templateProductInformation": {
-          "name": "CELSA_ALO-4012_600-1A",
-          "manufacturer": "310_CELSA",
-          "productName": "ALO 4012",
-          "tags": ["600 A", "310_CELSA"]
-        },
-        "specificProductInformation": {
-          "coreMaterial": "M-36 Steel",
-          "gapMaterial": "Air",
-          "depth": 31.0,
-          "electrical": {
-            "primaryRatedCurrentA": 600,
-            "secondaryRatedCurrentA": 1,
-            "burdenVA": 5.0
-          },
-          "geometry": {
-            "type": "Rectangle",
-            "outerAirWidth": 83.5,
-            "outerAirHeight": 122.0,
-            "coreOuterWidth": 53.5,
-            "coreOuterHeight": 92.0,
-            "coreInnerWidth": 40.2,
-            "coreInnerHeight": 12.7,
-            "innerWidth": 20.2,
-            "innerHeight": -7.3
-          }
-        }
-      },
-      {
-        "templateProductInformation": {
-          "name": "Test",
-          "productName": "Test",
-          "manufacturer": "Test",
-          "tags": [],
-          "uniqueNumber": "b758c"
-        },
-        "specificProductInformation": {
-          "coreMaterial": "M-36 Steel",
-          "gapMaterial": "Air",
-          "depth": 30,
-          "electrical": {
-            "primaryRatedCurrentA": 5000,
-            "secondaryRatedCurrentA": 1,
-            "burdenVA": 10
-          },
-          "geometry": {
-            "type": "Rectangle",
-            "outerAirWidth": 65,
-            "outerAirHeight": 35,
-            "coreOuterWidth": 60,
-            "coreOuterHeight": 30,
-            "coreInnerWidth": 55,
-            "coreInnerHeight": 25,
-            "innerWidth": 50,
-            "innerHeight": 20
-          }
-        }
-      }
-    ],
-    "transformerSheets": [
-      {
-        "templateProductInformation": {
-          "name": "Sheet_200x5",
-          "manufacturer": "Standard",
-          "productName": "Abschirmblech 200x5",
-          "tags": []
-        },
-        "specificProductInformation": {
-          "geometry": {
-            "type": "Rectangle",
-            "material": "M-36 Steel",
-            "width": 200,
-            "height": 5
-          }
-        }
-      },
-      {
-        "templateProductInformation": {
-          "name": "5",
-          "productName": "",
-          "manufacturer": "Standard",
-          "tags": [],
-          "uniqueNumber": "00120"
-        },
-        "specificProductInformation": {
-          "geometry": {
-            "type": "Rectangle",
-            "material": "M-36 Steel",
-            "width": 100,
-            "height": 5
-          }
-        }
-      }
-    ]
-  }
+    "components": {
+        "copperRails": [
+            {
+                "templateProductInformation": {
+                    "name": "RJ_40x10_600A",
+                    "productName": "Kupferschiene 40x10",
+                    "manufacturer": "Rolf Janssen",
+                    "manufacturerNumber": "4411",
+                    "companyNumber": "",
+                    "eanNumber": "",
+                    "additionalInfo": "",
+                    "sellingPrice": "",
+                    "purchasePrice": "",
+                    "condition": "new",
+                    "tags": [],
+                    "uniqueNumber": "3921e"
+                },
+                "specificProductInformation": {
+                    "electricInformation": {
+                        "voltage": "",
+                        "current": "",
+                        "power": ""
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "length": null,
+                        "width": 40,
+                        "height": 10
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_50x10_800A",
+                    "manufacturer": "Rolf Janssen",
+                    "productName": "Kupferschiene 50x10",
+                    "tags": [
+                        "800 A",
+                        "Rolf Janssen"
+                    ]
+                },
+                "specificProductInformation": {
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 50,
+                        "height": 10
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "1",
+                    "productName": "",
+                    "manufacturer": "",
+                    "manufacturerNumber": "",
+                    "companyNumber": "",
+                    "eanNumber": "",
+                    "additionalInfo": "",
+                    "sellingPrice": "",
+                    "purchasePrice": "",
+                    "condition": "new",
+                    "tags": [],
+                    "uniqueNumber": "8e567"
+                },
+                "specificProductInformation": {
+                    "electricInformation": {
+                        "voltage": "",
+                        "current": "",
+                        "power": ""
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "length": null,
+                        "width": 10,
+                        "height": 10
+                    }
+                }
+            }
+        ],
+        "transformers": [
+            {
+                "templateProductInformation": {
+                    "name": "CELSA_ALO-5012_800-1A",
+                    "productName": "ALO 4012",
+                    "manufacturer": "ALO 5012",
+                    "tags": [
+                        "600 A",
+                        "310_CELSA"
+                    ],
+                    "uniqueNumber": "96a30"
+                },
+                "specificProductInformation": {
+                    "coreMaterial": "M-36 Steel",
+                    "gapMaterial": "Air",
+                    "depth": 31,
+                    "electrical": {
+                        "primaryRatedCurrentA": 800,
+                        "secondaryRatedCurrentA": 1,
+                        "burdenVA": 10
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "outerAirWidth": 100,
+                        "outerAirHeight": 120,
+                        "coreOuterWidth": 85.5,
+                        "coreOuterHeight": 92,
+                        "coreInnerWidth": 50.2,
+                        "coreInnerHeight": 50.2,
+                        "innerWidth": 20.2,
+                        "innerHeight": 10
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "Test",
+                    "productName": "Test",
+                    "manufacturer": "Test",
+                    "tags": [],
+                    "uniqueNumber": "b758c"
+                },
+                "specificProductInformation": {
+                    "coreMaterial": "M-36 Steel",
+                    "gapMaterial": "Air",
+                    "depth": 30,
+                    "electrical": {
+                        "primaryRatedCurrentA": 5000,
+                        "secondaryRatedCurrentA": 1,
+                        "burdenVA": 10
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "outerAirWidth": 65,
+                        "outerAirHeight": 35,
+                        "coreOuterWidth": 60,
+                        "coreOuterHeight": 30,
+                        "coreInnerWidth": 55,
+                        "coreInnerHeight": 25,
+                        "innerWidth": 50,
+                        "innerHeight": 20
+                    }
+                }
+            }
+        ],
+        "transformerSheets": [
+            {
+                "templateProductInformation": {
+                    "name": "Sheet_200x5",
+                    "manufacturer": "Standard",
+                    "productName": "Abschirmblech 200x5",
+                    "tags": []
+                },
+                "specificProductInformation": {
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "M-36 Steel",
+                        "width": 200,
+                        "height": 5
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "5",
+                    "productName": "",
+                    "manufacturer": "Standard",
+                    "tags": [],
+                    "uniqueNumber": "00120"
+                },
+                "specificProductInformation": {
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "M-36 Steel",
+                        "width": 100,
+                        "height": 5
+                    }
+                }
+            }
+        ]
+    }
 }

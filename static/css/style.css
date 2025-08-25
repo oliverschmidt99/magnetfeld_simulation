@@ -211,8 +211,12 @@ label {
     font-weight: bold;
 }
 
-input,
-select {
+/* KORRIGIERT: CSS-Regeln für Eingabefelder spezifischer gemacht, damit Checkboxen nicht betroffen sind */
+input[type="text"],
+input[type="number"],
+input[type="color"],
+select,
+textarea {
     width: 100%;
     padding: 10px;
     border: 1px solid #ced4da;
@@ -220,6 +224,7 @@ select {
     box-sizing: border-box;
     font-size: 1rem;
 }
+
 
 button {
     background-color: #0d6efd;
@@ -862,4 +867,45 @@ button.danger:hover,
 }
 #modal-preview-svg:active {
     cursor: grabbing;
+}
+
+/* NEU: Verbesserte Stile für die Analyse-Seite */
+.analysis-controls {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.analysis-controls .form-group {
+    flex: 1;
+}
+
+.checkbox-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive Spalten */
+    gap: 0.75rem;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    padding: 1rem;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* Abstand zwischen Checkbox und Label */
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: auto; /* Hebt die 100%-Breite auf */
+    height: 1rem;
+    width: 1rem;
+}
+
+.checkbox-item label {
+    font-weight: normal;
+    margin-bottom: 0;
 }

@@ -12,13 +12,13 @@
 {% block content %}
 <div class="container">
     <div class="analysis-controls">
-        <div class="form-group" style="flex: 2;">
+        <div class="form-group">
             <label for="run-select">1. Simulationslauf auswählen:</label>
             <select id="run-select">
                 <option value="">-- Bitte auswählen --</option>
             </select>
         </div>
-        <div class="form-group" style="flex: 3;">
+        <div class="form-group" style="flex-basis: 70%;">
             <label>2. Messgrößen (Y-Achsen) auswählen:</label>
             <div id="y-axis-checkboxes" class="checkbox-container">
                 <p class="text-muted">-- Wähle zuerst einen Lauf --</p>
@@ -35,27 +35,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .analysis-controls {
-        display: flex;
-        gap: 2rem;
-        align-items: flex-start;
-    }
-
-    .checkbox-container {
-        max-height: 150px;
-        overflow-y: auto;
-        border: 1px solid #dee2e6;
-        padding: 1rem;
-        border-radius: 4px;
-        background-color: #f8f9fa;
-    }
-
-    .checkbox-container .checkbox-group {
-        display: block;
-    }
-</style>
 {% endblock %}
 
 {% block scripts %}

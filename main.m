@@ -8,7 +8,7 @@ simConfig = runData;
 scenarioParams = runData.scenarioParams;
 params = simConfig.simulationParams;
 
-% --- 2. Setup Results Directory ---
+% --- 2. Setup Results Directory (using modern datetime) ---
 currentTime = datetime('now');
 dateStr = datestr(currentTime, 'yyyymmdd');
 timeStr = datestr(currentTime, 'HHMMSS');
@@ -21,12 +21,13 @@ params.femmFilesPath = femmFilesPath;
 fprintf('--- Starting Simulation: %s ---\n', scenarioParams.type);
 fprintf('Results will be saved to: %s\n', resultsPath);
 
-% --- 3. Master Result Table ---
+% --- 3. Master Result Table & Parallel Pool ---
 masterResultsTable = table();
 tic;
 
-% --- 4. Open FEMM ---
-openfemm(1);
+if isempty(gcp('nocreate'))
+    parpool('local');
+end
 
 try
     % --- 5. Main Simulation Logic ---
@@ -87,7 +88,12 @@ try
                 else % shielding
                     sheetName = scenarioParams.sheetName;
 
-                    compNames = cellfun(@(x) x.name, stepConfig.standAloneComponents, 'UniformOutput', false);
+                    compNames = {};
+
+                    if isfield(stepConfig, 'standAloneComponents') && ~isempty(stepConfig.standAloneComponents)
+                        compNames = cellfun(@(x) x.name, stepConfig.standAloneComponents, 'UniformOutput', false);
+                    end
+
                     sheetIdx = find(strcmp(compNames, sheetName));
 
                     if isempty(sheetIdx)
@@ -112,12 +118,11 @@ try
 
     end
 
-    % --- 6. Cleanup and Save ---
+    % --- 6. Cleanup ---
     totalDurationSec = toc;
     fprintf('\n--- Simulation series finished. Total time: %.2f seconds ---\n', totalDurationSec);
-    closefemm;
+
 catch ME
-    closefemm;
     rethrow(ME);
 end
 
@@ -128,7 +133,52 @@ if ~isempty(masterResultsTable)
     fprintf('All results saved to "%s".\n', resultsCsvFile);
     plotResults(resultsCsvFile, resultsPath, [timeStr, '_', scenarioParams.type]);
 else
-    fprintf('Warning: No results were generated.\n');
+    fprintf('Warning: No results were generated. Plotting skipped.\n');
+end
+
+% --- 8. Post-Processing: Calculate RMS Values ---
+if ~isempty(masterResultsTable) && width(masterResultsTable) > 1
+    fprintf('Calculating RMS values...\n');
+
+    metricsToProcess = {'iSecAbs_A', 'bAvgMagnitude_T', 'hAvgMagnitude_A_m', 'storedEnergy_J'};
+    allVars = masterResultsTable.Properties.VariableNames;
+    nonMetricVars = {'phaseAngle', 'conductor', 'iPrimA', 'iSecReal_A', 'iSecImag_A', 'mu_r_real', 'mu_r_imag'};
+    scenarioVars = allVars(~ismember(allVars, [metricsToProcess, nonMetricVars]));
+    groupingVars = ['conductor', scenarioVars];
+
+    rmsResults = table();
+
+    for i = 1:length(metricsToProcess)
+        metric = metricsToProcess{i};
+
+        if ismember(metric, allVars)
+            tempTable = groupsummary(masterResultsTable, groupingVars, @(x) sqrt(mean(x .^ 2)), metric);
+
+            % KORRIGIERT: Dynamische und sichere Umbenennung der Spalte
+            oldVarName = ['fun1_', metric];
+            newVarName = [metric, '_RMS'];
+
+            % Prüfen, ob die Spalte existiert, bevor sie umbenannt wird
+            if ismember(oldVarName, tempTable.Properties.VariableNames)
+                tempTable = renamevars(tempTable, oldVarName, newVarName);
+            end
+
+            if isempty(rmsResults)
+                rmsResults = tempTable;
+            else
+                rmsResults = outerjoin(rmsResults, tempTable, 'Keys', groupingVars, 'MergeKeys', true);
+            end
+
+        end
+
+    end
+
+    if ~isempty(rmsResults)
+        rmsCsvFile = fullfile(resultsPath, [timeStr, '_', scenarioParams.type, '_summary_rms.csv']);
+        writetable(rmsResults, rmsCsvFile);
+        fprintf('RMS results saved to "%s".\n', rmsCsvFile);
+    end
+
 end
 
 disp('--- Simulation workflow completed successfully ---');

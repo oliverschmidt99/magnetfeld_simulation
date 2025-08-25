@@ -67,7 +67,8 @@ async function initializeAnalysisPage() {
         checkboxContainer.innerHTML = "";
         headers.forEach((header, index) => {
           const div = document.createElement("div");
-          div.className = "checkbox-group";
+          // KORRIGIERT: Semantisch bessere Klasse verwenden
+          div.className = "checkbox-item";
           const id = `check-${index}`;
           div.innerHTML = `
                         <input type="checkbox" id="${id}" value="${header}">
@@ -118,10 +119,9 @@ function drawChart() {
     const color = chartColors[condIndex % chartColors.length];
 
     selectedMetrics.forEach((metric) => {
-      const unit = metric.split("_").pop(); // z.B. 'A', 'T', 'J'
+      const unit = metric.split("_").pop();
       let yAxisID = "y1";
 
-      // Weisen den Achsen Einheiten zu, um Skalierungsprobleme zu vermeiden
       if (!yAxis1Used || yAxisUnits.y1 === unit) {
         yAxisID = "y1";
         yAxis1Used = true;
@@ -131,7 +131,6 @@ function drawChart() {
         yAxis2Used = true;
         yAxisUnits.y2 = unit;
       } else {
-        // Fallback, wenn mehr als 2 Einheitentypen ausgewählt werden
         yAxisID = "y1";
       }
 
@@ -144,7 +143,7 @@ function drawChart() {
         tension: 0.1,
         borderWidth: 2,
         pointRadius: 3,
-        hidden: allConductors.length > 1, // Blendet bei Multi-Leiter-Ansicht erstmal aus
+        hidden: allConductors.length > 1,
       });
     });
   });
@@ -166,7 +165,7 @@ function drawChart() {
       type: "linear",
       position: "right",
       title: { display: true, text: `Messgröße 2 (${yAxisUnits.y2 || ""})` },
-      grid: { drawOnChartArea: false }, // Nur Haupt-Grid anzeigen
+      grid: { drawOnChartArea: false },
     };
   }
 
@@ -187,10 +186,7 @@ function drawChart() {
           legend: {
             position: "top",
             onClick: (e, legendItem, legend) => {
-              // Standard-Verhalten für Klick auf Legende beibehalten
               Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
-
-              // Zusätzliche Logik: Bei Klick auf einen Leiter alle zugehörigen Metriken ein-/ausblenden
               const conductorName = legendItem.text.split(" - ")[0];
               const isHidden = !legendItem.hidden;
 

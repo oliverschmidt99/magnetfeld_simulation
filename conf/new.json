@@ -1,0 +1,57 @@
+{
+  "simulationParams": {
+    "frequencyHz": "0",
+    "problemDepthM": "30",
+    "coreRelPermeability": "1616"
+  },
+  "electricalSystem": [
+    {
+      "name": "Strom_L1",
+      "phaseShiftDeg": 0,
+      "peakCurrentA": 1385.64
+    },
+    {
+      "name": "Strom_L2",
+      "phaseShiftDeg": -120,
+      "peakCurrentA": 0
+    },
+    {
+      "name": "Strom_L3",
+      "phaseShiftDeg": 120,
+      "peakCurrentA": -1385.64
+    }
+  ],
+  "assemblies": [
+    {
+      "name": "Assembly_1",
+      "phaseName": "Strom_L1",
+      "position": {
+        "x": -220,
+        "y": 0
+      },
+      "copperRailName": "RJ_40x10_600A",
+      "transformerName": "CELSA_ALO-4012_600-1A"
+    },
+    {
+      "name": "Assembly_2",
+      "phaseName": "Strom_L2",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "copperRailName": "RJ_40x10_600A",
+      "transformerName": "CELSA_ALO-4012_600-1A"
+    },
+    {
+      "name": "Assembly_3",
+      "phaseName": "Strom_L3",
+      "position": {
+        "x": 220,
+        "y": 0
+      },
+      "copperRailName": "RJ_40x10_600A",
+      "transformerName": "CELSA_ALO-4012_600-1A"
+    }
+  ],
+  "standAloneComponents": []
+}

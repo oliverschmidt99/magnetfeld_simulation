@@ -44,6 +44,24 @@ async function initializeBauteilEditor() {
   if (tagSearchInput)
     tagSearchInput.addEventListener("input", filterTagsInModal);
 
+  // NEU: Event-Listener für die Hintergrundfarben-Inputs
+  document.querySelectorAll(".preview-bg-input").forEach((input) => {
+    const svgId = input.dataset.targetSvg;
+    const svg = document.getElementById(svgId);
+
+    // Setze die initiale Farbe
+    if (svg) {
+      svg.style.backgroundColor = input.value;
+    }
+
+    // Füge den Event-Listener hinzu
+    input.addEventListener("input", (event) => {
+      if (svg) {
+        svg.style.backgroundColor = event.target.value;
+      }
+    });
+  });
+
   // Listen rendern
   renderComponentLists("copperRails", "rails-list", renderComponentPreview);
   renderComponentLists(
@@ -77,7 +95,20 @@ function setupEditor(prefix, typeKey, previewFn) {
       addTagsBtn.addEventListener("click", () => openTagModal(prefix));
     }
   }
-  const initialGeo = prefix === "transformer" ? {} : { width: 40, height: 10 };
+  // KORRIGIERT: Standard-Geometrie für alle Typen hinzugefügt
+  const initialGeo =
+    prefix === "transformer"
+      ? {
+          outerAirWidth: 100,
+          outerAirHeight: 120,
+          coreOuterWidth: 80,
+          coreOuterHeight: 100,
+          coreInnerWidth: 50,
+          coreInnerHeight: 70,
+          innerWidth: 40,
+          innerHeight: 60,
+        }
+      : { width: 40, height: 10 };
   previewFn(initialGeo, `${prefix}-preview-svg`, true);
 }
 
@@ -91,6 +122,7 @@ function openZoomModal(formId) {
 
   const modal = document.getElementById("preview-modal-overlay");
   const svg = document.getElementById("modal-preview-svg");
+  const bgColor = document.getElementById(`${prefix}-preview-bg`).value;
 
   const previewFn =
     typeKey === "transformers"
@@ -98,6 +130,7 @@ function openZoomModal(formId) {
       : renderComponentPreview;
 
   modal.style.display = "flex";
+  svg.style.backgroundColor = bgColor;
   previewFn(geo, "modal-preview-svg", true);
   enablePanZoom(svg);
 }
@@ -397,7 +430,18 @@ function clearForm(prefix, typeKey) {
       ? renderTransformerPreview
       : renderComponentPreview;
   const initialGeo =
-    typeKey === "transformers" ? {} : { width: 40, height: 10 };
+    typeKey === "transformers"
+      ? {
+          outerAirWidth: 100,
+          outerAirHeight: 120,
+          coreOuterWidth: 80,
+          coreOuterHeight: 100,
+          coreInnerWidth: 50,
+          coreInnerHeight: 70,
+          innerWidth: 40,
+          innerHeight: 60,
+        }
+      : { width: 40, height: 10 };
   previewFn(initialGeo, `${prefix}-preview-svg`, true);
 }
 

@@ -56,6 +56,7 @@ function renderTransformerPreview(component, svgId, withGrid = false) {
   svg.innerHTML = "";
 
   const isRing = component.type === "Ring";
+  // KORRIGIERT: Fallbacks hinzugefügt, um NaN-Werte zu vermeiden
   const outerDim = isRing
     ? (parseFloat(component.outerAirRadius) || 50) * 2
     : parseFloat(component.outerAirWidth) || 100;
@@ -85,21 +86,25 @@ function renderTransformerPreview(component, svgId, withGrid = false) {
     // Rechteckigen Wandler zeichnen
     const layers = [
       {
-        w: component.outerAirWidth,
-        h: component.outerAirHeight,
+        w: component.outerAirWidth || 0,
+        h: component.outerAirHeight || 0,
         fill: "#f0f8ff",
       },
       {
-        w: component.coreOuterWidth,
-        h: component.coreOuterHeight,
+        w: component.coreOuterWidth || 0,
+        h: component.coreOuterHeight || 0,
         fill: "#d3d3d3",
       },
       {
-        w: component.coreInnerWidth,
-        h: component.coreInnerHeight,
+        w: component.coreInnerWidth || 0,
+        h: component.coreInnerHeight || 0,
         fill: "#f0f8ff",
       },
-      { w: component.innerWidth, h: component.innerHeight, fill: "#ffffff" },
+      {
+        w: component.innerWidth || 0,
+        h: component.innerHeight || 0,
+        fill: "#ffffff",
+      },
     ];
     layers.forEach((layer) => {
       if (layer.w && layer.h) {

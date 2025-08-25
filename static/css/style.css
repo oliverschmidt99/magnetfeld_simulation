@@ -505,12 +505,73 @@ button.secondary:hover {
 }
 
 .component-preview {
-    background: #f9f9f9;
+    background: #f8f9fa; /* Hellerer Hintergrund für besseren Kontrast zum Gitter */
     border: 1px solid #ddd;
-    padding: 0.5rem;
+    padding: 1rem;
     text-align: center;
-    max-height: 400px; /* Container vergrößert */
+    max-height: 400px;
     overflow: auto;
+    position: relative;
+    /* NEU: Übergang für die Hintergrundfarbe */
+    transition: background-color 0.3s ease;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between; /* Geändert für bessere Anordnung */
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.preview-header h3 {
+    margin: 0;
+}
+
+/* NEU: Stile für die Vorschau-Steuerung */
+.preview-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.preview-controls label {
+    font-size: 0.85rem;
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+input[type="color"].preview-bg-input {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: transparent;
+}
+
+input[type="color"].preview-bg-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"].preview-bg-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
+}
+
+
+#zoom-preview-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
 }
 
 .form-grid {

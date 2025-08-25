@@ -207,3 +207,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+*.ans
+*.femm
+*simulation_run.json

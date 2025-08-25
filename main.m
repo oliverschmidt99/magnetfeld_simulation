@@ -3,11 +3,16 @@ addpath('C:\femm42\mfiles'); addpath('src');
 
 % --- 1. Load Configuration ---
 library = jsondecode(fileread('library.json'));
-simConfig = jsondecode(fileread('simulation.json'));
+simConfig = jsondecode(fileread('simulation_run.json'));
 params = simConfig.simulationParams;
 
 % --- 2. Setup Results Directory ---
-simulationName = 'Standard_N_Phase_Core';
+simulationName = 'Parametric_Analysis';
+
+if isfield(simConfig, 'scenarioParams') && isfield(simConfig.scenarioParams, 'type')
+    simulationName = simConfig.scenarioParams.type;
+end
+
 dateStr = datestr(now, 'yyyymmdd'); %#ok<DATST>
 timeStr = datestr(now, 'HHMMSS'); %#ok<DATST>
 resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationName]);
@@ -18,9 +23,8 @@ if ~exist(femmFilesPath, 'dir')
     fprintf('Results folder created: %s\n', femmFilesPath);
 end
 
-% --- NEU: Kopiere die verwendete Konfigurationsdatei in den Ergebnisordner ---
-copyfile('simulation.json', fullfile(resultsPath, 'simulation.json'));
-fprintf('Used simulation.json copied to results folder.\n');
+copyfile('simulation_run.json', fullfile(resultsPath, 'simulation_run.json'));
+fprintf('Used simulation_run.json copied to results folder.\n');
 
 params.resultsPath = resultsPath;
 params.femmFilesPath = femmFilesPath;
@@ -50,32 +54,42 @@ for i = 1:length(simConfig.assemblies)
         error('Phase "%s" for assembly "%s" not found in electricalSystem.', asmCfg.phaseName, asmCfg.name);
     end
 
-    railIdx = strcmp({library.copperRails.name}, asmCfg.copperRailName);
+    rails = library.components.copperRails;
+
+    if isstruct(rails)
+        rails = num2cell(rails);
+    end
+
+    railNames = cellfun(@(x) x.templateProductInformation.name, rails, 'UniformOutput', false);
+    railIdx = strcmp(railNames, asmCfg.copperRailName);
 
     if ~any(railIdx)
         error('Kupferschiene "%s" wurde in der library.json nicht gefunden.', asmCfg.copperRailName);
     end
 
-    railCfg = library.copperRails(railIdx);
+    railCfg = rails{railIdx};
 
-    transformerNames = cellfun(@(x) x.name, library.transformers, 'UniformOutput', false);
+    transformers = library.components.transformers;
+
+    if isstruct(transformers)
+        transformers = num2cell(transformers);
+    end
+
+    transformerNames = cellfun(@(x) x.templateProductInformation.name, transformers, 'UniformOutput', false);
     transformerIdx = strcmp(transformerNames, asmCfg.transformerName);
 
     if ~any(transformerIdx)
         error('Wandler "%s" wurde in der library.json nicht gefunden.', asmCfg.transformerName);
     end
 
-    transformerCfg = library.transformers{transformerIdx};
+    transformerCfg = transformers{transformerIdx};
 
     copperRail = CopperRail(railCfg);
     transformer = Transformer(transformerCfg);
-
     assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
     assemblyGroup = assemblyGroup.addComponent(copperRail);
     assemblyGroup = assemblyGroup.addComponent(transformer);
-
     assemblyGroup.assignedCurrent = assignedCurrent;
-
     assemblies{end + 1} = assemblyGroup; %#ok<SAGROW>
 end
 
@@ -90,18 +104,24 @@ if isfield(simConfig, 'standAloneComponents')
     for i = 1:length(simConfig.standAloneComponents)
         compCfg = simConfig.standAloneComponents(i);
 
-        sheetIdx = strcmp({library.transformerSheets.name}, compCfg.name);
+        sheets = library.components.transformerSheets;
+
+        if isstruct(sheets)
+            sheets = num2cell(sheets);
+        end
+
+        sheetNames = cellfun(@(x) x.templateProductInformation.name, sheets, 'UniformOutput', false);
+        sheetIdx = strcmp(sheetNames, compCfg.name);
 
         if ~any(sheetIdx)
             error('Eigenständiges Bauteil "%s" wurde in der library.json nicht gefunden.', compCfg.name);
         end
 
-        sheetCfg = library.transformerSheets(sheetIdx);
+        sheetCfg = sheets{sheetIdx};
 
         sheet = TransformerSheet(sheetCfg);
         sheet.xPos = compCfg.position.x;
         sheet.yPos = compCfg.position.y;
-
         standAloneComponents{end + 1} = sheet; %#ok<SAGROW>
     end
 
@@ -110,8 +130,8 @@ end
 params.standAloneComponents = standAloneComponents;
 
 % --- 6. Run Parametric Analysis ---
-phaseAngleVector = 0:15:90;
-openfemm;
+phaseAngleVector = 0:15:180;
+openfemm(1); % KORRIGIERT: Startet FEMM im unsichtbaren Modus
 
 try
     masterResultsTable = table();

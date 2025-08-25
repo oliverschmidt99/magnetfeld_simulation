@@ -3,21 +3,128 @@
 
 {% block title %}Simulation{% endblock %}
 
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Simulation durchführen</h2>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="container">
-    <h2>Simulationseinstellungen</h2>
-    <p>
-        Dieser Bereich wird verwendet, um die eigentliche Simulation zu konfigurieren und zu starten.
-        Hier könntest du Parameter wie den Phasenwinkelbereich oder die Stromstärken für eine parametrische Studie
-        festlegen.
-    </p>
-    <p><strong>(Dieser Bereich wird in einem zukünftigen Schritt implementiert.)</strong></p>
+    <form id="run-simulation-form">
+        <div class="form-section">
+            <h3>1. Basiskonfiguration auswählen</h3>
+            <div class="form-group">
+                <label for="base-scenario-select">Gespeicherte Konfiguration</label>
+                <select id="base-scenario-select" required>
+                    <option value="">-- Bitte eine Konfiguration laden --</option>
+                </select>
+            </div>
+            <div class="button-group">
+                <button type="button" id="load-base-scenario-btn">Konfiguration laden & anzeigen</button>
+            </div>
+            <div id="config-preview"
+                style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px; display: none;">
+                <h4>Geladene Konfiguration:</h4>
+                <pre id="config-json-preview" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+            </div>
+        </div>
 
-    <!-- draw.io diagram -->
-    <div class="mxgraph" style="max-width:100%;border:1px solid transparent;"
-        data-mxgraph="{&quot;highlight&quot;:&quot;#0000ff&quot;,&quot;nav&quot;:true,&quot;resize&quot;:true,&quot;toolbar&quot;:&quot;zoom layers tags lightbox&quot;,&quot;edit&quot;:&quot;_blank&quot;,&quot;xml&quot;:&quot;&lt;mxfile&gt;\n  &lt;diagram id=\&quot;bt_mlGYEyvyNsPWYXkle\&quot; name=\&quot;Seite-1\&quot;&gt;\n    &lt;mxGraphModel dx=\&quot;1614\&quot; dy=\&quot;1139\&quot; grid=\&quot;1\&quot; gridSize=\&quot;10\&quot; guides=\&quot;1\&quot; tooltips=\&quot;1\&quot; connect=\&quot;1\&quot; arrows=\&quot;1\&quot; fold=\&quot;1\&quot; page=\&quot;1\&quot; pageScale=\&quot;1\&quot; pageWidth=\&quot;827\&quot; pageHeight=\&quot;1169\&quot; math=\&quot;0\&quot; shadow=\&quot;0\&quot; adaptiveColors=\&quot;auto\&quot;&gt;\n      &lt;root&gt;\n        &lt;mxCell id=\&quot;0\&quot; /&gt;\n        &lt;mxCell id=\&quot;1\&quot; parent=\&quot;0\&quot; /&gt;\n        &lt;mxCell id=\&quot;4\&quot; value=\&quot;\&quot; style=\&quot;edgeStyle=none;html=1;\&quot; parent=\&quot;1\&quot; source=\&quot;2\&quot; target=\&quot;3\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;2\&quot; value=\&quot;&amp;lt;div style=&amp;quot;white-space-collapse: preserve;&amp;quot;&amp;gt;Kupferschiene einstellen auf gewünschten Strom&amp;lt;/div&amp;gt;\&quot; style=\&quot;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;360\&quot; y=\&quot;80\&quot; width=\&quot;120\&quot; height=\&quot;60\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;6\&quot; value=\&quot;\&quot; style=\&quot;edgeStyle=none;html=1;\&quot; parent=\&quot;1\&quot; source=\&quot;3\&quot; target=\&quot;5\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;3\&quot; value=\&quot;Testmessung\&quot; style=\&quot;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;360\&quot; y=\&quot;160\&quot; width=\&quot;120\&quot; height=\&quot;60\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;7\&quot; style=\&quot;edgeStyle=none;html=1;entryX=0;entryY=0.419;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryPerimeter=0;\&quot; parent=\&quot;1\&quot; source=\&quot;5\&quot; target=\&quot;2\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot;&gt;\n            &lt;Array as=\&quot;points\&quot;&gt;\n              &lt;mxPoint x=\&quot;300\&quot; y=\&quot;320\&quot; /&gt;\n              &lt;mxPoint x=\&quot;300\&quot; y=\&quot;240\&quot; /&gt;\n              &lt;mxPoint x=\&quot;300\&quot; y=\&quot;105\&quot; /&gt;\n            &lt;/Array&gt;\n          &lt;/mxGeometry&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;8\&quot; value=\&quot;Nein\&quot; style=\&quot;edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];\&quot; parent=\&quot;7\&quot; vertex=\&quot;1\&quot; connectable=\&quot;0\&quot;&gt;\n          &lt;mxGeometry x=\&quot;-0.136\&quot; relative=\&quot;1\&quot; as=\&quot;geometry\&quot;&gt;\n            &lt;mxPoint y=\&quot;-22\&quot; as=\&quot;offset\&quot; /&gt;\n          &lt;/mxGeometry&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;10\&quot; value=\&quot;\&quot; style=\&quot;edgeStyle=none;html=1;\&quot; parent=\&quot;1\&quot; source=\&quot;5\&quot; target=\&quot;9\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;5\&quot; value=\&quot;Stimmt der Wert ±&amp;amp;nbsp;10&amp;amp;nbsp;%?\&quot; style=\&quot;rhombus;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;360\&quot; y=\&quot;260\&quot; width=\&quot;120\&quot; height=\&quot;120\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;12\&quot; value=\&quot;\&quot; style=\&quot;edgeStyle=none;html=1;\&quot; parent=\&quot;1\&quot; source=\&quot;9\&quot; target=\&quot;11\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;9\&quot; value=\&quot;&amp;lt;div style=&amp;quot;white-space-collapse: preserve;&amp;quot;&amp;gt;Wandler einbauen von derselben Stromstärke&amp;lt;/div&amp;gt;\&quot; style=\&quot;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;360\&quot; y=\&quot;400\&quot; width=\&quot;120\&quot; height=\&quot;60\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;14\&quot; value=\&quot;\&quot; style=\&quot;edgeStyle=none;html=1;\&quot; parent=\&quot;1\&quot; source=\&quot;11\&quot; target=\&quot;13\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;11\&quot; value=\&quot;Wandler messen\&quot; style=\&quot;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;360\&quot; y=\&quot;490\&quot; width=\&quot;120\&quot; height=\&quot;60\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;17\&quot; style=\&quot;edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\&quot; parent=\&quot;1\&quot; source=\&quot;13\&quot; target=\&quot;11\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot;&gt;\n            &lt;Array as=\&quot;points\&quot;&gt;\n              &lt;mxPoint x=\&quot;300\&quot; y=\&quot;650\&quot; /&gt;\n              &lt;mxPoint x=\&quot;300\&quot; y=\&quot;520\&quot; /&gt;\n            &lt;/Array&gt;\n          &lt;/mxGeometry&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;18\&quot; value=\&quot;Nein\&quot; style=\&quot;edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];\&quot; parent=\&quot;17\&quot; vertex=\&quot;1\&quot; connectable=\&quot;0\&quot;&gt;\n          &lt;mxGeometry x=\&quot;-0.0643\&quot; y=\&quot;-2\&quot; relative=\&quot;1\&quot; as=\&quot;geometry\&quot;&gt;\n            &lt;mxPoint y=\&quot;-13\&quot; as=\&quot;offset\&quot; /&gt;\n          &lt;/mxGeometry&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;20\&quot; value=\&quot;\&quot; style=\&quot;edgeStyle=none;html=1;\&quot; parent=\&quot;1\&quot; source=\&quot;13\&quot; target=\&quot;19\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;13\&quot; value=\&quot;Stimmt die Messung\&quot; style=\&quot;rhombus;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;370\&quot; y=\&quot;600\&quot; width=\&quot;100\&quot; height=\&quot;100\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;21\&quot; style=\&quot;edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;\&quot; parent=\&quot;1\&quot; source=\&quot;19\&quot; target=\&quot;9\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot;&gt;\n            &lt;Array as=\&quot;points\&quot;&gt;\n              &lt;mxPoint x=\&quot;220\&quot; y=\&quot;795\&quot; /&gt;\n              &lt;mxPoint x=\&quot;220\&quot; y=\&quot;680\&quot; /&gt;\n              &lt;mxPoint x=\&quot;220\&quot; y=\&quot;505\&quot; /&gt;\n              &lt;mxPoint x=\&quot;220\&quot; y=\&quot;430\&quot; /&gt;\n            &lt;/Array&gt;\n          &lt;/mxGeometry&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;22\&quot; value=\&quot;Nein\&quot; style=\&quot;edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];\&quot; parent=\&quot;21\&quot; vertex=\&quot;1\&quot; connectable=\&quot;0\&quot;&gt;\n          &lt;mxGeometry x=\&quot;-0.0293\&quot; relative=\&quot;1\&quot; as=\&quot;geometry\&quot;&gt;\n            &lt;mxPoint as=\&quot;offset\&quot; /&gt;\n          &lt;/mxGeometry&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;26\&quot; value=\&quot;\&quot; style=\&quot;edgeStyle=none;html=1;\&quot; parent=\&quot;1\&quot; source=\&quot;19\&quot; target=\&quot;25\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;19\&quot; value=\&quot;&amp;lt;div style=&amp;quot;white-space-collapse: preserve;&amp;quot;&amp;gt;Sind alle &amp;lt;span style=&amp;quot;color: rgb(63, 63, 63); background-color: transparent;&amp;quot;&amp;gt;Wandler&amp;lt;/span&amp;gt;&amp;lt;span style=&amp;quot;color: rgb(63, 63, 63); background-color: transparent;&amp;quot;&amp;gt; von derselben &amp;lt;/span&amp;gt;&amp;lt;span style=&amp;quot;color: rgb(63, 63, 63); background-color: transparent;&amp;quot;&amp;gt;Stromstärke gemessen?&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;\&quot; style=\&quot;rhombus;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;345\&quot; y=\&quot;720\&quot; width=\&quot;150\&quot; height=\&quot;150\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;30\&quot; style=\&quot;edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;\&quot; parent=\&quot;1\&quot; source=\&quot;25\&quot; target=\&quot;2\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot;&gt;\n            &lt;Array as=\&quot;points\&quot;&gt;\n              &lt;mxPoint x=\&quot;600\&quot; y=\&quot;930\&quot; /&gt;\n              &lt;mxPoint x=\&quot;600\&quot; y=\&quot;520\&quot; /&gt;\n              &lt;mxPoint x=\&quot;600\&quot; y=\&quot;110\&quot; /&gt;\n            &lt;/Array&gt;\n          &lt;/mxGeometry&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;25\&quot; value=\&quot;&amp;lt;div style=&amp;quot;white-space-collapse: preserve;&amp;quot;&amp;gt;Wandlerstromstärke&amp;lt;/div&amp;gt;&amp;lt;div style=&amp;quot;white-space-collapse: preserve;&amp;quot;&amp;gt;erhöhen&amp;lt;/div&amp;gt;\&quot; style=\&quot;whiteSpace=wrap;html=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;360\&quot; y=\&quot;900\&quot; width=\&quot;120\&quot; height=\&quot;60\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;28\&quot; style=\&quot;edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\&quot; parent=\&quot;1\&quot; source=\&quot;27\&quot; target=\&quot;2\&quot; edge=\&quot;1\&quot;&gt;\n          &lt;mxGeometry relative=\&quot;1\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n        &lt;mxCell id=\&quot;27\&quot; value=\&quot;\&quot; style=\&quot;shape=waypoint;sketch=0;size=6;pointerEvents=1;points=[];fillColor=none;resizable=0;rotatable=0;perimeter=centerPerimeter;snapToPoint=1;\&quot; parent=\&quot;1\&quot; vertex=\&quot;1\&quot;&gt;\n          &lt;mxGeometry x=\&quot;410\&quot; y=\&quot;10\&quot; width=\&quot;20\&quot; height=\&quot;20\&quot; as=\&quot;geometry\&quot; /&gt;\n        &lt;/mxCell&gt;\n      &lt;/root&gt;\n    &lt;/mxGraphModel&gt;\n  &lt;/diagram&gt;\n&lt;/mxfile&gt;\n&quot;}">
-    </div>
-    <script type="text/javascript" src="https://viewer.diagrams.net/js/viewer-static.min.js"></script>
+        <hr>
 
+        <div class="form-section">
+            <h3>2. Parametrische Analyse definieren</h3>
+            <p>Jede Simulation führt automatisch einen Phasendurchlauf von 0° bis 180° durch. Zusätzlich kannst du
+                weitere Parameter variieren lassen.</p>
+
+            <div class="form-group">
+                <label for="analysis-type">Szenario-Typ</label>
+                <select id="analysis-type">
+                    <option value="none" selected>Nur Phasendurchlauf</option>
+                    <option value="current">Stromstärke variieren</option>
+                    <option value="distance">Abstand anpassen</option>
+                    <option value="shielding">Abschirmblech hinzufügen/verschieben</option>
+                </select>
+            </div>
+
+            <div id="current-scenario" class="scenario-details" style="display: none;">
+                <h4>Stromstärke ansteigen lassen</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="current-start">Start-Strom (A, Peak)</label>
+                        <input type="number" id="current-start" value="1000">
+                    </div>
+                    <div class="form-group">
+                        <label for="current-end">End-Strom (A, Peak)</label>
+                        <input type="number" id="current-end" value="5000">
+                    </div>
+                    <div class="form-group">
+                        <label for="current-steps">Anzahl Schritte</label>
+                        <input type="number" id="current-steps" value="5">
+                    </div>
+                </div>
+            </div>
+
+            <div id="distance-scenario" class="scenario-details" style="display: none;">
+                <h4>Abstand anpassen</h4>
+                <div class="form-group">
+                    <label for="distance-assembly">Welche Baugruppe soll verschoben werden?</label>
+                    <select id="distance-assembly"></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label for="distance-x-start">Start X (mm)</label><input type="number"
+                            id="distance-x-start"></div>
+                    <div class="form-group"><label for="distance-x-end">Ende X (mm)</label><input type="number"
+                            id="distance-x-end"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label for="distance-y-start">Start Y (mm)</label><input type="number"
+                            id="distance-y-start"></div>
+                    <div class="form-group"><label for="distance-y-end">Ende Y (mm)</label><input type="number"
+                            id="distance-y-end"></div>
+                </div>
+                <div class="form-group">
+                    <label for="distance-steps">Anzahl Schritte</label>
+                    <input type="number" id="distance-steps" value="5">
+                </div>
+            </div>
+
+            <div id="shielding-scenario" class="scenario-details" style="display: none;">
+                <h4>Abschirmblech hinzufügen/verschieben</h4>
+                <p>Das ausgewählte Blech wird zur Konfiguration hinzugefügt und seine Position variiert.</p>
+                <div class="form-group">
+                    <label for="shielding-sheet">Welches Trafoblech?</label>
+                    <select id="shielding-sheet"></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label for="shielding-x-start">Start X (mm)</label><input type="number"
+                            id="shielding-x-start" value="0"></div>
+                    <div class="form-group"><label for="shielding-x-end">Ende X (mm)</label><input type="number"
+                            id="shielding-x-end" value="200"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label for="shielding-y-start">Start Y (mm)</label><input type="number"
+                            id="shielding-y-start" value="100"></div>
+                    <div class="form-group"><label for="shielding-y-end">Ende Y (mm)</label><input type="number"
+                            id="shielding-y-end" value="100"></div>
+                </div>
+                <div class="form-group">
+                    <label for="shielding-steps">Anzahl Schritte</label>
+                    <input type="number" id="shielding-steps" value="5">
+                </div>
+            </div>
+        </div>
+
+        <hr>
+        <div class="button-group">
+            <button type="submit" id="run-simulation-btn" disabled>Simulation starten</button>
+        </div>
+        <div id="simulation-status" style="margin-top: 1rem;"></div>
+
+    </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/simulation.js') }}"></script>
 {% endblock %}

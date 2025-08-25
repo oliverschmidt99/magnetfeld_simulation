@@ -111,20 +111,25 @@ function addAssembly(data = {}) {
   const item = document.createElement("div");
   item.className = "list-item";
   item.id = `assembly-${assemblyCounter}`;
-  const railOptions = library.copperRails
+  // KORRIGIERT: Der Pfad zu den Bauteilen wurde angepasst
+  const railOptions = (library.components?.copperRails || [])
     .map(
       (r) =>
-        `<option value="${r.name}" ${
-          data.copperRailName === r.name ? "selected" : ""
-        }>${r.name}</option>`
+        `<option value="${r.templateProductInformation.name}" ${
+          data.copperRailName === r.templateProductInformation.name
+            ? "selected"
+            : ""
+        }>${r.templateProductInformation.name}</option>`
     )
     .join("");
-  const transformerOptions = library.transformers
+  const transformerOptions = (library.components?.transformers || [])
     .map(
       (t) =>
-        `<option value="${t.name}" ${
-          data.transformerName === t.name ? "selected" : ""
-        }>${t.name}</option>`
+        `<option value="${t.templateProductInformation.name}" ${
+          data.transformerName === t.templateProductInformation.name
+            ? "selected"
+            : ""
+        }>${t.templateProductInformation.name}</option>`
     )
     .join("");
   item.innerHTML = `<h4>Baugruppe ${assemblyCounter}</h4><label>Name:</label><input type="text" class="assembly-name" value="${
@@ -145,12 +150,13 @@ function addStandalone(data = {}) {
   const item = document.createElement("div");
   item.className = "list-item";
   item.id = `standalone-${standaloneCounter}`;
-  let sheetOptions = library.transformerSheets
+  // KORRIGIERT: Der Pfad zu den Bauteilen wurde angepasst
+  let sheetOptions = (library.components?.transformerSheets || [])
     .map(
       (s) =>
-        `<option value="${s.name}" ${data.name === s.name ? "selected" : ""}>${
-          s.name
-        }</option>`
+        `<option value="${s.templateProductInformation.name}" ${
+          data.name === s.templateProductInformation.name ? "selected" : ""
+        }>${s.templateProductInformation.name}</option>`
     )
     .join("");
   item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4><label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select><label>Position X:</label><input type="number" class="pos-x" value="${

@@ -27,20 +27,31 @@ function resultsTable = calculateResults(params)
     eddyLossesW = zeros(numPhases, 1);
     coreLossesVA = zeros(numPhases, 1);
 
+    % KORRIGIERT: Konvertiere problemDepthM von String zu Zahl
+    problemDepthNum = str2double(params.problemDepthM);
+
     for i = 1:length(params.assemblies)
         asm = params.assemblies{i};
         transformer = asm.findComponentByClass('Transformer');
-        airGap = transformer.findComponentByName('AirGap');
+
         steelCore = transformer.findComponentByName('SteelCore');
+        innerAir = transformer.findComponentByName('InnerAir');
 
         % Geometrie des Stahlkerns berechnen
         coreW = steelCore.geoObject.vertices(2, 1) - steelCore.geoObject.vertices(1, 1);
         coreH = steelCore.geoObject.vertices(3, 2) - steelCore.geoObject.vertices(2, 2);
-        gapW = airGap.geoObject.vertices(2, 1) - airGap.geoObject.vertices(1, 1);
-        gapH = airGap.geoObject.vertices(3, 2) - airGap.geoObject.vertices(2, 2);
 
-        steelAreaM2 = ((coreW * coreH) - (gapW * gapH)) / (1000 ^ 2);
-        volumeM3 = steelAreaM2 * params.problemDepthM;
+        innerW = innerAir.geoObject.vertices(2, 1) - innerAir.geoObject.vertices(1, 1);
+        innerH = innerAir.geoObject.vertices(3, 2) - innerAir.geoObject.vertices(2, 2);
+
+        steelAreaM2 = ((coreW * coreH) - (innerW * innerH)) / (1000 ^ 2);
+
+        if steelAreaM2 <= 0
+            warning('Stahlkernfläche für Baugruppe %s ist null oder negativ. Überprüfe die Wandler-Geometrie in library.json.', asm.name);
+            volumeM3 = 0;
+        else
+            volumeM3 = steelAreaM2 * problemDepthNum; % KORRIGIERT: Numerischen Wert verwenden
+        end
 
         % Blockintegrale für Feldgrößen und Verluste aus dem Stahlkern holen
         groupNum = (i - 1) * 10 + 3; % Annahme: SteelCore ist Gruppe 3 im Template
@@ -55,10 +66,13 @@ function resultsTable = calculateResults(params)
         mo_clearblock();
 
         % Gemittelte Feldgrößen und Verluste berechnen
-        bAvgComplexX(i) = bIntegralX / volumeM3;
-        bAvgComplexY(i) = bIntegralY / volumeM3;
-        hAvgComplexX(i) = hIntegralX / volumeM3;
-        hAvgComplexY(i) = hIntegralY / volumeM3;
+        if volumeM3 > 0
+            bAvgComplexX(i) = bIntegralX / volumeM3;
+            bAvgComplexY(i) = bIntegralY / volumeM3;
+            hAvgComplexX(i) = hIntegralX / volumeM3;
+            hAvgComplexY(i) = hIntegralY / volumeM3;
+        end
+
         bAvgMag(i) = hypot(abs(bAvgComplexX(i)), abs(bAvgComplexY(i)));
         hAvgMag(i) = hypot(abs(hAvgComplexX(i)), abs(hAvgComplexY(i)));
         eddyLossesW(i) = eddyIntegral;
@@ -68,17 +82,10 @@ function resultsTable = calculateResults(params)
         % === NEUE, VERBESSERTE METHODE ZUR BERECHNUNG DES SEKUNDÄRSTROMS ===
         % ====================================================================
         % Wir rufen den Strom direkt aus den "Circuit Properties" ab.
-        % WICHTIG: Passe den Namen 'sec_circuit_name' an den Namen an, den du
-        % im FEMM-Modell für den Sekundär-Circuit vergeben hast.
-
-        sec_circuit_name = [conductorCol{i}]; % e.g.,'PhaseA_sec'
+        sec_circuit_name = conductorCol{i};
         circuit_props = mo_getcircuitproperties(sec_circuit_name);
-        iSecComplex = circuit_props(1) + 1j * circuit_props(2); % Strom (Real + Imaginär)
+        iSecComplex = circuit_props(1) + 1j * circuit_props(2);
         iSecResults(i) = abs(iSecComplex);
-
-        % ====================================================================
-        % === Die alte, ungenauere Berechnung wurde entfernt. ===
-        % ====================================================================
     end
 
     phaseAngleCol = repmat(params.phaseAngleDeg, numPhases, 1);

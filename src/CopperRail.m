@@ -9,13 +9,17 @@ classdef CopperRail < Component
     methods
 
         function obj = CopperRail(config)
-            geo = GeoObject.createRectangle(config.width, config.height);
-            obj@Component(config.name, 0, 0, geo, config.material);
-            obj.manufacturer = config.manufacturer;
-            obj.format = config.format;
+            spi = config.specificProductInformation;
+            geo_cfg = spi.geometry;
 
-            if isfield(config, 'ratedCurrentA')
-                obj.ratedCurrentA = config.ratedCurrentA;
+            geo = GeoObject.createRectangle(geo_cfg.width, geo_cfg.height);
+            obj@Component(config.templateProductInformation.name, 0, 0, geo, geo_cfg.material);
+
+            obj.manufacturer = config.templateProductInformation.manufacturer;
+            obj.format = ''; % Dieses Feld ist nicht in JSON, kann aber bleiben
+
+            if isfield(spi, 'ratedCurrentA')
+                obj.ratedCurrentA = spi.ratedCurrentA;
             end
 
         end

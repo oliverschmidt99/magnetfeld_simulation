@@ -54,13 +54,5 @@
       "transformerName": "CELSA_ALO-4012_600-1A"
     }
   ],
-  "standAloneComponents": [
-    {
-      "name": "Sheet_200x1",
-      "position": {
-        "x": 0,
-        "y": 0
-      }
-    }
-  ]
+  "standAloneComponents": []
 }

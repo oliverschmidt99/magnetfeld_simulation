@@ -1,11 +1,33 @@
+<!DOCTYPE html>
 {% extends "base.html" %}
 
 {% block title %}Analyse{% endblock %}
 
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Analyse der Simulationsergebnisse</h2>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="container">
-    <h2>Analyse der Simulationsergebnisse</h2>
-    <p>Diese Funktion ist in Kürze verfügbar. Hier wirst du die Plots und Ergebnisdaten deiner Simulationen direkt im
-        Browser ansehen können.</p>
+    <div class="analysis-controls">
+        <div class="form-group">
+            <label for="run-select">Simulationslauf auswählen:</label>
+            <select id="run-select"></select>
+        </div>
+        <div class="form-group">
+            <label for="angle-slider" id="angle-label">Phasenwinkel: 0°</label>
+            <input type="range" id="angle-slider" min="0" max="180" step="15" value="0" disabled>
+        </div>
+    </div>
+    <div id="visualization-container">
+        <svg id="analysis-svg"></svg>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
 {% endblock %}

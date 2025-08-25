@@ -1,8 +1,7 @@
-% oliverschmidt99/magnetfeld_simulation/magnetfeld_simulation-lab/src/GeoObject.m
 classdef GeoObject
 
     properties
-        vertices % Used for rectangles and polygon approximations of rings
+        vertices
         isArc = false;
         arcData
     end
@@ -18,6 +17,7 @@ classdef GeoObject
         end
 
         function drawInFemm(obj, centerX, centerY)
+            % KORRIGIERT: Vereinfachte Addition durch MATLABs automatische Expansion
             absVertices = obj.vertices + [centerX, centerY];
 
             for i = 1:size(absVertices, 1)
@@ -59,15 +59,12 @@ classdef GeoObject
         function obj = createRing(innerRadius, outerRadius, numSegments)
 
             if nargin < 3
-                numSegments = 64; % More segments for a smoother circle
+                numSegments = 64;
             end
 
             angles = linspace(0, 2 * pi, numSegments + 1)';
-
             outerPoints = [cos(angles) * outerRadius, sin(angles) * outerRadius];
             innerPoints = [cos(angles) * innerRadius, sin(angles) * innerRadius];
-
-            % Create vertices for a single polygon with a hole
             vertices = [outerPoints; flipud(innerPoints)];
             obj = GeoObject(vertices);
         end

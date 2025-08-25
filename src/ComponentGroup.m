@@ -6,6 +6,7 @@ classdef ComponentGroup
         xPos
         yPos
         components = {}
+        assignedCurrent % KORRIGIERT: Fehlende Eigenschaft hinzugefügt
     end
 
     methods

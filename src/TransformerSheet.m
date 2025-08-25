@@ -1,14 +1,13 @@
-% Represents a simple transformer sheet metal piece.
 classdef TransformerSheet < Component
 
     methods
 
         function obj = TransformerSheet(config)
-            geo = GeoObject.createRectangle(config.width, config.height);
-            obj@Component(config.name, 0, 0, geo, config.material);
+            geo_cfg = config.specificProductInformation.geometry;
+            geo = GeoObject.createRectangle(geo_cfg.width, geo_cfg.height);
+            obj@Component(config.templateProductInformation.name, 0, 0, geo, geo_cfg.material);
         end
 
-        % Concrete implementation of the abstract draw method.
         function drawInFemm(obj, groupX, groupY, circuitName, groupNum)
             absX = groupX + obj.xPos;
             absY = groupY + obj.yPos;

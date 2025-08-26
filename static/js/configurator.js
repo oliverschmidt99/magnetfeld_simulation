@@ -4,7 +4,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function initializeConfigurator() {
+let currentConfigData = {};
+let library = {};
+let phaseCounter = 0;
+let assemblyCounter = 0;
+let standaloneCounter = 0;
+const SQRT2 = Math.sqrt(2);
+
+async function initializeConfigurator() {
+  const libraryDataElement = document.getElementById("library-data");
+  library = libraryDataElement
+    ? JSON.parse(libraryDataElement.textContent)
+    : {};
+
   initializeCardNavigation("config-nav", "config-sections");
   loadState();
 
@@ -18,13 +30,13 @@ function initializeConfigurator() {
 
   document
     .getElementById("save-scenario-btn")
-    .addEventListener("click", saveScenario);
+    ?.addEventListener("click", saveScenario);
   document
     .getElementById("load-scenario-btn")
-    .addEventListener("click", loadScenario);
+    ?.addEventListener("click", loadScenario);
   document
     .getElementById("delete-scenario-btn")
-    .addEventListener("click", deleteScenario);
+    ?.addEventListener("click", deleteScenario);
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
@@ -35,73 +47,8 @@ function initializeConfigurator() {
       body: JSON.stringify(data),
     })
       .then((response) => response.json())
-      .then((result) => alert(result.message));
+      .then((result) => alert(result.message || result.error));
   });
-}
-
-const libraryDataElement = document.getElementById("library-data");
-const library = libraryDataElement
-  ? JSON.parse(libraryDataElement.textContent)
-  : {};
-const SQRT2 = Math.sqrt(2);
-let phaseCounter = 0;
-let assemblyCounter = 0;
-let standaloneCounter = 0;
-
-function updatePeak(id, type) {
-  const rmsInput = document.getElementById(`${type}-${id}-rms`);
-  const peakInput = document.getElementById(`${type}-${id}-peak`);
-  if (rmsInput && peakInput) {
-    peakInput.value = (parseFloat(rmsInput.value) * SQRT2).toFixed(2);
-  }
-}
-
-function updateRms(id, type) {
-  const peakInput = document.getElementById(`${type}-${id}-peak`);
-  const rmsInput = document.getElementById(`${type}-${id}-rms`);
-  if (peakInput && rmsInput) {
-    rmsInput.value = (parseFloat(peakInput.value) / SQRT2).toFixed(2);
-  }
-}
-
-function updateAssemblyPhaseDropdowns() {
-  const phaseItems = document.querySelectorAll(
-    "#electrical-system-list .list-item"
-  );
-  const phases = Array.from(phaseItems).map(
-    (item) => item.querySelector(".phase-name").value
-  );
-
-  document.querySelectorAll(".assembly-phase-select").forEach((select) => {
-    const selectedValue = select.value;
-    select.innerHTML = "";
-    phases.forEach((p) => {
-      const option = document.createElement("option");
-      option.value = p;
-      option.textContent = p;
-      if (p === selectedValue) {
-        option.selected = true;
-      }
-      select.appendChild(option);
-    });
-  });
-}
-
-function addPhase(data = {}) {
-  phaseCounter++;
-  const list = document.getElementById("electrical-system-list");
-  const item = document.createElement("div");
-  item.className = "list-item";
-  item.id = `phase-${phaseCounter}`;
-  const defaultRms = 4000;
-  const peak = data.peakCurrentA || (defaultRms * SQRT2).toFixed(2);
-  const rms = (peak / SQRT2).toFixed(2);
-  item.innerHTML = `<h4>Phase ${phaseCounter}</h4><label>Name:</label><input type="text" class="phase-name" value="${
-    data.name || `L${phaseCounter}`
-  }" onkeyup="updateAssemblyPhaseDropdowns()"><label>Phasenverschiebung (°):</label><input type="number" class="phase-shift" value="${
-    data.phaseShiftDeg ?? 0
-  }"><div class="form-row"><div><label>Spitzenstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-peak" class="phase-peak" value="${peak}" oninput="updateRms(${phaseCounter}, 'phase')"></div><div><label>Effektivstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-rms" class="phase-rms" value="${rms}" oninput="updatePeak(${phaseCounter}, 'phase')"></div></div><button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
-  list.appendChild(item);
 }
 
 function addAssembly(data = {}) {
@@ -122,126 +69,66 @@ function addAssembly(data = {}) {
     )
     .join("");
 
-  const conductor = data.primaryConductor || {
-    type: "Rectangle",
-    width: 40,
-    height: 10,
-  };
-
   item.innerHTML = `
-        <h4>Baugruppe ${assemblyCounter}</h4>
-        <label>Name:</label><input type="text" class="assembly-name" value="${
-          data.name || `Assembly_${assemblyCounter}`
-        }">
-        <label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
-          data.phaseName || ""
-        }</select>
-        <label>Position X:</label><input type="number" class="pos-x" value="${
-          data.position?.x || 0
-        }">
-        <label>Position Y:</label><input type="number" class="pos-y" value="${
-          data.position?.y || 0
-        }">
-        <label>Wandler:</label><select class="transformer">${transformerOptions}</select>
-        
-        <div class="conductor-section" style="margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 1rem;">
-            <label style="font-weight: bold;">Primärleiter (Fenster)</label>
-            <select class="conductor-type" onchange="toggleConductorFields(this)">
-                <option value="Rectangle" ${
-                  conductor.type === "Rectangle" ? "selected" : ""
-                }>Einzel-Rechteck</option>
-                <option value="MultiRectangle" ${
-                  conductor.type === "MultiRectangle" ? "selected" : ""
-                }>Mehrfach-Rechteck</option>
-                <option value="Circle" ${
-                  conductor.type === "Circle" ? "selected" : ""
-                }>Kreis</option>
-            </select>
-            <div class="conductor-fields form-group-wrapper" style="margin-top: 0.5rem;">
-                </div>
-        </div>
+      <h4>Baugruppe ${assemblyCounter}</h4>
+      <label>Name:</label><input type="text" class="assembly-name" value="${
+        data.name || `Assembly_${assemblyCounter}`
+      }">
+      <label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
+        data.phaseName || ""
+      }</select>
+      <label>Position X:</label><input type="number" class="pos-x" value="${
+        data.position?.x || 0
+      }">
+      <label>Position Y:</label><input type="number" class="pos-y" value="${
+        data.position?.y || 0
+      }">
+      
+      <label>Wandler:</label>
+      <select class="transformer" onchange="updateConductorOptions(this)">${transformerOptions}</select>
+      
+      <div class="form-group">
+          <label>Fensterkonfiguration:</label>
+          <select class="primary-conductor-select"></select>
+      </div>
 
-        <button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>
-    `;
+      <button type="button" class="danger" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>`;
   list.appendChild(item);
-  toggleConductorFields(item.querySelector(".conductor-type"), conductor);
   updateAssemblyPhaseDropdowns();
+  updateConductorOptions(
+    item.querySelector(".transformer"),
+    data.primaryConductorName
+  );
 }
 
-function toggleConductorFields(selectElement, data = {}) {
-  const fieldsContainer = selectElement
-    .closest(".conductor-section")
-    .querySelector(".conductor-fields");
-  const type = selectElement.value;
-  let html = "";
+function updateConductorOptions(transformerSelect, selectedConductorName) {
+  const transformerName = transformerSelect.value;
+  const assemblyItem = transformerSelect.closest(".list-item");
+  const conductorSelect = assemblyItem.querySelector(
+    ".primary-conductor-select"
+  );
+  conductorSelect.innerHTML = "";
 
-  html += `<div class="form-group"><label>Material:</label><input type="text" class="conductor-material" value="${
-    data.material || "Copper"
-  }"></div>`;
+  const transformer = (library.components?.transformers || []).find(
+    (t) => t.templateProductInformation.name === transformerName
+  );
 
-  if (type === "Rectangle") {
-    html += `
-            <div class="form-row">
-                <div class="form-group"><label>Breite (mm):</label><input type="number" class="conductor-width" value="${
-                  data.width || 40
-                }"></div>
-                <div class="form-group"><label>Höhe (mm):</label><input type="number" class="conductor-height" value="${
-                  data.height || 10
-                }"></div>
-            </div>
-        `;
-  } else if (type === "MultiRectangle") {
-    html += `
-            <div class="form-row">
-                <div class="form-group"><label>Anzahl:</label><input type="number" class="conductor-count" value="${
-                  data.count || 2
-                }" min="1"></div>
-                <div class="form-group"><label>Breite (mm):</label><input type="number" class="conductor-width" value="${
-                  data.width || 40
-                }"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Höhe (mm):</label><input type="number" class="conductor-height" value="${
-                  data.height || 10
-                }"></div>
-                <div class="form-group"><label>Abstand (mm):</label><input type="number" class="conductor-spacing" value="${
-                  data.spacing || 2
-                }"></div>
-            </div>
-        `;
-  } else if (type === "Circle") {
-    html += `<div class="form-group"><label>Durchmesser (mm):</label><input type="number" class="conductor-diameter" value="${
-      data.diameter || 20
-    }"></div>`;
+  if (
+    transformer &&
+    transformer.specificProductInformation.availableWindowSizes
+  ) {
+    transformer.specificProductInformation.availableWindowSizes.forEach(
+      (size) => {
+        const option = document.createElement("option");
+        option.value = size;
+        option.textContent = size;
+        if (size === selectedConductorName) {
+          option.selected = true;
+        }
+        conductorSelect.appendChild(option);
+      }
+    );
   }
-  fieldsContainer.innerHTML = html;
-}
-
-function addStandalone(data = {}) {
-  standaloneCounter++;
-  const list = document.getElementById("standalone-list");
-  const item = document.createElement("div");
-  item.className = "list-item";
-  item.id = `standalone-${standaloneCounter}`;
-  let sheetOptions = (library.components?.transformerSheets || [])
-    .map(
-      (s) =>
-        `<option value="${s.templateProductInformation.name}" ${
-          data.name === s.templateProductInformation.name ? "selected" : ""
-        }>${s.templateProductInformation.name}</option>`
-    )
-    .join("");
-  item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4><label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select><label>Position X:</label><input type="number" class="pos-x" value="${
-    data.position?.x || 0
-  }"><label>Position Y:</label><input type="number" class="pos-y" value="${
-    data.position?.y || 0
-  }"><button type="button" onclick="removeItem('standalone-${standaloneCounter}')">Entfernen</button>`;
-  list.appendChild(item);
-}
-
-function removeItem(id) {
-  const item = document.getElementById(id);
-  if (item) item.remove();
 }
 
 function gatherFormData() {
@@ -268,40 +155,6 @@ function gatherFormData() {
     });
 
   form.querySelectorAll("#assemblies-list .list-item").forEach((item) => {
-    const conductorSection = item.querySelector(".conductor-section");
-    const conductorType =
-      conductorSection.querySelector(".conductor-type").value;
-    const conductorData = {
-      type: conductorType,
-      material: conductorSection.querySelector(".conductor-material").value,
-    };
-
-    if (conductorType === "Rectangle") {
-      conductorData.width = parseFloat(
-        conductorSection.querySelector(".conductor-width").value
-      );
-      conductorData.height = parseFloat(
-        conductorSection.querySelector(".conductor-height").value
-      );
-    } else if (conductorType === "MultiRectangle") {
-      conductorData.count = parseInt(
-        conductorSection.querySelector(".conductor-count").value
-      );
-      conductorData.width = parseFloat(
-        conductorSection.querySelector(".conductor-width").value
-      );
-      conductorData.height = parseFloat(
-        conductorSection.querySelector(".conductor-height").value
-      );
-      conductorData.spacing = parseFloat(
-        conductorSection.querySelector(".conductor-spacing").value
-      );
-    } else if (conductorType === "Circle") {
-      conductorData.diameter = parseFloat(
-        conductorSection.querySelector(".conductor-diameter").value
-      );
-    }
-
     data.assemblies.push({
       name: item.querySelector(".assembly-name").value,
       phaseName: item.querySelector(".assembly-phase-select").value,
@@ -310,7 +163,8 @@ function gatherFormData() {
         y: parseInt(item.querySelector(".pos-y").value),
       },
       transformerName: item.querySelector(".transformer").value,
-      primaryConductor: conductorData,
+      primaryConductorName: item.querySelector(".primary-conductor-select")
+        .value,
     });
   });
 
@@ -327,111 +181,55 @@ function gatherFormData() {
   return data;
 }
 
-function updateSummary() {
-  const data = gatherFormData();
-  const output = document.getElementById("summary-output");
-  if (!output) return;
-  output.innerHTML = "";
-
-  const params = data.simulationParams;
-  let paramsHtml = "<h3>Allgemeine Parameter</h3>";
-  paramsHtml += `<div class="summary-box-item"><strong>Frequenz:</strong> <span>${params.frequencyHz} Hz</span></div>`;
-  paramsHtml += `<div class="summary-box-item"><strong>Problem-Tiefe:</strong> <span>${params.problemDepthM} mm</span></div>`;
-  paramsHtml += `<div class="summary-box-item"><strong>Permeabilität:</strong> <span>${params.coreRelPermeability}</span></div>`;
-  output.innerHTML += paramsHtml;
-
-  let electricalHtml = "<h3>Elektrisches System</h3>";
-  if (data.electricalSystem.length > 0) {
-    data.electricalSystem.forEach((p) => {
-      electricalHtml += `<div class="summary-box-item"><strong>${
-        p.name
-      }:</strong> <span>${parseFloat(p.peakCurrentA).toFixed(2)} A (Peak), ${
-        p.phaseShiftDeg
-      }°</span></div>`;
-    });
-  } else {
-    electricalHtml += "<span>Keine Phasen definiert.</span>";
-  }
-  output.innerHTML += electricalHtml;
-
-  let assembliesHtml = "<h3>Baugruppen</h3>";
-  if (data.assemblies.length > 0) {
-    data.assemblies.forEach((a) => {
-      let conductorDesc = `Typ: ${a.primaryConductor.type}`;
-      assembliesHtml += `<div class="summary-box-item"><strong>${a.name} (Phase: ${a.phaseName})</strong><div class="summary-box-sub-item"><span>Wandler: ${a.transformerName}</span><br><span>Leiter: ${conductorDesc}</span><br><span>Position: (${a.position.x}, ${a.position.y})</span></div></div>`;
-    });
-  } else {
-    assembliesHtml += "<span>Keine Baugruppen definiert.</span>";
-  }
-  output.innerHTML += assembliesHtml;
-
-  updateVisualization(data);
+function addPhase(data = {}) {
+  phaseCounter++;
+  const list = document.getElementById("electrical-system-list");
+  const item = document.createElement("div");
+  item.className = "list-item";
+  item.id = `phase-${phaseCounter}`;
+  const defaultRms = 4000;
+  const peak = data.peakCurrentA || (defaultRms * SQRT2).toFixed(2);
+  const rms = (peak / SQRT2).toFixed(2);
+  item.innerHTML = `<h4>Phase ${phaseCounter}</h4><label>Name:</label><input type="text" class="phase-name" value="${
+    data.name || `L${phaseCounter}`
+  }" onkeyup="updateAssemblyPhaseDropdowns()"><label>Phasenverschiebung (°):</label><input type="number" class="phase-shift" value="${
+    data.phaseShiftDeg ?? 0
+  }"><div class="form-row"><div><label>Spitzenstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-peak" class="phase-peak" value="${peak}" oninput="updateRms(${phaseCounter}, 'phase')"></div><div><label>Effektivstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-rms" class="phase-rms" value="${rms}" oninput="updatePeak(${phaseCounter}, 'phase')"></div></div><button type="button" class="danger" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
+  list.appendChild(item);
 }
 
-function updateVisualization(data) {
-  const svg = document.getElementById("svg-canvas");
-  if (!svg) return;
-  svg.innerHTML = "";
+function addStandalone(data = {}) {
+  standaloneCounter++;
+  const list = document.getElementById("standalone-list");
+  const item = document.createElement("div");
+  item.className = "list-item";
+  item.id = `standalone-${standaloneCounter}`;
+  let sheetOptions = (library.components?.transformerSheets || [])
+    .map(
+      (s) =>
+        `<option value="${s.templateProductInformation.name}" ${
+          data.name === s.templateProductInformation.name ? "selected" : ""
+        }>${s.templateProductInformation.name}</option>`
+    )
+    .join("");
+  item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4><label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select><label>Position X:</label><input type="number" class="pos-x" value="${
+    data.position?.x || 0
+  }"><label>Position Y:</label><input type="number" class="pos-y" value="${
+    data.position?.y || 0
+  }"><button type="button" class="danger" onclick="removeItem('standalone-${standaloneCounter}')">Entfernen</button>`;
+  list.appendChild(item);
+}
 
-  fetch("/visualize", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
-    .then((response) => response.json())
-    .then((elements) => {
-      if (!elements || elements.length === 0) return;
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      elements.forEach((el) => {
-        minX = Math.min(minX, el.x);
-        minY = Math.min(minY, el.y);
-        maxX = Math.max(maxX, el.x + (el.width || 2 * el.r));
-        maxY = Math.max(maxY, el.y + (el.height || 2 * el.r));
-      });
-
-      const padding = 100;
-      const viewBoxWidth = maxX - minX + 2 * padding;
-      const viewBoxHeight = maxY - minY + 2 * padding;
-      svg.setAttribute(
-        "viewBox",
-        `${minX - padding} ${-maxY - padding} ${viewBoxWidth} ${viewBoxHeight}`
-      );
-
-      elements.forEach((el) => {
-        let shape;
-        if (el.type === "rect") {
-          shape = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "rect"
-          );
-          shape.setAttribute("x", el.x);
-          shape.setAttribute("y", -el.y - el.height);
-          shape.setAttribute("width", el.width);
-          shape.setAttribute("height", el.height);
-        } else if (el.type === "circle") {
-          shape = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "circle"
-          );
-          shape.setAttribute("cx", el.cx);
-          shape.setAttribute("cy", -el.cy);
-          shape.setAttribute("r", el.r);
-        }
-        shape.setAttribute("fill", el.fill);
-        shape.setAttribute("stroke", "black");
-        shape.setAttribute("stroke-width", "1");
-        svg.appendChild(shape);
-      });
-    });
+function removeItem(id) {
+  const item = document.getElementById(id);
+  if (item) item.remove();
 }
 
 function saveState() {
   if (!document.getElementById("simulation-form")) return;
   const data = gatherFormData();
   localStorage.setItem("latestSimConfig", JSON.stringify(data));
+  updateSummary();
 }
 
 function loadState(data = null) {
@@ -557,4 +355,109 @@ async function updateScenarioList() {
   } catch (e) {
     console.error("Szenarien konnten nicht geladen werden:", e);
   }
+}
+
+function updateSummary() {
+  const data = gatherFormData();
+  const output = document.getElementById("summary-output");
+  if (!output) return;
+  output.innerHTML = "";
+
+  let html = "<h3>Allgemeine Parameter</h3>";
+  html += `<div class="summary-box-item"><strong>Frequenz:</strong> <span>${data.simulationParams.frequencyHz} Hz</span></div>`;
+  html += `<div class="summary-box-item"><strong>Problem-Tiefe:</strong> <span>${data.simulationParams.problemDepthM} mm</span></div>`;
+  html += `<div class="summary-box-item"><strong>Permeabilität:</strong> <span>${data.simulationParams.coreRelPermeability}</span></div>`;
+
+  html += "<h3>Elektrisches System</h3>";
+  if (data.electricalSystem.length > 0) {
+    data.electricalSystem.forEach((p) => {
+      html += `<div class="summary-box-item"><strong>${
+        p.name
+      }:</strong> <span>${parseFloat(p.peakCurrentA).toFixed(2)} A (Peak), ${
+        p.phaseShiftDeg
+      }°</span></div>`;
+    });
+  } else {
+    html += "<span>Keine Phasen definiert.</span>";
+  }
+
+  html += "<h3>Baugruppen</h3>";
+  if (data.assemblies.length > 0) {
+    data.assemblies.forEach((a) => {
+      let conductorDesc = a.primaryConductorName || "Nicht gewählt";
+      html += `<div class="summary-box-item"><strong>${a.name} (Phase: ${a.phaseName})</strong><div class="summary-box-sub-item"><span>Wandler: ${a.transformerName}</span><br><span>Fenster: ${conductorDesc}</span><br><span>Position: (${a.position.x}, ${a.position.y})</span></div></div>`;
+    });
+  } else {
+    html += "<span>Keine Baugruppen definiert.</span>";
+  }
+
+  output.innerHTML = html;
+  updateVisualization(data);
+}
+
+function updateVisualization(data) {
+  const svg = document.getElementById("svg-canvas");
+  if (!svg) return;
+  svg.innerHTML = "";
+
+  fetch("/visualize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+    .then((response) => response.json())
+    .then((elements) => {
+      if (!elements || elements.length === 0) return;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      elements.forEach((el) => {
+        minX = Math.min(minX, el.x);
+        minY = Math.min(minY, el.y);
+        maxX = Math.max(maxX, el.x + (el.width || 0));
+        maxY = Math.max(maxY, el.y + (el.height || 0));
+      });
+
+      const padding = 100;
+      const viewBoxWidth = maxX - minX + 2 * padding;
+      const viewBoxHeight = maxY - minY + 2 * padding;
+      svg.setAttribute(
+        "viewBox",
+        `${minX - padding} ${-maxY - padding} ${viewBoxWidth} ${viewBoxHeight}`
+      );
+
+      elements.forEach((el) => {
+        let shape = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          el.type
+        );
+        if (el.type === "rect") {
+          shape.setAttribute("x", el.x);
+          shape.setAttribute("y", -el.y - el.height);
+          shape.setAttribute("width", el.width);
+          shape.setAttribute("height", el.height);
+        }
+        shape.setAttribute("fill", el.fill);
+        shape.setAttribute("stroke", "black");
+        shape.setAttribute("stroke-width", "1");
+        svg.appendChild(shape);
+      });
+    });
+}
+
+function initializeCardNavigation(navId, sectionsId) {
+  const navCards = document.querySelectorAll(`#${navId} .card`);
+  const sections = document.querySelectorAll(`#${sectionsId} .config-section`);
+  navCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      const targetId = card.dataset.target;
+      navCards.forEach((c) => c.classList.remove("active"));
+      card.classList.add("active");
+      sections.forEach((s) => {
+        s.style.display = s.id === targetId ? "block" : "none";
+        if (s.id === "config-summary") updateSummary();
+      });
+    });
+  });
 }

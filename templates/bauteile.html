@@ -34,213 +34,9 @@
     <hr>
 
     <div id="bauteil-sections">
-        <div id="bauteil-rails" class="config-section active">
-            <div class="component-editor">
-                <div class="component-preview">
-                    <div class="preview-header">
-                        <h3>Live-Vorschau</h3>
-                        <div class="preview-controls">
-                            <label for="rail-preview-bg">Hintergrund:</label>
-                            <input type="color" id="rail-preview-bg" class="preview-bg-input"
-                                data-target-svg="rail-preview-svg" value="#f8f9fa">
-                        </div>
-                        <button class="zoom-preview-btn" data-form-id="rail-form"
-                            title="Vorschau vergrößern">🔍</button>
-                    </div>
-                    <svg id="rail-preview-svg"></svg>
-                </div>
-                <div class="component-form">
-                    <h3 id="rail-form-title">Neue Stromschiene erstellen</h3>
-                    <form id="rail-form" data-type="copperRails">
-                        <input type="hidden" id="rail-original-name">
-                        <div class="form-grid">
-                            <div class="form-section">
-                                <h4>Allgemeine Produktinformationen</h4>
-                                <div class="form-group"><label for="rail-name">Name (Eindeutige ID)</label><input
-                                        type="text" id="rail-name" required></div>
-                                <div class="form-group"><label for="rail-productName">Produktbezeichnung</label><input
-                                        type="text" id="rail-productName"></div>
-                                <div class="form-group"><label for="rail-manufacturer">Hersteller</label><input
-                                        type="text" id="rail-manufacturer"></div>
-                                <div class="form-group"><label>Tags</label>
-                                    <div id="rail-tags-selection" class="tags-input-container"><button type="button"
-                                            class="add-tags-btn">+ Tags hinzufügen</button></div>
-                                </div>
-                            </div>
-                            <div class="form-section">
-                                <h4>Geometrie & Material</h4>
-                                <div class="form-group"><label for="rail-material">Material</label><input type="text"
-                                        id="rail-material" value="Copper"></div>
-                                <div class="form-group"><label for="rail-width">Breite (mm)</label><input type="number"
-                                        step="any" id="rail-width"></div>
-                                <div class="form-group"><label for="rail-height">Höhe (mm)</label><input type="number"
-                                        step="any" id="rail-height"></div>
-                            </div>
-                        </div>
-                        <div class="button-group">
-                            <button type="submit">Speichern</button>
-                            <button type="button" class="clear-btn">Formular leeren</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <hr>
-            <h2>Vorhandene Stromschienen</h2>
-            <div class="component-list-accordion" id="rails-list"></div>
-        </div>
-
-        <div id="bauteil-transformers" class="config-section">
-            <div class="component-editor">
-                <div class="component-preview">
-                    <div class="preview-header">
-                        <h3>Live-Vorschau</h3>
-                        <div class="preview-controls">
-                            <label for="transformer-preview-bg">Hintergrund:</label>
-                            <input type="color" id="transformer-preview-bg" class="preview-bg-input"
-                                data-target-svg="transformer-preview-svg" value="#f8f9fa">
-                        </div>
-                        <button class="zoom-preview-btn" data-form-id="transformer-form"
-                            title="Vorschau vergrößern">🔍</button>
-                    </div>
-                    <svg id="transformer-preview-svg"></svg>
-                </div>
-                <div class="component-form">
-                    <h3 id="transformer-form-title">Neuen Wandler erstellen</h3>
-                    <form id="transformer-form" data-type="transformers">
-                        <input type="hidden" id="transformer-original-name">
-                        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-                            <div class="form-section" style="grid-column: 1 / 3;">
-                                <h4>Allgemeine Informationen</h4>
-                                <div class="form-row">
-                                    <div class="form-group"><label>Name (ID)</label><input type="text"
-                                            id="transformer-name" required></div>
-                                    <div class="form-group"><label>Hersteller</label><input type="text"
-                                            id="transformer-manufacturer"></div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group"><label>Produktname</label><input type="text"
-                                            id="transformer-productName"></div>
-                                    <div class="form-group"><label>Tags</label>
-                                        <div id="transformer-tags-selection" class="tags-input-container"><button
-                                                type="button" class="add-tags-btn">+ Tags hinzufügen</button></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-section">
-                                <h4>Elektrische Eigenschaften</h4>
-                                <div class="form-group"><label>Primärstrom (A)</label><input type="number"
-                                        id="transformer-primaryRatedCurrentA"></div>
-                                <div class="form-group"><label>Sekundärstrom (A)</label><input type="number"
-                                        id="transformer-secondaryRatedCurrentA"></div>
-                                <div class="form-group"><label>Bürde (VA)</label><input type="number" step="any"
-                                        id="transformer-burdenVA"></div>
-                            </div>
-                            <div class="form-section">
-                                <h4>Material & Tiefe</h4>
-                                <div class="form-group"><label>Kernmaterial</label><input type="text"
-                                        id="transformer-coreMaterial" value="M-36 Steel"></div>
-                                <div class="form-group"><label>Spaltmaterial</label><input type="text"
-                                        id="transformer-gapMaterial" value="Air"></div>
-                                <div class="form-group"><label>Tiefe (mm)</label><input type="number" step="any"
-                                        id="transformer-depth"></div>
-                            </div>
-                            <div class="form-section" style="grid-column: 1 / -1;">
-                                <h4>Geometrie des Wandlers (mm)</h4>
-                                <div class="form-row">
-                                    <div class="form-group"><label>Luft Außen B</label><input type="number" step="any"
-                                            id="transformer-outerAirWidth"></div>
-                                    <div class="form-group"><label>Luft Außen H</label><input type="number" step="any"
-                                            id="transformer-outerAirHeight"></div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group"><label>Kern Außen B</label><input type="number" step="any"
-                                            id="transformer-coreOuterWidth"></div>
-                                    <div class="form-group"><label>Kern Außen H</label><input type="number" step="any"
-                                            id="transformer-coreOuterHeight"></div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group"><label>Kern Innen B</label><input type="number" step="any"
-                                            id="transformer-coreInnerWidth"></div>
-                                    <div class="form-group"><label>Kern Innen H</label><input type="number" step="any"
-                                            id="transformer-coreInnerHeight"></div>
-                                </div>
-                            </div>
-
-                            <div class="form-section" style="grid-column: 1 / -1;">
-                                <h4 style="font-weight: bold; margin-bottom: 1rem;">Mögliche Primärleiter (Fenster)</h4>
-                                <div id="conductors-list-container">
-                                </div>
-                                <button type="button" id="btn-add-conductor" class="button secondary"
-                                    style="margin-top: 1rem;">+ Fensterkonfiguration hinzufügen</button>
-                            </div>
-                        </div>
-                        <div class="button-group">
-                            <button type="submit">Speichern</button>
-                            <button type="button" class="clear-btn">Formular leeren</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <hr>
-            <h2>Vorhandene Wandler</h2>
-            <div class="component-list-accordion" id="transformers-list"></div>
-        </div>
-
-        <div id="bauteil-sheets" class="config-section">
-            <div class="component-editor">
-                <div class="component-preview">
-                    <div class="preview-header">
-                        <h3>Live-Vorschau</h3>
-                        <div class="preview-controls">
-                            <label for="sheet-preview-bg">Hintergrund:</label>
-                            <input type="color" id="sheet-preview-bg" class="preview-bg-input"
-                                data-target-svg="sheet-preview-svg" value="#f8f9fa">
-                        </div>
-                        <button class="zoom-preview-btn" data-form-id="sheet-form"
-                            title="Vorschau vergrößern">🔍</button>
-                    </div>
-                    <svg id="sheet-preview-svg"></svg>
-                </div>
-                <div class="component-form">
-                    <h3 id="sheet-form-title">Neues Abschirmblech erstellen</h3>
-                    <form id="sheet-form" data-type="transformerSheets">
-                        <input type="hidden" id="sheet-original-name">
-                        <div class="form-grid">
-                            <div class="form-section">
-                                <h4>Allgemeine Informationen</h4>
-                                <div class="form-group"><label>Name (ID)</label><input type="text" id="sheet-name"
-                                        required></div>
-                                <div class="form-group"><label>Hersteller</label><input type="text"
-                                        id="sheet-manufacturer" value="Standard"></div>
-                                <div class="form-group"><label>Produktname</label><input type="text"
-                                        id="sheet-productName"></div>
-                                <div class="form-group"><label>Tags</label>
-                                    <div id="sheet-tags-selection" class="tags-input-container"><button type="button"
-                                            class="add-tags-btn">+ Tags hinzufügen</button></div>
-                                </div>
-                            </div>
-                            <div class="form-section">
-                                <h4>Geometrie & Material</h4>
-                                <div class="form-group"><label>Material</label><input type="text" id="sheet-material"
-                                        value="M-36 Steel"></div>
-                                <div class="form-group"><label>Breite (mm)</label><input type="number" step="any"
-                                        id="sheet-width"></div>
-                                <div class="form-group"><label>Höhe (mm)</label><input type="number" step="any"
-                                        id="sheet-height"></div>
-                            </div>
-                        </div>
-                        <div class="button-group">
-                            <button type="submit">Speichern</button>
-                            <button type="button" class="clear-btn">Formular leeren</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <hr>
-            <h2>Vorhandene Abschirmbleche</h2>
-            <div class="component-list-accordion" id="sheets-list"></div>
-        </div>
-
+        <div id="bauteil-rails" class="config-section active"></div>
+        <div id="bauteil-transformers" class="config-section"></div>
+        <div id="bauteil-sheets" class="config-section"></div>
     </div>
 </div>
 
@@ -258,8 +54,7 @@
         <div class="search-container">
             <input type="text" id="tag-search-input" placeholder="Tags suchen...">
         </div>
-        <div id="modal-tag-list" class="modal-tag-list">
-        </div>
+        <div id="modal-tag-list" class="modal-tag-list"></div>
         <div class="button-group">
             <button type="button" id="modal-save-btn">Fertig</button>
             <button type="button" id="modal-cancel-btn" class="secondary">Abbrechen</button>
@@ -269,5 +64,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/tags.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bauteile.js') }}"></script>
 {% endblock %}

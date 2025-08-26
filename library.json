@@ -1,185 +1,482 @@
 {
-    "components": {
-        "copperRails": [
-            {
-                "templateProductInformation": {
-                    "name": "RJ_40x10_600A",
-                    "productName": "Kupferschiene 40x10",
-                    "manufacturer": "Rolf Janssen",
-                    "manufacturerNumber": "4411",
-                    "companyNumber": "",
-                    "eanNumber": "",
-                    "additionalInfo": "",
-                    "sellingPrice": "",
-                    "purchasePrice": "",
-                    "condition": "new",
-                    "tags": [],
-                    "uniqueNumber": "3921e"
-                },
-                "specificProductInformation": {
-                    "electricInformation": {
-                        "voltage": "",
-                        "current": "",
-                        "power": ""
-                    },
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "Copper",
-                        "length": null,
-                        "width": 40,
-                        "height": 10
-                    }
-                }
-            },
-            {
-                "templateProductInformation": {
-                    "name": "RJ_50x10_800A",
-                    "manufacturer": "Rolf Janssen",
-                    "productName": "Kupferschiene 50x10",
-                    "tags": [
-                        "800 A",
-                        "Rolf Janssen"
-                    ]
-                },
-                "specificProductInformation": {
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "Copper",
-                        "width": 50,
-                        "height": 10
-                    }
-                }
-            },
-            {
-                "templateProductInformation": {
-                    "name": "1",
-                    "productName": "",
-                    "manufacturer": "",
-                    "manufacturerNumber": "",
-                    "companyNumber": "",
-                    "eanNumber": "",
-                    "additionalInfo": "",
-                    "sellingPrice": "",
-                    "purchasePrice": "",
-                    "condition": "new",
-                    "tags": [],
-                    "uniqueNumber": "8e567"
-                },
-                "specificProductInformation": {
-                    "electricInformation": {
-                        "voltage": "",
-                        "current": "",
-                        "power": ""
-                    },
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "Copper",
-                        "length": null,
-                        "width": 10,
-                        "height": 10
-                    }
-                }
-            }
-        ],
-        "transformers": [
-            {
-                "templateProductInformation": {
-                    "name": "CELSA_ALO-5012_800-1A",
-                    "productName": "ALO 4012",
-                    "manufacturer": "ALO 5012",
-                    "tags": [
-                        "600 A",
-                        "310_CELSA"
-                    ],
-                    "uniqueNumber": "96a30"
-                },
-                "specificProductInformation": {
-                    "coreMaterial": "M-36 Steel",
-                    "gapMaterial": "Air",
-                    "depth": 31,
-                    "electrical": {
-                        "primaryRatedCurrentA": 800,
-                        "secondaryRatedCurrentA": 1,
-                        "burdenVA": 10
-                    },
-                    "geometry": {
-                        "type": "Rectangle",
-                        "outerAirWidth": 100,
-                        "outerAirHeight": 120,
-                        "coreOuterWidth": 85.5,
-                        "coreOuterHeight": 92,
-                        "coreInnerWidth": 50.2,
-                        "coreInnerHeight": 50.2,
-                        "innerWidth": 20.2,
-                        "innerHeight": 10
-                    }
-                }
-            },
-            {
-                "templateProductInformation": {
-                    "name": "Test",
-                    "productName": "Test",
-                    "manufacturer": "Test",
-                    "tags": [],
-                    "uniqueNumber": "b758c"
-                },
-                "specificProductInformation": {
-                    "coreMaterial": "M-36 Steel",
-                    "gapMaterial": "Air",
-                    "depth": 30,
-                    "electrical": {
-                        "primaryRatedCurrentA": 5000,
-                        "secondaryRatedCurrentA": 1,
-                        "burdenVA": 10
-                    },
-                    "geometry": {
-                        "type": "Rectangle",
-                        "outerAirWidth": 65,
-                        "outerAirHeight": 35,
-                        "coreOuterWidth": 60,
-                        "coreOuterHeight": 30,
-                        "coreInnerWidth": 55,
-                        "coreInnerHeight": 25,
-                        "innerWidth": 50,
-                        "innerHeight": 20
-                    }
-                }
-            }
-        ],
-        "transformerSheets": [
-            {
-                "templateProductInformation": {
-                    "name": "Sheet_200x5",
-                    "manufacturer": "Standard",
-                    "productName": "Abschirmblech 200x5",
-                    "tags": []
-                },
-                "specificProductInformation": {
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "M-36 Steel",
-                        "width": 200,
-                        "height": 5
-                    }
-                }
-            },
-            {
-                "templateProductInformation": {
-                    "name": "5",
-                    "productName": "",
-                    "manufacturer": "Standard",
-                    "tags": [],
-                    "uniqueNumber": "00120"
-                },
-                "specificProductInformation": {
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "M-36 Steel",
-                        "width": 100,
-                        "height": 5
-                    }
-                }
-            }
-        ]
-    }
+  "components": {
+    "copperRails": [
+      {
+        "templateProductInformation": {
+          "name": "RJ_40x10_600A",
+          "productName": "Kupferschiene 40x10",
+          "manufacturer": "Rolf Janssen",
+          "tags": ["600 A"],
+          "uniqueNumber": "3921e"
+        },
+        "specificProductInformation": {
+          "geometry": {
+            "type": "Rectangle",
+            "material": "Copper",
+            "width": 40,
+            "height": 10
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "RJ_50x10_800A",
+          "manufacturer": "Rolf Janssen",
+          "productName": "Kupferschiene 50x10",
+          "tags": ["800 A"]
+        },
+        "specificProductInformation": {
+          "geometry": {
+            "type": "Rectangle",
+            "material": "Copper",
+            "width": 50,
+            "height": 10
+          }
+        }
+      }
+    ],
+    "transformers": [
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-4012_600-1A",
+          "productName": "ALO 4012",
+          "manufacturer": "310_CELSA",
+          "tags": ["600 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 31,
+          "electrical": {
+            "primaryRatedCurrentA": 600,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 5
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 100.5,
+            "outerAirHeight": 122,
+            "coreOuterWidth": 70.5,
+            "coreOuterHeight": 92,
+            "coreInnerWidth": 40.2,
+            "coreInnerHeight": 12.7,
+            "innerWidth": 40,
+            "innerHeight": 12
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-5012_800-1A",
+          "productName": "ALO 5012",
+          "manufacturer": "310_CELSA",
+          "tags": ["800 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 31,
+          "electrical": {
+            "primaryRatedCurrentA": 800,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 115.5,
+            "outerAirHeight": 139,
+            "coreOuterWidth": 85.5,
+            "coreOuterHeight": 109,
+            "coreInnerWidth": 50.2,
+            "coreInnerHeight": 12.7,
+            "innerWidth": 50,
+            "innerHeight": 12
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-6015.8_1000-1A",
+          "productName": "ALO 6015.8",
+          "manufacturer": "310_CELSA",
+          "tags": ["1000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 31,
+          "electrical": {
+            "primaryRatedCurrentA": 1000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 5
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 115.5,
+            "outerAirHeight": 140,
+            "coreOuterWidth": 85.5,
+            "coreOuterHeight": 110,
+            "coreInnerWidth": 63.7,
+            "coreInnerHeight": 15.7,
+            "innerWidth": 60,
+            "innerHeight": 12
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-6040_1250-1A",
+          "productName": "ALO 6040",
+          "manufacturer": "310_CELSA",
+          "tags": ["1250 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 50,
+          "electrical": {
+            "primaryRatedCurrentA": 1250,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 127,
+            "outerAirHeight": 153,
+            "coreOuterWidth": 97,
+            "coreOuterHeight": 123,
+            "coreInnerWidth": 54,
+            "coreInnerHeight": 56,
+            "innerWidth": 50,
+            "innerHeight": 30
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-6040_1600-1A",
+          "productName": "ALO 6040",
+          "manufacturer": "310_CELSA",
+          "tags": ["1600 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 50,
+          "electrical": {
+            "primaryRatedCurrentA": 1600,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 127,
+            "outerAirHeight": 153,
+            "coreOuterWidth": 97,
+            "coreOuterHeight": 123,
+            "coreInnerWidth": 64,
+            "coreInnerHeight": 44,
+            "innerWidth": 60,
+            "innerHeight": 10
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-10030_2000-1A",
+          "productName": "ALO 10030",
+          "manufacturer": "310_CELSA",
+          "tags": ["2000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 31,
+          "electrical": {
+            "primaryRatedCurrentA": 2000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 159.5,
+            "outerAirHeight": 188,
+            "coreOuterWidth": 129.5,
+            "coreOuterHeight": 158,
+            "coreInnerWidth": 83.7,
+            "coreInnerHeight": 63.7,
+            "innerWidth": 80,
+            "innerHeight": 10
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-10030_2500-1A",
+          "productName": "ALO 10030",
+          "manufacturer": "310_CELSA",
+          "tags": ["2500 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 31,
+          "electrical": {
+            "primaryRatedCurrentA": 2500,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 159.5,
+            "outerAirHeight": 188,
+            "coreOuterWidth": 129.5,
+            "coreOuterHeight": 158,
+            "coreInnerWidth": 100.7,
+            "coreInnerHeight": 30.7,
+            "innerWidth": 100,
+            "innerHeight": 20
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-12070_3000-1A",
+          "productName": "ALO 12070",
+          "manufacturer": "310_CELSA",
+          "tags": ["3000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 50,
+          "electrical": {
+            "primaryRatedCurrentA": 3000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 190,
+            "outerAirHeight": 220,
+            "coreOuterWidth": 160,
+            "coreOuterHeight": 190,
+            "coreInnerWidth": 122,
+            "coreInnerHeight": 45,
+            "innerWidth": 120,
+            "innerHeight": 10
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-12070_4000-1A",
+          "productName": "ALO 12070",
+          "manufacturer": "310_CELSA",
+          "tags": ["4000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 50,
+          "electrical": {
+            "primaryRatedCurrentA": 4000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 190,
+            "outerAirHeight": 220,
+            "coreOuterWidth": 160,
+            "coreOuterHeight": 190,
+            "coreInnerWidth": 122,
+            "coreInnerHeight": 45,
+            "innerWidth": 120,
+            "innerHeight": 10
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-20060_5000-1A",
+          "productName": "ALO 20060",
+          "manufacturer": "310_CELSA",
+          "tags": ["5000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 50,
+          "electrical": {
+            "primaryRatedCurrentA": 5000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 183,
+            "outerAirHeight": 290,
+            "coreOuterWidth": 153,
+            "coreOuterHeight": 260,
+            "coreInnerWidth": 205,
+            "coreInnerHeight": 65,
+            "innerWidth": 200,
+            "innerHeight": 10
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-10050-K_2500-1A",
+          "productName": "ALO 10050-K",
+          "manufacturer": "310_CELSA",
+          "tags": ["2500 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 0,
+          "electrical": {
+            "primaryRatedCurrentA": 2500,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 0,
+            "outerAirHeight": 0,
+            "coreOuterWidth": 0,
+            "coreOuterHeight": 0,
+            "coreInnerWidth": 0,
+            "coreInnerHeight": 0,
+            "innerWidth": 0,
+            "innerHeight": 0
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-12070-K_3000-1A",
+          "productName": "ALO 12070-K",
+          "manufacturer": "310_CELSA",
+          "tags": ["3000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 0,
+          "electrical": {
+            "primaryRatedCurrentA": 3000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 15
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 0,
+            "outerAirHeight": 0,
+            "coreOuterWidth": 0,
+            "coreOuterHeight": 0,
+            "coreInnerWidth": 0,
+            "coreInnerHeight": 0,
+            "innerWidth": 0,
+            "innerHeight": 0
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-12070-K_4000-1A",
+          "productName": "ALO 12070-K",
+          "manufacturer": "310_CELSA",
+          "tags": ["4000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 0,
+          "electrical": {
+            "primaryRatedCurrentA": 4000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 10
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 0,
+            "outerAirHeight": 0,
+            "coreOuterWidth": 0,
+            "coreOuterHeight": 0,
+            "coreInnerWidth": 0,
+            "coreInnerHeight": 0,
+            "innerWidth": 0,
+            "innerHeight": 0
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "CELSA_ALO-E16050-K_5000-1A",
+          "productName": "ALO-E16050-K",
+          "manufacturer": "310_CELSA",
+          "tags": ["5000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "depth": 0,
+          "electrical": {
+            "primaryRatedCurrentA": 5000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 5
+          },
+          "geometry": {
+            "type": "Rectangle",
+            "outerAirWidth": 0,
+            "outerAirHeight": 0,
+            "coreOuterWidth": 0,
+            "coreOuterHeight": 0,
+            "coreInnerWidth": 0,
+            "coreInnerHeight": 0,
+            "innerWidth": 0,
+            "innerHeight": 0
+          }
+        }
+      }
+    ],
+    "transformerSheets": [
+      {
+        "templateProductInformation": {
+          "name": "Sheet_200x5",
+          "manufacturer": "Standard",
+          "productName": "Abschirmblech 200x5",
+          "tags": []
+        },
+        "specificProductInformation": {
+          "geometry": {
+            "type": "Rectangle",
+            "material": "M-36 Steel",
+            "width": 200,
+            "height": 5
+          }
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "Sheet_100x5",
+          "productName": "",
+          "manufacturer": "Standard",
+          "tags": [],
+          "uniqueNumber": "00120"
+        },
+        "specificProductInformation": {
+          "geometry": {
+            "type": "Rectangle",
+            "material": "M-36 Steel",
+            "width": 100,
+            "height": 5
+          }
+        }
+      }
+    ]
+  }
 }

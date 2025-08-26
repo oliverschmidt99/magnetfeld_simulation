@@ -29,6 +29,7 @@ def list_runs():
             date_path = os.path.join(RESULTS_DIR, date_dir)
             if os.path.isdir(date_path):
                 for run_dir in sorted(os.listdir(date_path), reverse=True):
+                    # Prüfen, ob eine summary.csv existiert
                     summary_path = safe_join(
                         date_path, run_dir, f"{run_dir}_summary.csv"
                     )
@@ -45,6 +46,7 @@ def get_summary_csv(date_dir, time_dir):
     """Liest die summary.csv-Datei mit Pandas und gibt sie als JSON zurück."""
     try:
         run_dir_name = f"{time_dir}"
+        # Sicheren Pfad zur CSV-Datei erstellen
         csv_filename = f"{run_dir_name}_summary.csv"
         safe_path = safe_join(
             os.path.abspath(RESULTS_DIR), date_dir, run_dir_name, csv_filename
@@ -53,6 +55,7 @@ def get_summary_csv(date_dir, time_dir):
         if not safe_path or not os.path.exists(safe_path):
             return jsonify({"error": "CSV-Datei nicht gefunden"}), 404
 
+        # CSV mit Pandas einlesen und als JSON im 'records'-Format zurückgeben
         df = pd.read_csv(safe_path)
         return jsonify(df.to_dict(orient="records"))
 
@@ -86,6 +89,7 @@ def list_files_in_run(run_dir):
 def get_analysis_data(filepath):
     """Parst eine .ans- und .fem-Datei und gibt die Plot-Daten als JSON zurück."""
     try:
+        # Pfade für beide Dateien erstellen
         ans_path = safe_join(os.path.abspath(RESULTS_DIR), filepath)
         fem_path = ans_path.replace(".ans", ".fem")
 
@@ -131,7 +135,6 @@ def get_analysis_data(filepath):
 
 def get_transformer_components(t, pos):
     """Extrahiert sicher die geometrischen Teile eines Wandlers."""
-    # ... (Dieser Teil bleibt unverändert) ...
     components, geo = [], t.get("specificProductInformation", {}).get("geometry", {})
     pos_x, pos_y = pos.get("x", 0), pos.get("y", 0)
     if geo.get("type") != "Rectangle":
@@ -163,7 +166,6 @@ def get_transformer_components(t, pos):
 @analysis_bp.route("/visualize", methods=["POST"])
 def visualize_setup():
     """Erstellt eine SVG-Vorschau für den Konfigurator."""
-    # ... (Dieser Teil bleibt unverändert) ...
     library = load_data(LIBRARY_FILE, {"components": {}})
     form_data = request.json
     svg_elements = []

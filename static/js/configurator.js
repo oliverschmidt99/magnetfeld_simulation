@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initializeConfigurator() {
-  // Ruft jetzt die globale Funktion aus main.js auf
   initializeCardNavigation("config-nav", "config-sections");
   loadState();
 
@@ -111,17 +110,7 @@ function addAssembly(data = {}) {
   const item = document.createElement("div");
   item.className = "list-item";
   item.id = `assembly-${assemblyCounter}`;
-  // KORRIGIERT: Der Pfad zu den Bauteilen wurde angepasst
-  const railOptions = (library.components?.copperRails || [])
-    .map(
-      (r) =>
-        `<option value="${r.templateProductInformation.name}" ${
-          data.copperRailName === r.templateProductInformation.name
-            ? "selected"
-            : ""
-        }>${r.templateProductInformation.name}</option>`
-    )
-    .join("");
+
   const transformerOptions = (library.components?.transformers || [])
     .map(
       (t) =>
@@ -132,16 +121,100 @@ function addAssembly(data = {}) {
         }>${t.templateProductInformation.name}</option>`
     )
     .join("");
-  item.innerHTML = `<h4>Baugruppe ${assemblyCounter}</h4><label>Name:</label><input type="text" class="assembly-name" value="${
-    data.name || `Assembly_${assemblyCounter}`
-  }"><label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
-    data.phaseName || ""
-  }</select><label>Position X:</label><input type="number" class="pos-x" value="${
-    data.position?.x || 0
-  }"><label>Position Y:</label><input type="number" class="pos-y" value="${
-    data.position?.y || 0
-  }"><label>Kupferschiene:</label><select class="copper-rail">${railOptions}</select><label>Wandler:</label><select class="transformer">${transformerOptions}</select><button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>`;
+
+  const conductor = data.primaryConductor || {
+    type: "Rectangle",
+    width: 40,
+    height: 10,
+  };
+
+  item.innerHTML = `
+        <h4>Baugruppe ${assemblyCounter}</h4>
+        <label>Name:</label><input type="text" class="assembly-name" value="${
+          data.name || `Assembly_${assemblyCounter}`
+        }">
+        <label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
+          data.phaseName || ""
+        }</select>
+        <label>Position X:</label><input type="number" class="pos-x" value="${
+          data.position?.x || 0
+        }">
+        <label>Position Y:</label><input type="number" class="pos-y" value="${
+          data.position?.y || 0
+        }">
+        <label>Wandler:</label><select class="transformer">${transformerOptions}</select>
+        
+        <div class="conductor-section" style="margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 1rem;">
+            <label style="font-weight: bold;">Primärleiter (Fenster)</label>
+            <select class="conductor-type" onchange="toggleConductorFields(this)">
+                <option value="Rectangle" ${
+                  conductor.type === "Rectangle" ? "selected" : ""
+                }>Einzel-Rechteck</option>
+                <option value="MultiRectangle" ${
+                  conductor.type === "MultiRectangle" ? "selected" : ""
+                }>Mehrfach-Rechteck</option>
+                <option value="Circle" ${
+                  conductor.type === "Circle" ? "selected" : ""
+                }>Kreis</option>
+            </select>
+            <div class="conductor-fields form-group-wrapper" style="margin-top: 0.5rem;">
+                </div>
+        </div>
+
+        <button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>
+    `;
   list.appendChild(item);
+  toggleConductorFields(item.querySelector(".conductor-type"), conductor);
+  updateAssemblyPhaseDropdowns();
+}
+
+function toggleConductorFields(selectElement, data = {}) {
+  const fieldsContainer = selectElement
+    .closest(".conductor-section")
+    .querySelector(".conductor-fields");
+  const type = selectElement.value;
+  let html = "";
+
+  html += `<div class="form-group"><label>Material:</label><input type="text" class="conductor-material" value="${
+    data.material || "Copper"
+  }"></div>`;
+
+  if (type === "Rectangle") {
+    html += `
+            <div class="form-row">
+                <div class="form-group"><label>Breite (mm):</label><input type="number" class="conductor-width" value="${
+                  data.width || 40
+                }"></div>
+                <div class="form-group"><label>Höhe (mm):</label><input type="number" class="conductor-height" value="${
+                  data.height || 10
+                }"></div>
+            </div>
+        `;
+  } else if (type === "MultiRectangle") {
+    html += `
+            <div class="form-row">
+                <div class="form-group"><label>Anzahl:</label><input type="number" class="conductor-count" value="${
+                  data.count || 2
+                }" min="1"></div>
+                <div class="form-group"><label>Breite (mm):</label><input type="number" class="conductor-width" value="${
+                  data.width || 40
+                }"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Höhe (mm):</label><input type="number" class="conductor-height" value="${
+                  data.height || 10
+                }"></div>
+                <div class="form-group"><label>Abstand (mm):</label><input type="number" class="conductor-spacing" value="${
+                  data.spacing || 2
+                }"></div>
+            </div>
+        `;
+  } else if (type === "Circle") {
+    html += `<div class="form-group"><label>Durchmesser (mm):</label><input type="number" class="conductor-diameter" value="${
+      data.diameter || 20
+    }"></div>`;
+  }
+  fieldsContainer.innerHTML = html;
 }
 
 function addStandalone(data = {}) {
@@ -150,7 +223,6 @@ function addStandalone(data = {}) {
   const item = document.createElement("div");
   item.className = "list-item";
   item.id = `standalone-${standaloneCounter}`;
-  // KORRIGIERT: Der Pfad zu den Bauteilen wurde angepasst
   let sheetOptions = (library.components?.transformerSheets || [])
     .map(
       (s) =>
@@ -184,6 +256,7 @@ function gatherFormData() {
     assemblies: [],
     standAloneComponents: [],
   };
+
   form
     .querySelectorAll("#electrical-system-list .list-item")
     .forEach((item) => {
@@ -193,7 +266,42 @@ function gatherFormData() {
         peakCurrentA: parseFloat(item.querySelector(".phase-peak").value),
       });
     });
+
   form.querySelectorAll("#assemblies-list .list-item").forEach((item) => {
+    const conductorSection = item.querySelector(".conductor-section");
+    const conductorType =
+      conductorSection.querySelector(".conductor-type").value;
+    const conductorData = {
+      type: conductorType,
+      material: conductorSection.querySelector(".conductor-material").value,
+    };
+
+    if (conductorType === "Rectangle") {
+      conductorData.width = parseFloat(
+        conductorSection.querySelector(".conductor-width").value
+      );
+      conductorData.height = parseFloat(
+        conductorSection.querySelector(".conductor-height").value
+      );
+    } else if (conductorType === "MultiRectangle") {
+      conductorData.count = parseInt(
+        conductorSection.querySelector(".conductor-count").value
+      );
+      conductorData.width = parseFloat(
+        conductorSection.querySelector(".conductor-width").value
+      );
+      conductorData.height = parseFloat(
+        conductorSection.querySelector(".conductor-height").value
+      );
+      conductorData.spacing = parseFloat(
+        conductorSection.querySelector(".conductor-spacing").value
+      );
+    } else if (conductorType === "Circle") {
+      conductorData.diameter = parseFloat(
+        conductorSection.querySelector(".conductor-diameter").value
+      );
+    }
+
     data.assemblies.push({
       name: item.querySelector(".assembly-name").value,
       phaseName: item.querySelector(".assembly-phase-select").value,
@@ -201,10 +309,11 @@ function gatherFormData() {
         x: parseInt(item.querySelector(".pos-x").value),
         y: parseInt(item.querySelector(".pos-y").value),
       },
-      copperRailName: item.querySelector(".copper-rail").value,
       transformerName: item.querySelector(".transformer").value,
+      primaryConductor: conductorData,
     });
   });
+
   form.querySelectorAll("#standalone-list .list-item").forEach((item) => {
     data.standAloneComponents.push({
       name: item.querySelector(".standalone-name").value,
@@ -214,6 +323,7 @@ function gatherFormData() {
       },
     });
   });
+
   return data;
 }
 
@@ -247,7 +357,8 @@ function updateSummary() {
   let assembliesHtml = "<h3>Baugruppen</h3>";
   if (data.assemblies.length > 0) {
     data.assemblies.forEach((a) => {
-      assembliesHtml += `<div class="summary-box-item"><strong>${a.name} (Phase: ${a.phaseName})</strong><div class="summary-box-sub-item"><span>Schiene: ${a.copperRailName}</span><br><span>Wandler: ${a.transformerName}</span><br><span>Position: (${a.position.x}, ${a.position.y})</span></div></div>`;
+      let conductorDesc = `Typ: ${a.primaryConductor.type}`;
+      assembliesHtml += `<div class="summary-box-item"><strong>${a.name} (Phase: ${a.phaseName})</strong><div class="summary-box-sub-item"><span>Wandler: ${a.transformerName}</span><br><span>Leiter: ${conductorDesc}</span><br><span>Position: (${a.position.x}, ${a.position.y})</span></div></div>`;
     });
   } else {
     assembliesHtml += "<span>Keine Baugruppen definiert.</span>";
@@ -261,6 +372,7 @@ function updateVisualization(data) {
   const svg = document.getElementById("svg-canvas");
   if (!svg) return;
   svg.innerHTML = "";
+
   fetch("/visualize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -276,9 +388,10 @@ function updateVisualization(data) {
       elements.forEach((el) => {
         minX = Math.min(minX, el.x);
         minY = Math.min(minY, el.y);
-        maxX = Math.max(maxX, el.x + el.width);
-        maxY = Math.max(maxY, el.y + el.height);
+        maxX = Math.max(maxX, el.x + (el.width || 2 * el.r));
+        maxY = Math.max(maxY, el.y + (el.height || 2 * el.r));
       });
+
       const padding = 100;
       const viewBoxWidth = maxX - minX + 2 * padding;
       const viewBoxHeight = maxY - minY + 2 * padding;
@@ -286,19 +399,31 @@ function updateVisualization(data) {
         "viewBox",
         `${minX - padding} ${-maxY - padding} ${viewBoxWidth} ${viewBoxHeight}`
       );
+
       elements.forEach((el) => {
-        const rect = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "rect"
-        );
-        rect.setAttribute("x", el.x);
-        rect.setAttribute("y", -el.y - el.height);
-        rect.setAttribute("width", el.width);
-        rect.setAttribute("height", el.height);
-        rect.setAttribute("fill", el.fill);
-        rect.setAttribute("stroke", "black");
-        rect.setAttribute("stroke-width", "1");
-        svg.appendChild(rect);
+        let shape;
+        if (el.type === "rect") {
+          shape = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "rect"
+          );
+          shape.setAttribute("x", el.x);
+          shape.setAttribute("y", -el.y - el.height);
+          shape.setAttribute("width", el.width);
+          shape.setAttribute("height", el.height);
+        } else if (el.type === "circle") {
+          shape = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle"
+          );
+          shape.setAttribute("cx", el.cx);
+          shape.setAttribute("cy", -el.cy);
+          shape.setAttribute("r", el.r);
+        }
+        shape.setAttribute("fill", el.fill);
+        shape.setAttribute("stroke", "black");
+        shape.setAttribute("stroke-width", "1");
+        svg.appendChild(shape);
       });
     });
 }
@@ -312,7 +437,6 @@ function saveState() {
 function loadState(data = null) {
   const configData =
     data || JSON.parse(localStorage.getItem("latestSimConfig"));
-
   const elsList = document.getElementById("electrical-system-list");
   const asmList = document.getElementById("assemblies-list");
   const stdList = document.getElementById("standalone-list");
@@ -357,23 +481,11 @@ function initializeDefaultSetup() {
   addPhase({ name: "L1", phaseShiftDeg: 0 });
   addPhase({ name: "L2", phaseShiftDeg: -120 });
   addPhase({ name: "L3", phaseShiftDeg: 120 });
-
   addAssembly({
     name: "Assembly_1",
     phaseName: "L1",
-    position: { x: -500, y: 0 },
-  });
-  addAssembly({
-    name: "Assembly_2",
-    phaseName: "L2",
     position: { x: 0, y: 0 },
   });
-  addAssembly({
-    name: "Assembly_3",
-    phaseName: "L3",
-    position: { x: 500, y: 0 },
-  });
-
   updateAssemblyPhaseDropdowns();
   updateScenarioList();
   saveState();
@@ -386,7 +498,6 @@ async function saveScenario() {
     return;
   }
   const data = gatherFormData();
-
   const response = await fetch(`/scenarios/${name}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -394,9 +505,7 @@ async function saveScenario() {
   });
   const result = await response.json();
   alert(result.message || result.error);
-  if (response.ok) {
-    updateScenarioList();
-  }
+  if (response.ok) updateScenarioList();
 }
 
 async function loadScenario() {
@@ -406,10 +515,8 @@ async function loadScenario() {
     alert("Bitte wähle ein Szenario zum Laden aus.");
     return;
   }
-
   const response = await fetch(`/scenarios/${name}`);
   const data = await response.json();
-
   if (response.ok) {
     loadState(data);
     document.getElementById("scenario-name").value = name;
@@ -426,14 +533,11 @@ async function deleteScenario() {
     alert("Bitte wähle ein Szenario zum Löschen aus.");
     return;
   }
-
   if (confirm(`Möchtest du das Szenario '${name}' wirklich löschen?`)) {
     const response = await fetch(`/scenarios/${name}`, { method: "DELETE" });
     const result = await response.json();
     alert(result.message || result.error);
-    if (response.ok) {
-      updateScenarioList();
-    }
+    if (response.ok) updateScenarioList();
   }
 }
 

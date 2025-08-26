@@ -15,25 +15,21 @@ function [currents, assemblies, standAloneComponents] = initializeComponents(sim
     for i = 1:length(simConfig.assemblies)
         asmCfg = simConfig.assemblies(i);
 
-        % FIX: Ensure component lists are always cell arrays
-        rails = library.components.copperRails;
-
-        if isstruct(rails)
-            rails = num2cell(rails);
-        end
-
         transformers = library.components.transformers;
 
         if isstruct(transformers)
             transformers = num2cell(transformers);
         end
 
-        railCfg = rails{strcmp(cellfun(@(x) x.templateProductInformation.name, rails, 'UniformOutput', false), asmCfg.copperRailName)};
         transformerCfg = transformers{strcmp(cellfun(@(x) x.templateProductInformation.name, transformers, 'UniformOutput', false), asmCfg.transformerName)};
 
         assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
-        assemblyGroup = assemblyGroup.addComponent(CopperRail(railCfg));
         assemblyGroup = assemblyGroup.addComponent(Transformer(transformerCfg));
+
+        conductorConfig = transformerCfg.specificProductInformation.primaryConductor;
+        conductor = PrimaryConductor(conductorConfig);
+        assemblyGroup = assemblyGroup.setPrimaryConductor(conductor);
+
         assemblyGroup.assignedCurrent = currentsMap(asmCfg.phaseName);
         assemblies{end + 1} = assemblyGroup; %#ok<AGROW>
     end

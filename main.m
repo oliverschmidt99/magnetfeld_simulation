@@ -154,11 +154,9 @@ if ~isempty(masterResultsTable) && width(masterResultsTable) > 1
         if ismember(metric, allVars)
             tempTable = groupsummary(masterResultsTable, groupingVars, @(x) sqrt(mean(x .^ 2)), metric);
 
-            % KORRIGIERT: Dynamische und sichere Umbenennung der Spalte
             oldVarName = ['fun1_', metric];
             newVarName = [metric, '_RMS'];
 
-            % Prüfen, ob die Spalte existiert, bevor sie umbenannt wird
             if ismember(oldVarName, tempTable.Properties.VariableNames)
                 tempTable = renamevars(tempTable, oldVarName, newVarName);
             end

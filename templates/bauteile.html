@@ -34,7 +34,6 @@
     <hr>
 
     <div id="bauteil-sections">
-
         <div id="bauteil-rails" class="config-section active">
             <div class="component-editor">
                 <div class="component-preview">
@@ -109,18 +108,22 @@
                     <h3 id="transformer-form-title">Neuen Wandler erstellen</h3>
                     <form id="transformer-form" data-type="transformers">
                         <input type="hidden" id="transformer-original-name">
-                        <div class="form-grid">
-                            <div class="form-section">
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-section" style="grid-column: 1 / 3;">
                                 <h4>Allgemeine Informationen</h4>
-                                <div class="form-group"><label>Name (ID)</label><input type="text" id="transformer-name"
-                                        required></div>
-                                <div class="form-group"><label>Hersteller</label><input type="text"
-                                        id="transformer-manufacturer"></div>
-                                <div class="form-group"><label>Produktname</label><input type="text"
-                                        id="transformer-productName"></div>
-                                <div class="form-group"><label>Tags</label>
-                                    <div id="transformer-tags-selection" class="tags-input-container"><button
-                                            type="button" class="add-tags-btn">+ Tags hinzufügen</button></div>
+                                <div class="form-row">
+                                    <div class="form-group"><label>Name (ID)</label><input type="text"
+                                            id="transformer-name" required></div>
+                                    <div class="form-group"><label>Hersteller</label><input type="text"
+                                            id="transformer-manufacturer"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group"><label>Produktname</label><input type="text"
+                                            id="transformer-productName"></div>
+                                    <div class="form-group"><label>Tags</label>
+                                        <div id="transformer-tags-selection" class="tags-input-container"><button
+                                                type="button" class="add-tags-btn">+ Tags hinzufügen</button></div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-section">
@@ -141,8 +144,8 @@
                                 <div class="form-group"><label>Tiefe (mm)</label><input type="number" step="any"
                                         id="transformer-depth"></div>
                             </div>
-                            <div class="form-section">
-                                <h4>Geometrie (mm)</h4>
+                            <div class="form-section" style="grid-column: 1 / -1;">
+                                <h4>Geometrie des Wandlers (mm)</h4>
                                 <div class="form-row">
                                     <div class="form-group"><label>Luft Außen B</label><input type="number" step="any"
                                             id="transformer-outerAirWidth"></div>
@@ -161,12 +164,14 @@
                                     <div class="form-group"><label>Kern Innen H</label><input type="number" step="any"
                                             id="transformer-coreInnerHeight"></div>
                                 </div>
-                                <div class="form-row">
-                                    <div class="form-group"><label>Innen B</label><input type="number" step="any"
-                                            id="transformer-innerWidth"></div>
-                                    <div class="form-group"><label>Innen H</label><input type="number" step="any"
-                                            id="transformer-innerHeight"></div>
+                            </div>
+
+                            <div class="form-section" style="grid-column: 1 / -1;">
+                                <h4 style="font-weight: bold; margin-bottom: 1rem;">Mögliche Primärleiter (Fenster)</h4>
+                                <div id="conductors-list-container">
                                 </div>
+                                <button type="button" id="btn-add-conductor" class="button secondary"
+                                    style="margin-top: 1rem;">+ Fensterkonfiguration hinzufügen</button>
                             </div>
                         </div>
                         <div class="button-group">

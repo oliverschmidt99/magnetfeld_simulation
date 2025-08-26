@@ -1,5 +1,4 @@
 # app.py
-
 from flask import Flask, render_template
 from server.api import api_bp
 from server.analysis import analysis_bp

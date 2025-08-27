@@ -1,5 +1,3 @@
-JavaScript;
-
 document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("bauteile-nav")) {
     initializeBauteilEditor();
@@ -66,7 +64,6 @@ async function initializeBauteilEditor() {
 
   initializeCardNavigation("bauteile-nav", "bauteil-sections");
 
-  // Setup für jede Sektion (HTML wird hier dynamisch eingefügt)
   setupComponentSection(
     "bauteil-rails",
     "rail",
@@ -130,6 +127,18 @@ async function initializeBauteilEditor() {
       if (svg) svg.style.backgroundColor = event.target.value;
     });
   });
+
+  renderComponentLists("copperRails", "rails-list", renderComponentPreview);
+  renderComponentLists(
+    "transformers",
+    "transformers-list",
+    renderTransformerPreview
+  );
+  renderComponentLists(
+    "transformerSheets",
+    "sheets-list",
+    renderComponentPreview
+  );
 }
 
 function setupComponentSection(
@@ -143,7 +152,61 @@ function setupComponentSection(
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  let formFieldsHtml = `
+  let formFieldsHtml;
+
+  if (isTransformer) {
+    formFieldsHtml = `
+            <div class="form-grid">
+                <div class="form-section">
+                    <h4>Allgemeine Produktinformationen</h4>
+                    <div class="form-group"><label for="transformer-name">Name (Eindeutige ID)</label><input type="text" id="transformer-name" required></div>
+                    <div class="form-group"><label for="transformer-productName">Produktbezeichnung</label><input type="text" id="transformer-productName"></div>
+                    <div class="form-group"><label for="transformer-manufacturer">Hersteller</label><input type="text" id="transformer-manufacturer"></div>
+                    <div class="form-group"><label>Tags</label>
+                        <div id="transformer-tags-selection" class="tags-input-container"><button type="button" class="add-tags-btn">+ Tags hinzufügen</button></div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h4>Elektrische Eigenschaften</h4>
+                    <div class="form-group"><label for="transformer-primaryRatedCurrentA">Primärstrom (A)</label><input type="number" step="any" id="transformer-primaryRatedCurrentA"></div>
+                    <div class="form-group"><label for="transformer-secondaryRatedCurrentA">Sekundärstrom (A)</label><input type="number" step="any" id="transformer-secondaryRatedCurrentA"></div>
+                    <div class="form-group"><label for="transformer-burdenVA">Bürde (VA)</label><input type="number" step="any" id="transformer-burdenVA"></div>
+                </div>
+                <div class="form-section">
+                    <h4>Geometrie & Material</h4>
+                    <div class="form-group"><label for="transformer-coreMaterial">Kern-Material</label><input type="text" id="transformer-coreMaterial" value="M-36 Steel"></div>
+                    <div class="form-group"><label for="transformer-gapMaterial">Luftspalt-Material</label><input type="text" id="transformer-gapMaterial" value="Air"></div>
+                    <div class="form-group"><label for="transformer-depth">Tiefe (mm)</label><input type="number" step="any" id="transformer-depth"></div>
+                    <div class="form-group">
+                        <label for="transformer-coreType">Kern-Typ</label>
+                        <select id="transformer-coreType">
+                            <option value="Rectangle">Rechteckig</option>
+                            <option value="Circle">Rund</option>
+                        </select>
+                    </div>
+                    <div id="geo-rectangle-fields">
+                        <div class="form-group"><label for="transformer-coreOuterWidth">Kern Außenbreite (mm)</label><input type="number" step="any" id="transformer-coreOuterWidth"></div>
+                        <div class="form-group"><label for="transformer-coreOuterHeight">Kern Außenhöhe (mm)</label><input type="number" step="any" id="transformer-coreOuterHeight"></div>
+                        <div class="form-group"><label for="transformer-coreInnerWidth">Kern Innenbreite (mm)</label><input type="number" step="any" id="transformer-coreInnerWidth"></div>
+                        <div class="form-group"><label for="transformer-coreInnerHeight">Kern Innenhöhe (mm)</label><input type="number" step="any" id="transformer-coreInnerHeight"></div>
+                    </div>
+                    <div id="geo-circle-fields" style="display: none;">
+                        <div class="form-group"><label for="transformer-coreOuterRadius">Kern Außenradius (mm)</label><input type="number" step="any" id="transformer-coreOuterRadius"></div>
+                        <div class="form-group"><label for="transformer-coreInnerRadius">Kern Innenradius (mm)</label><input type="number" step="any" id="transformer-coreInnerRadius"></div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h4>Fensterkonfigurationen</h4>
+                    <div class="form-group" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="window-size-selector" style="flex-grow: 1;"></select>
+                        <input type="number" id="window-air-gap" placeholder="Spalt (mm)" value="5" style="width: 100px;">
+                        <button type="button" id="btn-add-window-config" class="button add" style="padding: 10px; margin-top: 0;">+</button>
+                    </div>
+                    <div id="window-configs-list" class="tags-input-container"></div>
+                </div>
+            </div>`;
+  } else {
+    formFieldsHtml = `
         <div class="form-grid">
             <div class="form-section">
                 <h4>Allgemeine Produktinformationen</h4>
@@ -157,29 +220,35 @@ function setupComponentSection(
             <div class="form-section">
                 <h4>Geometrie & Material</h4>
                 <div class="form-group"><label for="${prefix}-material">Material</label><input type="text" id="${prefix}-material" value="${
-    typeKey === "transformerSheets" ? "M-36 Steel" : "Copper"
-  }"></div>
+      typeKey === "transformerSheets" ? "M-36 Steel" : "Copper"
+    }"></div>
                 <div class="form-group"><label for="${prefix}-width">Breite (mm)</label><input type="number" step="any" id="${prefix}-width"></div>
                 <div class="form-group"><label for="${prefix}-height">Höhe (mm)</label><input type="number" step="any" id="${prefix}-height"></div>
             </div>
         </div>`;
-
-  if (isTransformer) {
-    // ... (HTML für das komplexe Transformer-Formular hier einfügen)
   }
 
   container.innerHTML = `
         <div class="component-editor">
-            <div class="component-preview">
+             <div class="component-preview">
+                <div class="preview-header">
+                    <h3>Vorschau</h3>
+                    <div class="preview-controls">
+                        <label for="${prefix}-preview-bg">BG:</label>
+                        <input type="color" id="${prefix}-preview-bg" class="preview-bg-input" data-target-svg="${prefix}-preview-svg" value="#f8f9fa">
+                        <button type="button" class="zoom-preview-btn" data-form-id="${prefix}-form" title="Vollbild-Vorschau">🔍</button>
+                    </div>
                 </div>
+                <svg id="${prefix}-preview-svg"></svg>
+            </div>
             <div class="component-form">
                 <h3 id="${prefix}-form-title">Neues Bauteil erstellen</h3>
                 <form id="${prefix}-form" data-type="${typeKey}">
                     <input type="hidden" id="${prefix}-original-name">
                     ${formFieldsHtml}
                     <div class="button-group">
-                        <button type="submit">Speichern</button>
-                        <button type="button" class="clear-btn">Formular leeren</button>
+                        <button type="submit" class="button add">Speichern</button>
+                        <button type="button" class="button secondary clear-btn">Formular leeren</button>
                     </div>
                 </form>
             </div>
@@ -279,13 +348,6 @@ function addWindowConfigToList(config) {
 function gatherFormData(prefix, typeKey) {
   const form = document.getElementById(`${prefix}-form`);
   let data = { templateProductInformation: {}, specificProductInformation: {} };
-  // ... (restliche gatherFormData Logik)
-  return data;
-}
-
-function gatherFormData(prefix, typeKey) {
-  const form = document.getElementById(`${prefix}-form`);
-  let data = { templateProductInformation: {}, specificProductInformation: {} };
   const tpiKeys = ["name", "productName", "manufacturer"];
   tpiKeys.forEach((key) => {
     const input = form.querySelector(`#${prefix}-${key}`);
@@ -371,12 +433,14 @@ function populateEditForm(event) {
   form.querySelector(`#${prefix}-original-name`).value = name;
   form.dataset.uniqueNumber =
     component.templateProductInformation.uniqueNumber || "";
+
   Object.entries(component.templateProductInformation).forEach(
     ([key, value]) => {
       const input = form.querySelector(`#${prefix}-${key}`);
       if (input) input.value = value;
     }
   );
+
   if (component.specificProductInformation) {
     Object.entries(component.specificProductInformation).forEach(
       ([key, value]) => {
@@ -419,6 +483,7 @@ function populateEditForm(event) {
         geo.coreInnerHeight;
     }
     document.getElementById(`${prefix}-depth`).value = geo.depth || 30;
+
     const container = document.getElementById("window-configs-list");
     container.innerHTML = "";
     (spec.windowConfigurations || []).forEach((config) =>
@@ -428,6 +493,7 @@ function populateEditForm(event) {
 
   currentEditingTags = [...(component.templateProductInformation.tags || [])];
   updateSelectedTagsDisplay(`${prefix}-tags-selection`, currentEditingTags);
+
   const previewFn =
     type === "transformers" ? renderTransformerPreview : renderComponentPreview;
   previewFn(
@@ -471,6 +537,7 @@ async function handleSaveComponent(event) {
   const originalName =
     form.querySelector(`#${prefix}-original-name`).value ||
     componentData.templateProductInformation.name;
+
   const response = await fetch("/library", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -485,15 +552,13 @@ async function handleSaveComponent(event) {
   alert(result.message || result.error);
   if (response.ok) {
     localLibrary = result.library;
-    const listId = `${typeKey
-      .toLowerCase()
-      .replace("copperrails", "rails")
-      .replace("transformersheets", "sheets")}-list`;
-    const previewFn =
+    renderComponentLists(
+      typeKey,
+      `${prefix}-list`,
       typeKey === "transformers"
         ? renderTransformerPreview
-        : renderComponentPreview;
-    renderComponentLists(typeKey, listId, previewFn);
+        : renderComponentPreview
+    );
     clearForm(prefix, typeKey);
   }
 }
@@ -514,15 +579,14 @@ async function handleDeleteComponent(event) {
     alert(result.message || result.error);
     if (response.ok) {
       localLibrary = result.library;
-      const listId = `${type
-        .toLowerCase()
-        .replace("copperrails", "rails")
-        .replace("transformersheets", "sheets")}-list`;
-      const previewFn =
+      const prefix = type.replace(/s$/, "").toLowerCase();
+      renderComponentLists(
+        type,
+        `${prefix}-list`,
         type === "transformers"
           ? renderTransformerPreview
-          : renderComponentPreview;
-      renderComponentLists(type, listId, previewFn);
+          : renderComponentPreview
+      );
     }
   }
 }
@@ -535,16 +599,17 @@ function renderComponentLists(typeKey, listId, previewFn) {
     components.length === 0
       ? '<p class="empty-list-message">Keine Bauteile in der Bibliothek vorhanden.</p>'
       : "";
+
   components.forEach((comp, index) => {
     const info = comp.templateProductInformation;
     const spec = comp.specificProductInformation;
     const geo = spec.geometry;
     const previewId = `${typeKey}-accordion-preview-${index}`;
-    const prefix = typeKey.replace(/s$/, "").toLowerCase(); // Vereinfachung
+    const prefix = listId.replace("-list", "");
     const item = document.createElement("div");
     item.className = "accordion-item";
     item.innerHTML = `
-            <button type="button" class="accordion-button component-accordion-btn">
+            <button type="button" class="component-accordion-btn">
                 <div class="tags-display">${(info.tags || [])
                   .map((tag) => getTagBadge(tag))
                   .join("")}</div>
@@ -554,10 +619,10 @@ function renderComponentLists(typeKey, listId, previewFn) {
                 <div class="component-card-preview-container">
                     <svg id="${previewId}" class="component-card-preview"></svg>
                     <div class="button-group">
-                        <button type="button" class="edit-btn" data-prefix="${prefix}" data-name="${
+                        <button type="button" class="button edit edit-btn" data-prefix="${prefix}" data-name="${
       info.name
     }" data-type="${typeKey}">Bearbeiten</button>
-                        <button type="button" class="danger delete-btn" data-name="${
+                        <button type="button" class="button danger delete-btn" data-name="${
                           info.name
                         }" data-type="${typeKey}">Löschen</button>
                     </div>
@@ -566,6 +631,7 @@ function renderComponentLists(typeKey, listId, previewFn) {
     listContainer.appendChild(item);
     previewFn(geo, previewId);
   });
+
   listContainer.querySelectorAll(".component-accordion-btn").forEach((btn) =>
     btn.addEventListener("click", () => {
       const content = btn.nextElementSibling;
@@ -575,6 +641,7 @@ function renderComponentLists(typeKey, listId, previewFn) {
         : `${content.scrollHeight}px`;
     })
   );
+
   listContainer
     .querySelectorAll(".edit-btn")
     .forEach((btn) => btn.addEventListener("click", populateEditForm));
@@ -590,6 +657,7 @@ function openZoomModal(formId) {
   const typeKey = form.dataset.type;
   const data = gatherFormData(prefix, typeKey);
   const geo = data.specificProductInformation.geometry;
+
   const modal = document.getElementById("preview-modal-overlay");
   const svg = document.getElementById("modal-preview-svg");
   const bgColor = document.getElementById(`${prefix}-preview-bg`).value;
@@ -597,6 +665,7 @@ function openZoomModal(formId) {
     typeKey === "transformers"
       ? renderTransformerPreview
       : renderComponentPreview;
+
   modal.style.display = "flex";
   svg.style.backgroundColor = bgColor;
   previewFn(geo, "modal-preview-svg", true);
@@ -635,7 +704,9 @@ function renderTagsInModal(selectedTags = [], prefix) {
     categoryHtml += "</div>";
     mainListContainer.innerHTML += categoryHtml;
   });
+
   updateSelectedTagsDisplay("modal-selected-tags", selectedTags);
+
   mainListContainer.querySelectorAll(".tag-badge").forEach((badge) => {
     const tagName = badge.textContent.trim();
     if (selectedTags.includes(tagName)) {

@@ -61,8 +61,8 @@
             {
                 "templateProductInformation": {
                     "name": "Test",
-                    "productName": "Test",
-                    "manufacturer": "Test",
+                    "productName": "",
+                    "manufacturer": "",
                     "tags": [],
                     "uniqueNumber": "f04d4"
                 },
@@ -70,17 +70,15 @@
                     "coreMaterial": "M-36 Steel",
                     "gapMaterial": "Air",
                     "electrical": {
-                        "primaryRatedCurrentA": 10000,
-                        "secondaryRatedCurrentA": 1,
-                        "burdenVA": 10
+                        "primaryRatedCurrentA": null,
+                        "secondaryRatedCurrentA": null,
+                        "burdenVA": null
                     },
                     "geometry": {
-                        "coreType": "Rectangle",
-                        "depth": 10,
-                        "coreOuterWidth": null,
-                        "coreOuterHeight": null,
-                        "coreInnerWidth": null,
-                        "coreInnerHeight": null
+                        "coreType": "Circle",
+                        "depth": null,
+                        "coreOuterRadius": 100,
+                        "coreInnerRadius": 80
                     },
                     "windowConfigurations": []
                 }

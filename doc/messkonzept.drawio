@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="bt_mlGYEyvyNsPWYXkle" name="Seite-1">
-        <mxGraphModel dx="2533" dy="1424" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2339" pageHeight="3300" math="0" shadow="0" adaptiveColors="auto">
+        <mxGraphModel dx="1671" dy="1125" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2339" pageHeight="3300" math="0" shadow="0" adaptiveColors="auto">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -98,7 +98,7 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="32" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="25" target="31">
+                <mxCell id="32" value="" style="edgeStyle=none;html=1;" parent="1" source="25" target="31" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="25" value="&lt;div style=&quot;white-space-collapse: preserve;&quot;&gt;Wandlerstromstärke&lt;/div&gt;&lt;div style=&quot;white-space-collapse: preserve;&quot;&gt;erhöhen&lt;/div&gt;" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
@@ -110,13 +110,13 @@
                 <mxCell id="27" value="" style="shape=waypoint;sketch=0;size=6;pointerEvents=1;points=[];fillColor=none;resizable=0;rotatable=0;perimeter=centerPerimeter;snapToPoint=1;" parent="1" vertex="1">
                     <mxGeometry x="850" y="530" width="20" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="34" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="31" target="33">
+                <mxCell id="34" value="" style="edgeStyle=none;html=1;" parent="1" source="31" target="33" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="31" value="&lt;div style=&quot;white-space-collapse: preserve;&quot;&gt;Wurden alle Stromstärken gemessen?&lt;/div&gt;" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="31" value="&lt;div style=&quot;white-space-collapse: preserve;&quot;&gt;Wurden alle Stromstärken gemessen?&lt;/div&gt;" style="rhombus;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="785" y="1530" width="150" height="150" as="geometry"/>
                 </mxCell>
-                <mxCell id="33" value="&lt;div style=&quot;white-space-collapse: preserve;&quot;&gt;Geometrie anpassen&lt;/div&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="33" value="&lt;div style=&quot;white-space-collapse: preserve;&quot;&gt;Geometrie anpassen&lt;/div&gt;" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="800" y="1730" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>

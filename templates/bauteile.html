@@ -56,14 +56,14 @@
         </div>
         <div id="modal-tag-list" class="modal-tag-list"></div>
         <div class="button-group">
-            <button type="button" id="modal-save-btn">Fertig</button>
-            <button type="button" id="modal-cancel-btn" class="secondary">Abbrechen</button>
+            <button type="button" id="modal-save-btn" class="button">Fertig</button>
+            <button type="button" id="modal-cancel-btn" class="button secondary">Abbrechen</button>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/tags.js') }}"></script>
+{# tags.js wird bereits in base.html geladen, daher hier entfernt #}
 <script src="{{ url_for('static', filename='js/bauteile.js') }}"></script>
 {% endblock %}

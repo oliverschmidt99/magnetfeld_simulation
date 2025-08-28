@@ -1,29 +1,32 @@
-import pandas as pd
+"""
+Dieses Modul ist für die Erstellung der Plots für die Messungs-Seite zuständig.
+Es lädt die Konfiguration und berechnet die Positionen der Wandler.
+"""
+
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
-import os
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, abort
+
+from .measurement_config import get_config
+from .utils import load_data, LIBRARY_FILE
 
 measurement_bp = Blueprint("measurement_bp", __name__)
 
-DATA_DIR = "data"
-
 
 def get_plot_data():
-    try:
-        start_df = pd.read_csv(
-            os.path.join(DATA_DIR, "1_startpositionen.csv")
-        ).set_index("Strom")
-        spielraum_df = pd.read_csv(os.path.join(DATA_DIR, "2_spielraum.csv"))
-        bewegungen_df = pd.read_csv(os.path.join(DATA_DIR, "3_bewegungen.csv"))
-        schrittweite_df = pd.read_csv(
-            os.path.join(DATA_DIR, "4_schrittweiten.csv")
-        ).set_index("Strom")
-        wandler_df = pd.read_csv(
-            os.path.join(DATA_DIR, "5_wandler_abmessungen.csv")
-        ).set_index("Strom")
-    except FileNotFoundError as e:
-        return {"error": f"Datendatei nicht gefunden: {e.filename}"}
+    """Erstellt die Plot-Daten für die Messungs-Seite."""
+    config = get_config()
+    if "error" in config:
+        abort(500, description=config["error"])
+
+    # Fehler korrigiert: Der Funktion load_data wurde ein leerer Dictionary als
+    # Standardwert für 'default_data' hinzugefügt.
+    library = load_data(LIBRARY_FILE, {})
+
+    # Konvertiere Konfigurationslisten in DataFrames für einfachere Handhabung
+    start_df = pd.DataFrame(config["startpositionen"]).set_index("Strom")
+    spielraum_df = pd.DataFrame(config["spielraum"]).set_index("Strom")
 
     direction_map = {
         "↑ Norden": np.array([0, 1]),
@@ -42,71 +45,137 @@ def get_plot_data():
 
     ergebnisse = []
     sicherheitsabstand = 20.0
-    grenzen = spielraum_df.iloc[0]
 
-    for strom in start_df.index:
-        start_pos, schritte, wandler_dims = (
-            start_df.loc[strom],
-            schrittweite_df.loc[strom],
-            wandler_df.loc[strom],
+    for gruppe in config["positionsgruppen"]:
+        bewegungen_df = pd.DataFrame(gruppe["bewegungen"])
+        schrittweite_df = pd.DataFrame(gruppe["schrittweiten"]).set_index("Strom")
+
+        # Finde den zugehörigen Wandler in der Library
+        wandler_name = gruppe.get("wandler")
+        wandler_obj = next(
+            (item for item in library.get("Wandler", []) if item["id"] == wandler_name),
+            None,
         )
-        for index, bewegung in bewegungen_df.iterrows():
-            pos_gruppe_name = bewegung["PosGruppe"]
-            pos_num_y = int(pos_gruppe_name[-1])
-            schritt = schritte[f"Pos{pos_num_y}"]
-            zeilen_ergebnis = {"Strom": strom, "PosGruppe": pos_gruppe_name}
-            for i in range(1, 4):
-                richtung = bewegung[f"L{i}"]
-                start_vektor = np.array(
-                    [
-                        start_pos[f"x{i}_in"] + start_pos["X"],
-                        start_pos[f"y{i}_in"] + start_pos["Y"],
-                    ]
-                )
-                end_vektor = start_vektor + (
-                    direction_map.get(richtung, np.array([0, 0])) * schritt
-                )
-                zeilen_ergebnis[f"x{i}_res"], zeilen_ergebnis[f"y{i}_res"] = (
-                    end_vektor[0],
-                    end_vektor[1],
-                )
-                x_min, x_max = (
-                    end_vektor[0] - wandler_dims["Breite"] / 2,
-                    end_vektor[0] + wandler_dims["Breite"] / 2,
-                )
-                y_min, y_max = (
-                    end_vektor[1] - wandler_dims["Hoehe"] / 2,
-                    end_vektor[1] + wandler_dims["Hoehe"] / 2,
-                )
-                kollision = not (
-                    grenzen["-maxX"] + sicherheitsabstand <= x_min
-                    and x_max <= grenzen["+maxX"] - sicherheitsabstand
-                    and grenzen["-maxY"] + sicherheitsabstand <= y_min
-                    and y_max <= grenzen["+maxY"] - sicherheitsabstand
-                )
-                zeilen_ergebnis[f"Kollision_L{i}"] = "Kollision" if kollision else "OK"
-            ergebnisse.append(zeilen_ergebnis)
+
+        if not wandler_obj:
+            # Wenn kein Wandler gefunden wird, überspringe diese Gruppe
+            continue
+
+        wandler_dims = {
+            "Breite": wandler_obj["abmessungen"]["breite"],
+            "Hoehe": wandler_obj["abmessungen"]["hoehe"],
+        }
+
+        for strom in start_df.index:
+            if strom not in schrittweite_df.index or strom not in spielraum_df.index:
+                continue
+
+            start_pos = start_df.loc[strom]
+            schritte = schrittweite_df.loc[strom]
+            grenzen = spielraum_df.loc[strom]
+
+            for _, bewegung in bewegungen_df.iterrows():
+                pos_gruppe_name = bewegung["PosGruppe"]
+                pos_num_y_str = pos_gruppe_name.split("_")[-1]
+                pos_num_y = int(pos_num_y_str)
+
+                schritt_key = f"Pos{pos_num_y}"
+                if schritt_key not in schritte:
+                    continue
+
+                schritt = schritte[schritt_key]
+                zeilen_ergebnis = {
+                    "Strom": strom,
+                    "PosGruppe": pos_gruppe_name,
+                    "GroupName": gruppe["name"],
+                }
+
+                for i in range(1, 4):
+                    richtung = bewegung.get(f"L{i}")
+                    if not richtung:
+                        continue
+
+                    start_vektor = np.array(
+                        [
+                            start_pos[f"x{i}_in"] + start_pos["X"],
+                            start_pos[f"y{i}_in"] + start_pos["Y"],
+                        ]
+                    )
+                    end_vektor = start_vektor + (
+                        direction_map.get(richtung, np.array([0, 0])) * schritt
+                    )
+                    zeilen_ergebnis[f"x{i}_res"], zeilen_ergebnis[f"y{i}_res"] = (
+                        end_vektor[0],
+                        end_vektor[1],
+                    )
+
+                    x_min, x_max = (
+                        end_vektor[0] - wandler_dims["Breite"] / 2,
+                        end_vektor[0] + wandler_dims["Breite"] / 2,
+                    )
+                    y_min, y_max = (
+                        end_vektor[1] - wandler_dims["Hoehe"] / 2,
+                        end_vektor[1] + wandler_dims["Hoehe"] / 2,
+                    )
+
+                    kollision = not (
+                        grenzen["-maxX"] + sicherheitsabstand <= x_min
+                        and x_max <= grenzen["+maxX"] - sicherheitsabstand
+                        and grenzen["-maxY"] + sicherheitsabstand <= y_min
+                        and y_max <= grenzen["+maxY"] - sicherheitsabstand
+                    )
+                    zeilen_ergebnis[f"Kollision_L{i}"] = (
+                        "Kollision" if kollision else "OK"
+                    )
+                ergebnisse.append(zeilen_ergebnis)
+
+    if not ergebnisse:
+        return (
+            []
+        )  # Leere Liste zurückgeben, wenn keine Ergebnisse berechnet werden konnten
 
     ergebnis_df = pd.DataFrame(ergebnisse)
-
     stromstaerken = sorted(ergebnis_df["Strom"].unique())
     pos_color_map = {1: "blue", 2: "red", 3: "green"}
     kollision_symbol_map = {"OK": "circle", "Kollision": "diamond-open"}
 
     plots_json = []
 
-    for gruppen_nr_x in range(1, 5):
+    for gruppen_name in ergebnis_df["GroupName"].unique():
         fig = go.Figure()
         strom_pro_spur = []
 
         for strom in stromstaerken:
-            gruppen_filter = ergebnis_df["PosGruppe"].str.startswith(
-                f"Pos{gruppen_nr_x}"
-            )
+            gruppen_filter = ergebnis_df["GroupName"] == gruppen_name
             strom_filter = ergebnis_df["Strom"] == strom
             df_plot = ergebnis_df[gruppen_filter & strom_filter]
+            if df_plot.empty:
+                continue
+
             startpos = start_df.loc[strom]
-            wandler_dims = wandler_df.loc[strom]
+            grenzen = spielraum_df.loc[strom]
+
+            # Finde den Wandler für diese Gruppe wieder
+            gruppe_config = next(
+                (g for g in config["positionsgruppen"] if g["name"] == gruppen_name),
+                None,
+            )
+            wandler_obj = next(
+                (
+                    item
+                    for item in library.get("Wandler", [])
+                    if item["id"] == gruppe_config["wandler"]
+                ),
+                None,
+            )
+            wandler_dims = (
+                {
+                    "Breite": wandler_obj["abmessungen"]["breite"],
+                    "Hoehe": wandler_obj["abmessungen"]["hoehe"],
+                }
+                if wandler_obj
+                else {"Breite": 0, "Hoehe": 0}
+            )
 
             for i in range(1, 4):
                 fig.add_trace(
@@ -117,17 +186,19 @@ def get_plot_data():
                         marker=dict(color="black", size=12, symbol="x"),
                         name="Startposition",
                         legendgroup="Startposition",
-                        showlegend=bool(strom == stromstaerken[0]),
+                        showlegend=(strom == stromstaerken[0]),
                     )
                 )
                 strom_pro_spur.append(strom)
 
-            for index, row in df_plot.iterrows():
-                pos_num_y = int(row["PosGruppe"][-1])
-                pos_farbe = pos_color_map[pos_num_y]
+            for _, row in df_plot.iterrows():
+                pos_num_y = int(row["PosGruppe"].split("_")[-1])
+                pos_farbe = pos_color_map.get(pos_num_y, "grey")
                 for i in range(1, 4):
+                    if f"Kollision_L{i}" not in row:
+                        continue
                     kollision = row[f"Kollision_L{i}"]
-                    symbol = kollision_symbol_map[kollision]
+                    symbol = kollision_symbol_map.get(kollision, "circle")
                     wx, wy = row[f"x{i}_res"], row[f"y{i}_res"]
                     w, h = wandler_dims["Breite"], wandler_dims["Hoehe"]
 
@@ -154,10 +225,10 @@ def get_plot_data():
                             line=dict(color="rgba(0,0,0,0)"),
                             name="Wandler",
                             legendgroup="Wandler",
-                            showlegend=bool(
+                            showlegend=(
                                 i == 1
-                                and index == df_plot.index[0]
                                 and strom == stromstaerken[0]
+                                and row.name == df_plot.index[0]
                             ),
                             hoverinfo="none",
                             visible="legendonly",
@@ -178,7 +249,7 @@ def get_plot_data():
                             ),
                             name=f"Pos {pos_num_y}",
                             legendgroup=f"Pos {pos_num_y}",
-                            showlegend=bool(i == 1 and strom == stromstaerken[0]),
+                            showlegend=(i == 1 and strom == stromstaerken[0]),
                             hoverinfo="text",
                             hovertext=f"Leiter: L{i}<br>Pos: {row['PosGruppe']}<br>X: {wx:.1f}<br>Y: {wy:.1f}<br>Status: {kollision}",
                         )
@@ -193,11 +264,16 @@ def get_plot_data():
             )
             for s in stromstaerken
         ]
+        if not strom_pro_spur:
+            continue  # Überspringe, wenn keine Daten für den Plot vorhanden sind
+
         initial_visibility = [s == stromstaerken[0] for s in strom_pro_spur]
         for i, trace in enumerate(fig.data):
-            if not trace.visible == "legendonly":
+            if trace.visible != "legendonly":
                 trace.visible = initial_visibility[i]
 
+        # Nimm die Grenzen der ersten Stromstärke als Referenz für den Plot-Bereich
+        ref_grenzen = spielraum_df.loc[stromstaerken[0]]
         fig.update_layout(
             updatemenus=[
                 dict(
@@ -209,15 +285,15 @@ def get_plot_data():
                     yanchor="top",
                 )
             ],
-            title=f"Positionsgruppe {gruppen_nr_x}",
+            title=f"Positionsgruppe '{gruppen_name}'",
             xaxis=dict(
                 scaleanchor="y",
                 scaleratio=1,
-                range=[grenzen["-maxX"] - 50, grenzen["+maxX"] + 50],
+                range=[ref_grenzen["-maxX"] - 50, ref_grenzen["+maxX"] + 50],
             ),
             yaxis=dict(
                 title="Y-Position (mm)",
-                range=[grenzen["-maxY"] - 50, grenzen["+maxY"] + 50],
+                range=[ref_grenzen["-maxY"] - 50, ref_grenzen["+maxY"] + 50],
             ),
             xaxis_title="X-Position (mm)",
             width=800,
@@ -228,10 +304,10 @@ def get_plot_data():
         )
         fig.add_shape(
             type="rect",
-            x0=grenzen["-maxX"],
-            y0=grenzen["-maxY"],
-            x1=grenzen["+maxX"],
-            y1=grenzen["+maxY"],
+            x0=ref_grenzen["-maxX"],
+            y0=ref_grenzen["-maxY"],
+            x1=ref_grenzen["+maxX"],
+            y1=ref_grenzen["+maxY"],
             line=dict(color="black", width=2),
             fillcolor="lightgrey",
             layer="below",
@@ -239,13 +315,14 @@ def get_plot_data():
         )
         fig.add_shape(
             type="rect",
-            x0=grenzen["-maxX"] + sicherheitsabstand,
-            y0=grenzen["-maxY"] + sicherheitsabstand,
-            x1=grenzen["+maxX"] - sicherheitsabstand,
-            y1=grenzen["+maxY"] - sicherheitsabstand,
+            x0=ref_grenzen["-maxX"] + sicherheitsabstand,
+            y0=ref_grenzen["-maxY"] + sicherheitsabstand,
+            x1=ref_grenzen["+maxX"] - sicherheitsabstand,
+            y1=ref_grenzen["+maxY"] - sicherheitsabstand,
             line=dict(color="red", width=2, dash="dash"),
             layer="below",
         )
+
         plots_json.append(fig.to_json())
 
     return plots_json
@@ -253,4 +330,5 @@ def get_plot_data():
 
 @measurement_bp.route("/measurement/data")
 def measurement_data():
+    """Stellt die Plot-Daten als JSON für das Frontend bereit."""
     return jsonify(get_plot_data())

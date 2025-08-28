@@ -18,6 +18,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+{# Use a specific, recent version of Plotly.js instead of the outdated 'latest' #}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <script src="{{ url_for('static', filename='js/measurement.js') }}"></script>
 {% endblock %}

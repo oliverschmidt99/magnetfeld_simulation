@@ -1,0 +1,129 @@
+<svg width="800" height="450" viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9.5" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="black" />
+    </marker>
+  </defs>
+
+<g transform="translate(250, 10) scale(0.8)">
+  <rect x="0" y="0" width="160" height="100" fill="lightgray" stroke="black" stroke-width="1.25" rx="5" ry="5"/>
+  <text x="10" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="bold">Legende:</text>
+  <rect x="10" y="30" width="10" height="10" fill="blue" />
+  <text x="25" y="40" font-family="Arial, sans-serif" font-size="12">1. Position (Blau)</text>
+  <rect x="10" y="50" width="10" height="10" fill="red" />
+  <text x="25" y="60" font-family="Arial, sans-serif" font-size="12">2. Position (Rot)</text>
+  <rect x="10" y="70" width="10" height="10" fill="green" />
+  <text x="25" y="80" font-family="Arial, sans-serif" font-size="12">3. Position (Grün)</text>
+</g>
+
+  <g id="leiter1">
+    <rect x="150" y="175" width="100" height="100" fill="orange" />
+    <text x="200" y="230" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" fill="white" font-weight="bold">L1</text>
+
+    <g>
+      <line x1="200" y1="175" x2="200" y2="25" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="200" y="15" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">Norden</text>
+      <rect x="195" y="140" width="10" height="10" fill="blue" />
+      <rect x="195" y="110" width="10" height="10" fill="red" />
+      <rect x="195" y="80" width="10" height="10" fill="green" />
+    </g>
+
+    <g>
+      <line x1="200" y1="275" x2="200" y2="425" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="200" y="440" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">Süden</text>
+      <rect x="195" y="310" width="10" height="10" fill="blue" />
+      <rect x="195" y="340" width="10" height="10" fill="red" />
+      <rect x="195" y="370" width="10" height="10" fill="green" />
+    </g>
+
+    <g>
+      <line x1="150" y1="225" x2="0" y2="225" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="-15" y="230" font-family="Arial, sans-serif" font-size="12" text-anchor="end">Westen</text>
+      <rect x="115" y="220" width="10" height="10" fill="blue" />
+      <rect x="85" y="220" width="10" height="10" fill="red" />
+      <rect x="55" y="220" width="10" height="10" fill="green" />
+    </g>
+
+    <g>
+      <line x1="165" y1="190" x2="65" y2="90" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="60" y="80" font-family="Arial, sans-serif" font-size="12" text-anchor="end" transform="rotate(-45 60 80)">Nordwesten</text>
+      <rect x="133" y="158" width="10" height="10" fill="blue" transform="rotate(-45 138 163)" />
+      <rect x="109" y="134" width="10" height="10" fill="red" transform="rotate(-45 114 139)" />
+      <rect x="85" y="110" width="10" height="10" fill="green" transform="rotate(-45 90 115)" />
+    </g>
+
+    <g>
+      <line x1="165" y1="260" x2="65" y2="360" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="60" y="370" font-family="Arial, sans-serif" font-size="12" text-anchor="end" transform="rotate(45 60 370)">Südwesten</text>
+      <rect x="133" y="292" width="10" height="10" fill="blue" transform="rotate(45 138 297)" />
+      <rect x="109" y="316" width="10" height="10" fill="red" transform="rotate(45 114 321)" />
+      <rect x="85" y="340" width="10" height="10" fill="green" transform="rotate(45 90 345)" />
+    </g>
+  </g>
+
+  <g id="leiter2">
+    <rect x="350" y="175" width="100" height="100" fill="orange" />
+    <text x="400" y="230" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" fill="white" font-weight="bold">L2</text>
+    
+    <g>
+      <line x1="400" y1="175" x2="400" y2="25" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="400" y="15" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">Norden</text>
+      <rect x="395" y="140" width="10" height="10" fill="blue" />
+      <rect x="395" y="110" width="10" height="10" fill="red" />
+      <rect x="395" y="80" width="10" height="10" fill="green" />
+    </g>
+    
+    <g>
+      <line x1="400" y1="275" x2="400" y2="425" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="400" y="440" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">Süden</text>
+      <rect x="395" y="310" width="10" height="10" fill="blue" />
+      <rect x="395" y="340" width="10" height="10" fill="red" />
+      <rect x="395" y="370" width="10" height="10" fill="green" />
+    </g>
+  </g>
+
+  <g id="leiter3">
+    <rect x="550" y="175" width="100" height="100" fill="orange" />
+    <text x="600" y="230" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" fill="white" font-weight="bold">L3</text>
+
+    <g>
+      <line x1="600" y1="175" x2="600" y2="25" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="600" y="15" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">Norden</text>
+      <rect x="595" y="140" width="10" height="10" fill="blue" />
+      <rect x="595" y="110" width="10" height="10" fill="red" />
+      <rect x="595" y="80" width="10" height="10" fill="green" />
+    </g>
+
+    <g>
+      <line x1="600" y1="275" x2="600" y2="425" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="600" y="440" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">Süden</text>
+      <rect x="595" y="310" width="10" height="10" fill="blue" />
+      <rect x="595" y="340" width="10" height="10" fill="red" />
+      <rect x="595" y="370" width="10" height="10" fill="green" />
+    </g>
+
+    <g>
+      <line x1="650" y1="225" x2="800" y2="225" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="815" y="230" font-family="Arial, sans-serif" font-size="12" text-anchor="start">Osten</text>
+      <rect x="685" y="220" width="10" height="10" fill="blue" />
+      <rect x="715" y="220" width="10" height="10" fill="red" />
+      <rect x="745" y="220" width="10" height="10" fill="green" />
+    </g>
+
+    <g>
+      <line x1="635" y1="190" x2="735" y2="90" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="740" y="80" font-family="Arial, sans-serif" font-size="12" text-anchor="start" transform="rotate(45 740 80)">Nordosten</text>
+      <rect x="667" y="158" width="10" height="10" fill="blue" transform="rotate(45 672 163)" />
+      <rect x="691" y="134" width="10" height="10" fill="red" transform="rotate(45 696 139)" />
+      <rect x="715" y="110" width="10" height="10" fill="green" transform="rotate(45 720 115)" />
+    </g>
+
+    <g>
+      <line x1="635" y1="260" x2="735" y2="360" stroke="black" stroke-width="2" marker-end="url(#arrowhead)" />
+      <text x="740" y="370" font-family="Arial, sans-serif" font-size="12" text-anchor="start" transform="rotate(-45 740 370)">Südosten</text>
+      <rect x="667" y="292" width="10" height="10" fill="blue" transform="rotate(-45 672 297)" />
+      <rect x="691" y="316" width="10" height="10" fill="red" transform="rotate(-45 696 321)" />
+      <rect x="715" y="340" width="10" height="10" fill="green" transform="rotate(-45 720 345)" />
+    </g>
+  </g>
+</svg>

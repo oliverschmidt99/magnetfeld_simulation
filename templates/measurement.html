@@ -5,19 +5,34 @@
 
 {% block sub_nav %}
 <div class="sub-nav-bar">
-    <h2>Messung</h2>
+    <h2>Mess-Konfiguration und Visualisierung</h2>
 </div>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1>Visualisierung der Positionsgruppen</h1>
+<div class="container measurement-container">
+
+    <div class="measurement-config-panel">
+        <h3>Konfiguration</h3>
+        <div id="config-editor">
+            <h4>Globale Einstellungen</h4>
+            <div class="config-section" id="global-settings"></div>
+
+            <h4>Positionsgruppen</h4>
+            <div id="positionsgruppen-list"></div>
+            <button id="add-group-btn" class="btn-primary">Neue Positionsgruppe hinzufügen</button>
+        </div>
+        <div class="config-actions">
+            <button id="save-config-btn" class="btn-success">Konfiguration Speichern</button>
+            <button id="reload-plots-btn" class="btn-secondary">Plots Neu Laden</button>
+        </div>
+        <div id="save-status" class="save-status"></div>
+    </div>
 
     <div class="measurement-plots-panel">
         <h3>Visualisierung</h3>
         <div id="custom-legend-container" class="custom-legend"></div>
-        <div class="dashboard-container" id="dashboard-container">
-        </div>
+        <div class="dashboard-container" id="dashboard-container"></div>
     </div>
 </div>
 {% endblock %}

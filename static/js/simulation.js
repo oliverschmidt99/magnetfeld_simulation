@@ -1,7 +1,26 @@
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("run-simulation-form")) {
-    initializeSimulationPage();
+document.addEventListener("DOMContentLoaded", async () => {
+  // Diese Funktion wird beim Laden der Seite aufgerufen
+  async function initializeSimulationPage() {
+    try {
+      // KORREKTUR: Die URL wurde auf /api/library geändert
+      const response = await fetch("/api/library");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const library = await response.json();
+      console.log("Bibliothek geladen:", library);
+
+      // Hier kannst du weiteren Code hinzufügen, um die geladenen
+      // Bibliotheksdaten auf der Simulations-Seite zu verwenden.
+      // Zum Beispiel: Dropdowns füllen, Visualisierungen erstellen, etc.
+    } catch (error) {
+      console.error("Fehler beim Initialisieren der Simulations-Seite:", error);
+      // Optional: Zeige eine Fehlermeldung auf der Seite an
+    }
   }
+
+  // Initialisierung aufrufen
+  initializeSimulationPage();
 });
 
 let currentConfigData = null;

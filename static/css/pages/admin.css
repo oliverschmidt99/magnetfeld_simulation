@@ -1,0 +1,56 @@
+/* static/css/pages/admin.css */
+.admin-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    width: 100%;
+}
+.admin-sidebar {
+    flex: 0 0 200px;
+    background-color: var(--bg-container);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.admin-sidebar h3 { margin-top: 0; }
+.admin-sidebar ul { list-style: none; padding: 0; margin: 0; }
+.admin-sidebar li {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+.admin-sidebar li:hover { background-color: #e9e9e9; }
+.admin-main-content { flex-grow: 1; }
+.admin-tabs { border-bottom: 2px solid #ccc; margin-bottom: 15px; }
+.admin-tab-button {
+    padding: 10px 15px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 1em;
+    border-bottom: 3px solid transparent;
+}
+.admin-tab-button.active {
+    border-bottom: 3px solid var(--accent-color);
+    font-weight: bold;
+}
+.admin-tab-content { display: none; }
+.admin-tab-content.active { display: block; }
+#raw-csv-textarea {
+    width: 100%;
+    height: 500px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+.admin-footer { margin-top: 20px; display: flex; align-items: center; gap: 15px; }
+#save-status { font-weight: bold; }
+
+/* AG Grid Theme */
+.ag-theme-quartz {
+    --ag-foreground-color: var(--text-primary);
+    --ag-background-color: var(--bg-container);
+    --ag-header-background-color: var(--bg-main);
+    --ag-row-hover-color: var(--card-active-bg);
+    --ag-border-color: var(--border-color);
+}

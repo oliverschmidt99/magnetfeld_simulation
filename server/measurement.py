@@ -166,6 +166,7 @@ def get_plot_data():
                 & (ergebnis_df["Strom"] == strom)
             ]
             startpos = start_df.loc[strom]
+            wandler_dims = wandler_df.loc[strom]
 
             # Startpositionen als eine Spur mit 3 Punkten und Hover-Labels
             start_x = [startpos.get(f"x_L{i}", 0) for i in range(1, 4)]
@@ -185,7 +186,7 @@ def get_plot_data():
                 )
             )
 
-            # Leere Platzhalter, damit die Spurenanzahl konsistent bleibt
+            # Füge leere Platzhalter hinzu, damit die Spurenanzahl konsistent bleibt
             fig.add_trace(
                 go.Scatter(
                     x=[None],
@@ -195,15 +196,19 @@ def get_plot_data():
                     visible="legendonly",
                 )
             )
-            for pos_num in range(1, 5):
-                df_pos = df_strom[df_strom["PosGruppe"].str.endswith(str(pos_num))]
+
+            # Feste Anzahl an möglichen Positionstypen (Pos 1 bis 4)
+            for pos_num_y in range(1, 5):
+                df_pos = df_strom[df_strom["PosGruppe"].str.endswith(str(pos_num_y))]
+
+                # Auch wenn es keine Daten gibt, eine leere Spur für Konsistenz hinzufügen
                 if df_pos.empty:
                     fig.add_trace(
                         go.Scatter(
                             x=[None],
                             mode="markers",
-                            name=f"Pos {pos_num}",
-                            legendgroup=f"Pos {pos_num}",
+                            name=f"Pos {pos_num_y}",
+                            legendgroup=f"Pos {pos_num_y}",
                             visible=False,
                         )
                     )
@@ -221,13 +226,13 @@ def get_plot_data():
                             y=df_status["y_res"],
                             mode="markers",
                             marker=dict(
-                                color=pos_color_map.get(pos_num, "grey"),
+                                color=pos_color_map.get(pos_num_y, "grey"),
                                 symbol=kollision_symbol_map.get(status),
                                 size=14,
                                 line=dict(width=1, color="black"),
                             ),
-                            name=f"Pos {pos_num}",
-                            legendgroup=f"Pos {pos_num}",
+                            name=f"Pos {pos_num_y}",
+                            legendgroup=f"Pos {pos_num_y}",
                             hoverinfo="text",
                             hovertext=[
                                 f"Leiter: {row['Leiter']}<br>Pos: {row['PosGruppe']}<br>X: {row['x_res']:.1f}<br>Y: {row['y_res']:.1f}<br>Status: {row['Kollision']}"

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}Admin-Oberfläche{% endblock %}
+
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>CSV-Editor</h2>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <aside class="admin-sidebar">
+        <h3>Dateien</h3>
+        <ul id="file-list">
+        </ul>
+    </aside>
+    <main class="admin-main-content">
+        <h2 id="current-file-title">Bitte eine Datei auswählen</h2>
+        <div class="admin-tabs">
+            <button class="admin-tab-button active" data-tab="table-view">Tabelle</button>
+            <button class="admin-tab-button" data-tab="raw-view">Rohdaten</button>
+        </div>
+        <div id="table-view" class="admin-tab-content active">
+            <div id="grid-container" class="ag-theme-quartz" style="height: 500px; width: 100%;"></div>
+        </div>
+        <div id="raw-view" class="admin-tab-content">
+            <textarea id="raw-csv-textarea"></textarea>
+        </div>
+        <div class="admin-footer">
+            <button id="save-button" class="btn-success">💾 Speichern</button>
+            <div id="save-status"></div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-quartz.css" />
+
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

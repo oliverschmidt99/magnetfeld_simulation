@@ -1,0 +1,28 @@
+/* static/css/pages/measurement.css */
+.measurement-plots-panel {
+    width: 100%;
+}
+.custom-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: var(--bg-main);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.legend-item input { margin-right: 8px; }
+.legend-item .color-box {
+    width: 15px;
+    height: 15px;
+    margin-right: 8px;
+    border: 1px solid #ccc;
+}

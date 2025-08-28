@@ -1,11 +1,12 @@
 """
 Blueprint für die API-Endpunkte zur Verwaltung von Daten.
+
 Enthält Routen für Tags, die Bauteil-Bibliothek und Simulations-Szenarien.
 """
 
 import os
 from flask import Blueprint, jsonify, request
-from server.utils import (
+from .utils import (
     load_data,
     save_data,
     generate_unique_id,
@@ -14,7 +15,7 @@ from server.utils import (
     TAGS_FILE,
 )
 
-# Blueprint mit einem zentralen URL-Präfix für alle Routen in dieser Datei
+# KORREKTUR: Blueprint mit einem zentralen URL-Präfix für alle Routen
 api_bp = Blueprint("api_bp", __name__, url_prefix="/api")
 
 
@@ -41,20 +42,17 @@ def handle_library():
     library_data = load_data(LIBRARY_FILE, {"components": {}})
 
     if request.method == "GET":
-        # KORREKTUR: Die Daten direkt zurückgeben, nicht in ein "library"-Objekt verpackt.
-        # Das behebt den TypeError im Frontend.
         return jsonify(library_data)
 
     try:
         data = request.json
         comp_type = data.get("type")
         original_name = data.get("originalName")
+        message = ""
 
         if comp_type not in library_data.get("components", {}):
             library_data["components"][comp_type] = []
-
         component_list = library_data["components"][comp_type]
-        message = ""
 
         if data.get("action") == "save":
             component_data = data.get("component")
@@ -83,7 +81,6 @@ def handle_library():
                 ] = generate_unique_id()
                 component_list.append(component_data)
                 message = "Bauteil hinzugefügt."
-
         elif data.get("action") == "delete":
             library_data["components"][comp_type] = [
                 item
@@ -105,6 +102,8 @@ def handle_library():
 def get_scenarios():
     """Gibt eine Liste aller Szenarien zurück."""
     try:
+        if not os.path.exists(CONFIG_DIR):
+            return jsonify([])  # Leere Liste, wenn der Ordner nicht existiert
         files = [
             f.replace(".json", "")
             for f in os.listdir(CONFIG_DIR)
@@ -129,13 +128,11 @@ def handle_scenario(name):
             return jsonify({"message": f"Szenario '{safe_name}' gespeichert."})
         except (IOError, TypeError) as e:
             return jsonify({"error": str(e)}), 500
-
     if request.method == "GET":
         try:
             return jsonify(load_data(filepath, {}))
         except FileNotFoundError:
             return jsonify({"error": "Szenario nicht gefunden"}), 404
-
     if request.method == "DELETE":
         try:
             os.remove(filepath)

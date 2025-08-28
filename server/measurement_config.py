@@ -22,24 +22,43 @@ def save_config(config_data):
 
 
 def create_config_from_csv():
-    """Erstellt eine initiale Konfigurations-JSON aus den CSV-Dateien."""
+    """Erstellt eine initiale Konfigurations-JSON aus den alten CSV-Dateien."""
     try:
-        start_df = pd.read_csv(os.path.join(DATA_DIR, "1_startpositionen.csv"))
-        spielraum_df = pd.read_csv(os.path.join(DATA_DIR, "2_spielraum.csv"))
-        bewegungen_df = pd.read_csv(os.path.join(DATA_DIR, "3_bewegungen.csv"))
-        schrittweite_df = pd.read_csv(os.path.join(DATA_DIR, "4_schrittweiten.csv"))
-        # Wandler wird jetzt aus der library.json geholt
-    except FileNotFoundError:
-        return {
-            "error": "CSV-Dateien nicht gefunden. Konnte keine Konfiguration erstellen."
-        }
+        start_df = pd.read_csv(
+            os.path.join(DATA_DIR, "1_startpositionen.csv"), encoding="utf-8"
+        )
+        spielraum_df = pd.read_csv(
+            os.path.join(DATA_DIR, "2_spielraum.csv"), encoding="utf-8"
+        )
+        bewegungen_df = pd.read_csv(
+            os.path.join(DATA_DIR, "3_bewegungen.csv"), encoding="utf-8"
+        )
+        schrittweite_df = pd.read_csv(
+            os.path.join(DATA_DIR, "4_schrittweiten.csv"), encoding="utf-8"
+        )
+    except Exception:
+        # Fallback für Windows-Kodierung
+        start_df = pd.read_csv(
+            os.path.join(DATA_DIR, "1_startpositionen.csv"), encoding="cp1252"
+        )
+        spielraum_df = pd.read_csv(
+            os.path.join(DATA_DIR, "2_spielraum.csv"), encoding="cp1252"
+        )
+        bewegungen_df = pd.read_csv(
+            os.path.join(DATA_DIR, "3_bewegungen.csv"), encoding="cp1252"
+        )
+        schrittweite_df = pd.read_csv(
+            os.path.join(DATA_DIR, "4_schrittweiten.csv"), encoding="cp1252"
+        )
 
     library = load_data(LIBRARY_FILE, {})
+    first_transformer = (library.get("components", {}).get("transformers") or [{}])[0]
     first_transformer_id = (
-        library.get("components", {})
-        .get("transformers", [{}])[0]
-        .get("templateProductInformation", {})
-        .get("uniqueNumber", "default_transformer")
+        first_transformer.get("templateProductInformation") or {}
+    ).get("uniqueNumber") or (
+        first_transformer.get("templateProductInformation") or {}
+    ).get(
+        "name"
     )
 
     config = {
@@ -54,12 +73,10 @@ def create_config_from_csv():
         spielraum_eintrag["Strom"] = int(strom)
         config["spielraum"].append(spielraum_eintrag)
 
-    # Erweitere schrittweiten um "enabled" flag
     schrittweite_records = schrittweite_df.to_dict(orient="records")
     for record in schrittweite_records:
         record["enabled"] = True
 
-    # Erweitere bewegungen in die neue Objektstruktur
     bewegungen_records = bewegungen_df.to_dict(orient="records")
     neue_bewegungen = []
     for record in bewegungen_records:
@@ -71,7 +88,7 @@ def create_config_from_csv():
         neue_bewegungen.append(new_record)
 
     gruppen_namen = (
-        bewegungen_df["PosGruppe"].str.extract(r"(Pos\d+)_").iloc[:, 0].unique()
+        bewegungen_df["PosGruppe"].str.extract(r"(Pos\d)\d").iloc[:, 0].unique()
     )
     for name in gruppen_namen:
         if pd.isna(name):

@@ -1,7 +1,46 @@
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("simulation-form")) {
-    initializeConfigurator();
+// Diese Funktion muss definiert werden, um den ReferenceError zu beheben.
+// Du kannst sie später mit der echten Logik füllen.
+function updateAssemblyPhaseDropdowns() {
+  console.log("Aktualisiere Assembly-Phase-Dropdowns...");
+  // Beispiel-Logik:
+  // const dropdowns = document.querySelectorAll('.assembly-phase-dropdown');
+  // dropdowns.forEach(dropdown => { ... });
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  let libraryData = {};
+
+  async function initializeConfigurator() {
+    try {
+      // KORREKTUR: Die URL wurde auf /api/library geändert
+      const response = await fetch("/api/library");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      libraryData = await response.json();
+      console.log("Bibliothek für Konfigurator geladen:", libraryData);
+
+      // Beispiel: Lade einen gespeicherten Zustand (falls vorhanden)
+      // loadState(); // Diese Funktion müsstest du implementieren
+    } catch (error) {
+      console.error("Fehler beim Initialisieren des Konfigurators:", error);
+    }
   }
+
+  function addAssembly() {
+    // Beispiel-Funktion, um eine Baugruppe hinzuzufügen
+    console.log("Füge Baugruppe hinzu...");
+    // KORREKTUR: Rufe die jetzt definierte Funktion auf
+    updateAssemblyPhaseDropdowns();
+  }
+
+  function loadState() {
+    // Beispiel-Funktion, um einen Zustand zu laden
+    const assemblies = [{}, {}]; // Beispiel-Daten
+    assemblies.forEach(() => addAssembly());
+  }
+
+  initializeConfigurator();
 });
 
 let currentConfigData = {};

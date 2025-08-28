@@ -5,7 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Magnetfeld Simulation{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+
+    {% if request.endpoint == 'admin_page' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin.css') }}">
+    {% endif %}
+    {% if request.endpoint == 'measurement' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/measurement.css') }}">
+    {% endif %}
+
     <link rel="icon" href="{{ url_for('static', filename='img/logo_rolf-janssen_2024.svg') }}" type="image/svg+xml">
 </head>
 
@@ -44,6 +55,11 @@
             <div class="nav-item">
                 <a href="{{ url_for('measurement') }}"
                     class="{{ 'active' if request.endpoint == 'measurement' else '' }}">Messung</a>
+            </div>
+
+            <div class="nav-item">
+                <a href="{{ url_for('admin_page') }}"
+                    class="{{ 'active' if request.endpoint == 'admin_page' else '' }}">CSV-Editor</a>
             </div>
 
             <div class="nav-item">

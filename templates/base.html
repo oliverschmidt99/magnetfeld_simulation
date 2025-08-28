@@ -42,6 +42,11 @@
             </div>
 
             <div class="nav-item">
+                <a href="{{ url_for('measurement') }}"
+                    class="{{ 'active' if request.endpoint == 'measurement' else '' }}">Messung</a>
+            </div>
+
+            <div class="nav-item">
                 <a href="{{ url_for('settings') }}"
                     class="{{ 'active' if request.endpoint == 'settings' else '' }}">Einstellungen</a>
             </div>

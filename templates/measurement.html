@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}Messung{% endblock %}
+
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Messung</h2>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Visualisierung der Positionsgruppen</h1>
+    <div class="dashboard-container" id="dashboard-container">
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="{{ url_for('static', filename='js/measurement.js') }}"></script>
+{% endblock %}

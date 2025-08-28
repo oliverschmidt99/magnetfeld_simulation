@@ -1,60 +1,111 @@
 {
-  "startpositionen": [
-    {
-      "Strom": 1000,
-      "X": 0,
-      "Y": 0,
-      "x1_in": -20,
-      "y1_in": 0,
-      "x2_in": 0,
-      "y2_in": 0,
-      "x3_in": 20,
-      "y3_in": 0
-    },
-    {
-      "Strom": 2000,
-      "X": 0,
-      "Y": 0,
-      "x1_in": -20,
-      "y1_in": 0,
-      "x2_in": 0,
-      "y2_in": 0,
-      "x3_in": 20,
-      "y3_in": 0
-    }
-  ],
-  "spielraum": [
-    { "Strom": 1000, "-maxX": -200, "+maxX": 200, "-maxY": -150, "+maxY": 150 },
-    { "Strom": 2000, "-maxX": -200, "+maxX": 200, "-maxY": -150, "+maxY": 150 }
-  ],
   "positionsgruppen": [
     {
       "name": "Pos1",
+      "wandler": "CELSA_Flex_Wandler",
       "bewegungen": [
         {
-          "PosGruppe": "Pos1_1",
-          "L1": "↑ Norden",
-          "L2": "↑ Norden",
-          "L3": "↑ Norden"
+          "PosGruppe": "Pos11",
+          "L1": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          },
+          "L2": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          },
+          "L3": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          }
         },
         {
-          "PosGruppe": "Pos1_2",
-          "L1": "→ Osten",
-          "L2": "→ Osten",
-          "L3": "→ Osten"
+          "PosGruppe": "Pos12",
+          "L1": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          },
+          "L2": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          },
+          "L3": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          }
         },
         {
-          "PosGruppe": "Pos1_3",
-          "L1": "↓ Süden",
-          "L2": "↓ Süden",
-          "L3": "↓ Süden"
+          "PosGruppe": "Pos13",
+          "L1": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          },
+          "L2": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          },
+          "L3": {
+            "richtung": "↑ Norden",
+            "faktor": 1
+          }
         }
       ],
       "schrittweiten": [
-        { "Strom": 1000, "Pos1": 5, "Pos2": 10, "Pos3": 15 },
-        { "Strom": 2000, "Pos1": 5, "Pos2": 10, "Pos3": 15 }
-      ],
-      "wandler": "Wandler_1"
+        {
+          "enabled": false,
+          "Strom": 1000,
+          "Pos1": 5,
+          "Pos2": 10,
+          "Pos3": 15
+        },
+        {
+          "enabled": false,
+          "Strom": 2000,
+          "Pos1": 5,
+          "Pos2": 10,
+          "Pos3": 15
+        }
+      ]
+    }
+  ],
+  "spielraum": [
+    {
+      "Strom": 1000,
+      "-maxX": -200,
+      "+maxX": 200,
+      "-maxY": -150,
+      "+maxY": 150
+    },
+    {
+      "Strom": 2000,
+      "-maxX": -200,
+      "+maxX": 200,
+      "-maxY": -150,
+      "+maxY": 150
+    }
+  ],
+  "startpositionen": [
+    {
+      "Strom": 1000,
+      "X": "",
+      "Y": "",
+      "x1_in": -20,
+      "y1_in": "",
+      "x2_in": "",
+      "y2_in": "",
+      "x3_in": 20,
+      "y3_in": ""
+    },
+    {
+      "Strom": 2000,
+      "X": "",
+      "Y": "",
+      "x1_in": -20,
+      "y1_in": "",
+      "x2_in": "",
+      "y2_in": "",
+      "x3_in": 20,
+      "y3_in": ""
     }
   ]
 }

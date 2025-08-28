@@ -1,9 +1,8 @@
-# server/api.py
 """
 Blueprint für die API-Endpunkte zur Verwaltung von Daten.
-
 Enthält Routen für Tags, die Bauteil-Bibliothek und Simulations-Szenarien.
 """
+
 import os
 from flask import Blueprint, jsonify, request
 from server.utils import (
@@ -15,10 +14,11 @@ from server.utils import (
     TAGS_FILE,
 )
 
-api_bp = Blueprint("api", __name__)
+# Blueprint mit einem zentralen URL-Präfix für alle Routen in dieser Datei
+api_bp = Blueprint("api_bp", __name__, url_prefix="/api")
 
 
-@api_bp.route("/api/tags", methods=["GET", "POST"])
+@api_bp.route("/tags", methods=["GET", "POST"])
 def handle_tags():
     """Verwaltet die Tags."""
     if request.method == "POST":
@@ -39,8 +39,11 @@ def handle_tags():
 def handle_library():
     """Verwaltet die Bauteil-Bibliothek."""
     library_data = load_data(LIBRARY_FILE, {"components": {}})
+
     if request.method == "GET":
-        return jsonify({"library": library_data})
+        # KORREKTUR: Die Daten direkt zurückgeben, nicht in ein "library"-Objekt verpackt.
+        # Das behebt den TypeError im Frontend.
+        return jsonify(library_data)
 
     try:
         data = request.json
@@ -51,6 +54,7 @@ def handle_library():
             library_data["components"][comp_type] = []
 
         component_list = library_data["components"][comp_type]
+        message = ""
 
         if data.get("action") == "save":
             component_data = data.get("component")

@@ -717,3 +717,138 @@ input[type="color"].preview-bg-input::-webkit-color-swatch {
     font-weight: normal;
     margin-bottom: 0;
 }
+
+
+/* --- Measurement Page Layout --- */
+.measurement-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.measurement-config-panel {
+    flex: 1;
+    min-width: 400px;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.measurement-plots-panel {
+    flex: 2;
+}
+
+.config-section, .positionsgruppe {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.positionsgruppe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.positionsgruppe-header input {
+    font-size: 1.1em;
+    font-weight: bold;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 5px;
+}
+
+.positionsgruppe-header input:focus {
+    outline: none;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.config-table th, .config-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.config-table input {
+    width: 90%;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.config-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.save-status {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    display: none; /* Hidden by default */
+}
+
+.save-status.success {
+    background-color: #d4edda;
+    color: #155724;
+    display: block;
+}
+
+.save-status.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    display: block;
+}
+
+/* --- Custom Legend Styling --- */
+.custom-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.legend-item input {
+    margin-right: 8px;
+}
+
+.legend-item .color-box {
+    width: 15px;
+    height: 15px;
+    margin-right: 8px;
+    border: 1px solid #ccc;
+}

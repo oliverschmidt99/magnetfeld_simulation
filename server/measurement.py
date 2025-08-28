@@ -1,38 +1,72 @@
 """
-Dieses Modul ist für die Erstellung der Plots für die Messungs-Seite zuständig.
-Es lädt die Konfiguration und berechnet die Positionen der Wandler.
+Dieses Modul generiert die Plot-Daten für die Messungs-Visualisierungsseite.
+Es liest die Konfigurationsdaten aus den CSV-Dateien im 'data'-Verzeichnis,
+berechnet die resultierenden Positionen und Kollisionen und erstellt
+interaktive Plots mit Plotly.
 """
 
-import numpy as np
+import os
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from flask import Blueprint, jsonify, abort
 
-from .measurement_config import get_config
-from .utils import load_data, LIBRARY_FILE
-
 measurement_bp = Blueprint("measurement_bp", __name__)
+DATA_DIR = "data"
 
 
 def get_plot_data():
-    """Erstellt die Plot-Daten für die Messungs-Seite."""
-    config = get_config()
-    if "error" in config:
-        abort(500, description=config["error"])
+    """
+    Liest die CSV-Daten, berechnet die Positionen und erstellt die Plot-JSONs.
+    Diese Funktion ist robust gegenüber Inkonsistenzen in den CSV-Dateien.
+    """
+    csv_files = {
+        "start": os.path.join(DATA_DIR, "1_startpositionen.csv"),
+        "spielraum": os.path.join(DATA_DIR, "2_spielraum.csv"),
+        "bewegungen": os.path.join(DATA_DIR, "3_bewegungen.csv"),
+        "schrittweite": os.path.join(DATA_DIR, "4_schrittweiten.csv"),
+        "wandler": os.path.join(DATA_DIR, "5_wandler_abmessungen.csv"),
+    }
+    try:
+        dataframes = {
+            name: pd.read_csv(path, encoding="utf-8")
+            for name, path in csv_files.items()
+        }
+    except UnicodeDecodeError:
+        try:
+            dataframes = {
+                name: pd.read_csv(path, encoding="cp1252")
+                for name, path in csv_files.items()
+            }
+        except (IOError, pd.errors.ParserError) as e:
+            abort(
+                500, description=f"Fehler beim Lesen der CSVs mit UTF-8 & CP1252: {e}"
+            )
+    except (IOError, pd.errors.ParserError) as e:
+        abort(500, description=f"Fehler beim Lesen der CSV-Dateien: {e}")
 
-    # Fehler korrigiert: Der Funktion load_data wurde ein leerer Dictionary als
-    # Standardwert für 'default_data' hinzugefügt.
-    library = load_data(LIBRARY_FILE, {})
+    try:
+        start_df = dataframes["start"].set_index("Strom")
+        schrittweite_df = dataframes["schrittweite"].set_index("Strom")
+        wandler_df = dataframes["wandler"].set_index("Strom")
+        bewegungen_df = dataframes["bewegungen"]
+        spielraum_df = dataframes["spielraum"]
+    except KeyError as e:
+        abort(
+            500, description=f"Fehlende Spalte 'Strom' in einer CSV-Datei. Fehler: {e}"
+        )
 
-    # Konvertiere Konfigurationslisten in DataFrames für einfachere Handhabung
-    start_df = pd.DataFrame(config["startpositionen"]).set_index("Strom")
-    spielraum_df = pd.DataFrame(config["spielraum"]).set_index("Strom")
+    common_currents = sorted(
+        list(set(start_df.index) & set(schrittweite_df.index) & set(wandler_df.index))
+    )
+    if not common_currents:
+        return jsonify({"plots": [], "trace_maps": []})
 
     direction_map = {
-        "↑ Norden": np.array([0, 1]),
-        "→ Osten": np.array([1, 0]),
-        "↓ Süden": np.array([0, -1]),
         "← Westen": np.array([-1, 0]),
+        "→ Osten": np.array([1, 0]),
+        "↑ Norden": np.array([0, 1]),
+        "↓ Süden": np.array([0, -1]),
         "↗ Nordosten": np.array([1, 1]),
         "↘ Südosten": np.array([1, -1]),
         "↙ Südwesten": np.array([-1, -1]),
@@ -45,235 +79,177 @@ def get_plot_data():
 
     ergebnisse = []
     sicherheitsabstand = 20.0
+    grenzen = spielraum_df.iloc[0]
 
-    for gruppe in config["positionsgruppen"]:
-        bewegungen_df = pd.DataFrame(gruppe["bewegungen"])
-        schrittweite_df = pd.DataFrame(gruppe["schrittweiten"]).set_index("Strom")
+    # --- KORREKTE LOGIK NACH DEINEM VORSCHLAG ---
+    for strom in common_currents:
+        start_pos = start_df.loc[strom]
+        schritte = schrittweite_df.loc[strom]
+        wandler_dims = wandler_df.loc[strom]
 
-        # Finde den zugehörigen Wandler in der Library
-        wandler_name = gruppe.get("wandler")
-        wandler_obj = next(
-            (item for item in library.get("Wandler", []) if item["id"] == wandler_name),
-            None,
-        )
-
-        if not wandler_obj:
-            # Wenn kein Wandler gefunden wird, überspringe diese Gruppe
-            continue
-
-        wandler_dims = {
-            "Breite": wandler_obj["abmessungen"]["breite"],
-            "Hoehe": wandler_obj["abmessungen"]["hoehe"],
+        # Feste Startpositionen für diese Stromstärke (nur einmal definieren)
+        startpunkte = {
+            i: np.array([start_pos.get(f"x_L{i}", 0), start_pos.get(f"y_L{i}", 0)])
+            for i in range(1, 4)
         }
 
-        for strom in start_df.index:
-            if strom not in schrittweite_df.index or strom not in spielraum_df.index:
+        for _, bewegung in bewegungen_df.iterrows():
+            pos_gruppe_name = bewegung.get("PosGruppe")
+            if not isinstance(pos_gruppe_name, str) or not pos_gruppe_name.startswith(
+                "Pos"
+            ):
+                continue
+            try:
+                pos_num_y = int(pos_gruppe_name[-1])
+                schritt = schritte[f"Pos{pos_num_y}"]
+            except (ValueError, IndexError, KeyError):
                 continue
 
-            start_pos = start_df.loc[strom]
-            schritte = schrittweite_df.loc[strom]
-            grenzen = spielraum_df.loc[strom]
-
-            for _, bewegung in bewegungen_df.iterrows():
-                pos_gruppe_name = bewegung["PosGruppe"]
-                pos_num_y_str = pos_gruppe_name.split("_")[-1]
-                pos_num_y = int(pos_num_y_str)
-
-                schritt_key = f"Pos{pos_num_y}"
-                if schritt_key not in schritte:
+            # Berechne für jede Bewegung die Endpunkte von den festen Startpositionen aus
+            for i, start_vektor in startpunkte.items():
+                richtung = bewegung.get(f"L{i}")
+                if pd.isna(richtung):
                     continue
 
-                schritt = schritte[schritt_key]
-                zeilen_ergebnis = {
-                    "Strom": strom,
-                    "PosGruppe": pos_gruppe_name,
-                    "GroupName": gruppe["name"],
-                }
+                end_vektor = start_vektor + (
+                    direction_map.get(str(richtung).strip(), np.array([0, 0])) * schritt
+                )
 
-                for i in range(1, 4):
-                    richtung = bewegung.get(f"L{i}")
-                    if not richtung:
-                        continue
+                x_min, x_max = (
+                    end_vektor[0] - wandler_dims["Breite"] / 2,
+                    end_vektor[0] + wandler_dims["Breite"] / 2,
+                )
+                y_min, y_max = (
+                    end_vektor[1] - wandler_dims["Hoehe"] / 2,
+                    end_vektor[1] + wandler_dims["Hoehe"] / 2,
+                )
+                kollision = not (
+                    grenzen["-maxX"] + sicherheitsabstand <= x_min
+                    and x_max <= grenzen["+maxX"] - sicherheitsabstand
+                    and grenzen["-maxY"] + sicherheitsabstand <= y_min
+                    and y_max <= grenzen["+maxY"] - sicherheitsabstand
+                )
 
-                    start_vektor = np.array(
-                        [
-                            start_pos[f"x{i}_in"] + start_pos["X"],
-                            start_pos[f"y{i}_in"] + start_pos["Y"],
-                        ]
-                    )
-                    end_vektor = start_vektor + (
-                        direction_map.get(richtung, np.array([0, 0])) * schritt
-                    )
-                    zeilen_ergebnis[f"x{i}_res"], zeilen_ergebnis[f"y{i}_res"] = (
-                        end_vektor[0],
-                        end_vektor[1],
-                    )
-
-                    x_min, x_max = (
-                        end_vektor[0] - wandler_dims["Breite"] / 2,
-                        end_vektor[0] + wandler_dims["Breite"] / 2,
-                    )
-                    y_min, y_max = (
-                        end_vektor[1] - wandler_dims["Hoehe"] / 2,
-                        end_vektor[1] + wandler_dims["Hoehe"] / 2,
-                    )
-
-                    kollision = not (
-                        grenzen["-maxX"] + sicherheitsabstand <= x_min
-                        and x_max <= grenzen["+maxX"] - sicherheitsabstand
-                        and grenzen["-maxY"] + sicherheitsabstand <= y_min
-                        and y_max <= grenzen["+maxY"] - sicherheitsabstand
-                    )
-                    zeilen_ergebnis[f"Kollision_L{i}"] = (
-                        "Kollision" if kollision else "OK"
-                    )
-                ergebnisse.append(zeilen_ergebnis)
+                # Speichere nur die Subposition ab
+                ergebnisse.append(
+                    {
+                        "Strom": strom,
+                        "PosGruppe": pos_gruppe_name,
+                        "Leiter": f"L{i}",
+                        "x_res": end_vektor[0],
+                        "y_res": end_vektor[1],
+                        "Kollision": "Kollision" if kollision else "OK",
+                    }
+                )
 
     if not ergebnisse:
-        return (
-            []
-        )  # Leere Liste zurückgeben, wenn keine Ergebnisse berechnet werden konnten
+        return jsonify({"plots": [], "trace_maps": []})
 
     ergebnis_df = pd.DataFrame(ergebnisse)
-    stromstaerken = sorted(ergebnis_df["Strom"].unique())
-    pos_color_map = {1: "blue", 2: "red", 3: "green"}
+    stromstaerken = sorted([int(s) for s in ergebnis_df["Strom"].unique()])
+    pos_color_map = {1: "blue", 2: "red", 3: "green", 4: "purple"}
     kollision_symbol_map = {"OK": "circle", "Kollision": "diamond-open"}
 
+    ergebnis_df["GroupNum"] = (
+        ergebnis_df["PosGruppe"].str.extract(r"Pos(\d)\d").iloc[:, 0]
+    )
+    valid_group_numbers = ergebnis_df["GroupNum"].dropna().unique()
+
     plots_json = []
-
-    for gruppen_name in ergebnis_df["GroupName"].unique():
+    for gruppen_nr_x_str in valid_group_numbers:
+        gruppen_nr_x = int(gruppen_nr_x_str)
         fig = go.Figure()
-        strom_pro_spur = []
 
-        for strom in stromstaerken:
-            gruppen_filter = ergebnis_df["GroupName"] == gruppen_name
-            strom_filter = ergebnis_df["Strom"] == strom
-            df_plot = ergebnis_df[gruppen_filter & strom_filter]
-            if df_plot.empty:
-                continue
-
+        for strom_idx, strom in enumerate(stromstaerken):
+            df_strom = ergebnis_df[
+                (ergebnis_df["GroupNum"] == gruppen_nr_x_str)
+                & (ergebnis_df["Strom"] == strom)
+            ]
             startpos = start_df.loc[strom]
-            grenzen = spielraum_df.loc[strom]
 
-            # Finde den Wandler für diese Gruppe wieder
-            gruppe_config = next(
-                (g for g in config["positionsgruppen"] if g["name"] == gruppen_name),
-                None,
-            )
-            wandler_obj = next(
-                (
-                    item
-                    for item in library.get("Wandler", [])
-                    if item["id"] == gruppe_config["wandler"]
-                ),
-                None,
-            )
-            wandler_dims = (
-                {
-                    "Breite": wandler_obj["abmessungen"]["breite"],
-                    "Hoehe": wandler_obj["abmessungen"]["hoehe"],
-                }
-                if wandler_obj
-                else {"Breite": 0, "Hoehe": 0}
-            )
-
-            for i in range(1, 4):
-                fig.add_trace(
-                    go.Scatter(
-                        x=[startpos[f"x{i}_in"] + startpos["X"]],
-                        y=[startpos[f"y{i}_in"] + startpos["Y"]],
-                        mode="markers",
-                        marker=dict(color="black", size=12, symbol="x"),
-                        name="Startposition",
-                        legendgroup="Startposition",
-                        showlegend=(strom == stromstaerken[0]),
-                    )
+            # Startpositionen als eine Spur mit 3 Punkten und Hover-Labels
+            start_x = [startpos.get(f"x_L{i}", 0) for i in range(1, 4)]
+            start_y = [startpos.get(f"y_L{i}", 0) for i in range(1, 4)]
+            start_labels = [f"Startposition L{i}" for i in range(1, 4)]
+            fig.add_trace(
+                go.Scatter(
+                    x=start_x,
+                    y=start_y,
+                    mode="markers",
+                    marker=dict(color="black", size=12, symbol="x"),
+                    name="Startposition",
+                    legendgroup="Startposition",
+                    hoverinfo="text",
+                    hovertext=start_labels,
+                    visible=(strom_idx == 0),
                 )
-                strom_pro_spur.append(strom)
+            )
 
-            for _, row in df_plot.iterrows():
-                pos_num_y = int(row["PosGruppe"].split("_")[-1])
-                pos_farbe = pos_color_map.get(pos_num_y, "grey")
-                for i in range(1, 4):
-                    if f"Kollision_L{i}" not in row:
-                        continue
-                    kollision = row[f"Kollision_L{i}"]
-                    symbol = kollision_symbol_map.get(kollision, "circle")
-                    wx, wy = row[f"x{i}_res"], row[f"y{i}_res"]
-                    w, h = wandler_dims["Breite"], wandler_dims["Hoehe"]
-
+            # Leere Platzhalter, damit die Spurenanzahl konsistent bleibt
+            fig.add_trace(
+                go.Scatter(
+                    x=[None],
+                    mode="markers",
+                    name="Wandler",
+                    legendgroup="Wandler",
+                    visible="legendonly",
+                )
+            )
+            for pos_num in range(1, 5):
+                df_pos = df_strom[df_strom["PosGruppe"].str.endswith(str(pos_num))]
+                if df_pos.empty:
                     fig.add_trace(
                         go.Scatter(
-                            x=[
-                                wx - w / 2,
-                                wx + w / 2,
-                                wx + w / 2,
-                                wx - w / 2,
-                                wx - w / 2,
-                            ],
-                            y=[
-                                wy - h / 2,
-                                wy - h / 2,
-                                wy + h / 2,
-                                wy + h / 2,
-                                wy - h / 2,
-                            ],
-                            mode="lines",
-                            fill="toself",
-                            fillcolor=pos_farbe,
-                            opacity=0.2,
-                            line=dict(color="rgba(0,0,0,0)"),
-                            name="Wandler",
-                            legendgroup="Wandler",
-                            showlegend=(
-                                i == 1
-                                and strom == stromstaerken[0]
-                                and row.name == df_plot.index[0]
-                            ),
-                            hoverinfo="none",
-                            visible="legendonly",
+                            x=[None],
+                            mode="markers",
+                            name=f"Pos {pos_num}",
+                            legendgroup=f"Pos {pos_num}",
+                            visible=False,
                         )
                     )
-                    strom_pro_spur.append(strom)
+                    continue
+
+                # Gruppiere nach Status für effizientes Plotten
+                for status in ["OK", "Kollision"]:
+                    df_status = df_pos[df_pos["Kollision"] == status]
+                    if df_status.empty:
+                        continue
 
                     fig.add_trace(
                         go.Scatter(
-                            x=[wx],
-                            y=[wy],
+                            x=df_status["x_res"],
+                            y=df_status["y_res"],
                             mode="markers",
                             marker=dict(
-                                color=pos_farbe,
-                                symbol=symbol,
+                                color=pos_color_map.get(pos_num, "grey"),
+                                symbol=kollision_symbol_map.get(status),
                                 size=14,
                                 line=dict(width=1, color="black"),
                             ),
-                            name=f"Pos {pos_num_y}",
-                            legendgroup=f"Pos {pos_num_y}",
-                            showlegend=(i == 1 and strom == stromstaerken[0]),
+                            name=f"Pos {pos_num}",
+                            legendgroup=f"Pos {pos_num}",
                             hoverinfo="text",
-                            hovertext=f"Leiter: L{i}<br>Pos: {row['PosGruppe']}<br>X: {wx:.1f}<br>Y: {wy:.1f}<br>Status: {kollision}",
+                            hovertext=[
+                                f"Leiter: {row['Leiter']}<br>Pos: {row['PosGruppe']}<br>X: {row['x_res']:.1f}<br>Y: {row['y_res']:.1f}<br>Status: {row['Kollision']}"
+                                for _, row in df_status.iterrows()
+                            ],
+                            visible=(strom_idx == 0),
                         )
                     )
-                    strom_pro_spur.append(strom)
 
-        buttons = [
-            dict(
-                label=f"{s}A",
-                method="update",
-                args=[{"visible": [sp == s for sp in strom_pro_spur]}],
+        traces_per_strom = len(fig.data) // len(stromstaerken)
+        buttons = []
+        for i, strom in enumerate(stromstaerken):
+            visibility = [False] * len(fig.data)
+            visibility[i * traces_per_strom : (i + 1) * traces_per_strom] = [
+                True
+            ] * traces_per_strom
+            buttons.append(
+                dict(
+                    label=f"{strom}A", method="restyle", args=[{"visible": visibility}]
+                )
             )
-            for s in stromstaerken
-        ]
-        if not strom_pro_spur:
-            continue  # Überspringe, wenn keine Daten für den Plot vorhanden sind
 
-        initial_visibility = [s == stromstaerken[0] for s in strom_pro_spur]
-        for i, trace in enumerate(fig.data):
-            if trace.visible != "legendonly":
-                trace.visible = initial_visibility[i]
-
-        # Nimm die Grenzen der ersten Stromstärke als Referenz für den Plot-Bereich
-        ref_grenzen = spielraum_df.loc[stromstaerken[0]]
         fig.update_layout(
             updatemenus=[
                 dict(
@@ -285,29 +261,29 @@ def get_plot_data():
                     yanchor="top",
                 )
             ],
-            title=f"Positionsgruppe '{gruppen_name}'",
+            title=f"Positionsgruppe {gruppen_nr_x}",
             xaxis=dict(
                 scaleanchor="y",
                 scaleratio=1,
-                range=[ref_grenzen["-maxX"] - 50, ref_grenzen["+maxX"] + 50],
+                range=[grenzen["-maxX"] - 50, grenzen["+maxX"] + 50],
             ),
             yaxis=dict(
                 title="Y-Position (mm)",
-                range=[ref_grenzen["-maxY"] - 50, ref_grenzen["+maxY"] + 50],
+                range=[grenzen["-maxY"] - 50, grenzen["+maxY"] + 50],
             ),
             xaxis_title="X-Position (mm)",
             width=800,
             height=600,
             template="plotly_white",
-            legend_title="Anzeigeoptionen",
-            legend=dict(traceorder="grouped"),
+            showlegend=False,
+            margin=dict(t=100),
         )
         fig.add_shape(
             type="rect",
-            x0=ref_grenzen["-maxX"],
-            y0=ref_grenzen["-maxY"],
-            x1=ref_grenzen["+maxX"],
-            y1=ref_grenzen["+maxY"],
+            x0=grenzen["-maxX"],
+            y0=grenzen["-maxY"],
+            x1=grenzen["+maxX"],
+            y1=grenzen["+maxY"],
             line=dict(color="black", width=2),
             fillcolor="lightgrey",
             layer="below",
@@ -315,20 +291,22 @@ def get_plot_data():
         )
         fig.add_shape(
             type="rect",
-            x0=ref_grenzen["-maxX"] + sicherheitsabstand,
-            y0=ref_grenzen["-maxY"] + sicherheitsabstand,
-            x1=ref_grenzen["+maxX"] - sicherheitsabstand,
-            y1=ref_grenzen["+maxY"] - sicherheitsabstand,
+            x0=grenzen["-maxX"] + sicherheitsabstand,
+            y0=grenzen["-maxY"] + sicherheitsabstand,
+            x1=grenzen["+maxX"] - sicherheitsabstand,
+            y1=grenzen["+maxY"] - sicherheitsabstand,
             line=dict(color="red", width=2, dash="dash"),
             layer="below",
         )
 
         plots_json.append(fig.to_json())
 
-    return plots_json
+    return jsonify(
+        {"plots": plots_json, "trace_maps": []}
+    )  # trace_maps wird nicht mehr benötigt
 
 
 @measurement_bp.route("/measurement/data")
 def measurement_data():
     """Stellt die Plot-Daten als JSON für das Frontend bereit."""
-    return jsonify(get_plot_data())
+    return get_plot_data()

@@ -1,106 +1,101 @@
 {
-    "components": {
-        "copperRails": [
+  "components": {
+    "copperRails": [
+      {
+        "templateProductInformation": {
+          "name": "RJ_40x10_600A",
+          "productName": "Kupferschiene 40x10",
+          "manufacturer": "Rolf Janssen",
+          "tags": ["600 A"]
+        },
+        "specificProductInformation": {
+          "geometry": {
+            "type": "Rectangle",
+            "material": "Copper",
+            "width": 40,
+            "height": 10
+          }
+        }
+      }
+    ],
+    "transformers": [
+      {
+        "templateProductInformation": {
+          "name": "CELSA_Flex_Wandler",
+          "productName": "CELSA ALO-Serie (Flex)",
+          "manufacturer": "310_CELSA",
+          "tags": ["1000 A", "310_CELSA"]
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "electrical": {
+            "primaryRatedCurrentA": 1000,
+            "secondaryRatedCurrentA": 1,
+            "burdenVA": 5
+          },
+          "geometry": {
+            "coreType": "Rectangle",
+            "airGap": 5,
+            "depth": 31,
+            "coreThicknessWidth": 15,
+            "coreThicknessHeight": 15
+          },
+          "windowConfigurations": [
             {
-                "templateProductInformation": {
-                    "name": "RJ_40x10_600A",
-                    "productName": "Kupferschiene 40x10",
-                    "manufacturer": "Rolf Janssen",
-                    "tags": [
-                        "600 A"
-                    ]
-                },
-                "specificProductInformation": {
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "Copper",
-                        "width": 40,
-                        "height": 10
-                    }
-                }
-            }
-        ],
-        "transformers": [
-            {
-                "templateProductInformation": {
-                    "name": "CELSA_Flex_Wandler",
-                    "productName": "CELSA ALO-Serie (Flex)",
-                    "manufacturer": "310_CELSA",
-                    "tags": [
-                        "1000 A",
-                        "310_CELSA"
-                    ]
-                },
-                "specificProductInformation": {
-                    "coreMaterial": "M-36 Steel",
-                    "gapMaterial": "Air",
-                    "electrical": {
-                        "primaryRatedCurrentA": 1000,
-                        "secondaryRatedCurrentA": 1,
-                        "burdenVA": 5
-                    },
-                    "geometry": {
-                        "coreType": "Rectangle",
-                        "airGap": 5,
-                        "depth": 31,
-                        "coreThicknessWidth": 15,
-                        "coreThicknessHeight": 15
-                    },
-                    "windowConfigurations": [
-                        {
-                            "size": "1x60x12",
-                            "airGap": 5
-                        },
-                        {
-                            "size": "2x50x10",
-                            "airGap": 5
-                        }
-                    ]
-                }
+              "size": "1x60x12",
+              "airGap": 5
             },
             {
-                "templateProductInformation": {
-                    "name": "Test",
-                    "productName": "",
-                    "manufacturer": "",
-                    "tags": [],
-                    "uniqueNumber": "f04d4"
-                },
-                "specificProductInformation": {
-                    "coreMaterial": "M-36 Steel",
-                    "gapMaterial": "Air",
-                    "electrical": {
-                        "primaryRatedCurrentA": null,
-                        "secondaryRatedCurrentA": null,
-                        "burdenVA": null
-                    },
-                    "geometry": {
-                        "coreType": "Circle",
-                        "depth": null,
-                        "coreOuterRadius": 100,
-                        "coreInnerRadius": 80
-                    },
-                    "windowConfigurations": []
-                }
+              "size": "2x50x10",
+              "airGap": 5
             }
-        ],
-        "transformerSheets": [
-            {
-                "templateProductInformation": {
-                    "name": "Sheet_200x5",
-                    "manufacturer": "Standard",
-                    "productName": "Abschirmblech 200x5",
-                    "tags": []
-                },
-                "specificProductInformation": {
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "M-36 Steel",
-                        "width": 200,
-                        "height": 5
-                    }
-                }
-            }
-        ]
-    }
+          ]
+        }
+      },
+      {
+        "templateProductInformation": {
+          "name": "Test",
+          "productName": "",
+          "manufacturer": "",
+          "tags": [],
+          "uniqueNumber": "f04d4"
+        },
+        "specificProductInformation": {
+          "coreMaterial": "M-36 Steel",
+          "gapMaterial": "Air",
+          "electrical": {
+            "primaryRatedCurrentA": null,
+            "secondaryRatedCurrentA": null,
+            "burdenVA": null
+          },
+          "geometry": {
+            "coreType": "Circle",
+            "depth": null,
+            "coreOuterRadius": 100,
+            "coreInnerRadius": 80
+          },
+          "windowConfigurations": []
+        }
+      }
+    ],
+    "transformerSheets": [
+      {
+        "templateProductInformation": {
+          "name": "Sheet_200x5",
+          "manufacturer": "Standard",
+          "productName": "Abschirmblech 200x5",
+          "tags": []
+        },
+        "specificProductInformation": {
+          "geometry": {
+            "type": "Rectangle",
+            "material": "M-36 Steel",
+            "width": 200,
+            "height": 5
+          }
+        }
+      }
+    ]
+  }
 }

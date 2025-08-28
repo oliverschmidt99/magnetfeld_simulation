@@ -1,11 +1,12 @@
 # app.py
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template
 from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
+
+# --- HIER DIE ÄNDERUNG ---
 from server.measurement import measurement_bp
 from server.utils import load_data, LIBRARY_FILE
-from server.measurement_config import get_config, save_config
 
 app = Flask(__name__)
 
@@ -13,20 +14,8 @@ app = Flask(__name__)
 app.register_blueprint(api_bp)
 app.register_blueprint(analysis_bp)
 app.register_blueprint(simulation_bp)
+# --- HIER DIE ÄNDERUNG ---
 app.register_blueprint(measurement_bp)
-
-
-# --- API-Routen für die Messungs-Konfiguration ---
-@app.route("/measurement/config", methods=["GET"])
-def get_measurement_config():
-    return jsonify(get_config())
-
-
-@app.route("/measurement/config", methods=["POST"])
-def save_measurement_config():
-    config_data = request.json
-    save_config(config_data)
-    return jsonify({"status": "success", "message": "Konfiguration gespeichert."})
 
 
 # --- Seiten-Routen ---

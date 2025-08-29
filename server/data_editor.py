@@ -45,12 +45,12 @@ def get_csv_data(filename):
         try:
             # Wenn das fehlschlägt, versuche die ältere Windows-Kodierung
             df = pd.read_csv(filepath, encoding="cp1252")
-        except Exception as e:
+        except (IOError, pd.errors.ParserError) as e:  # Spezifischere Exceptions
             return (
                 jsonify({"error": f"Fehler beim Lesen der Datei mit cp1252: {str(e)}"}),
                 500,
             )
-    except Exception as e:
+    except (IOError, pd.errors.ParserError) as e:  # Spezifischere Exceptions
         return (
             jsonify({"error": f"Allgemeiner Fehler beim Lesen der Datei: {str(e)}"}),
             500,
@@ -58,7 +58,20 @@ def get_csv_data(filename):
 
     # Ersetze NaN-Werte (leere Zellen) durch leere Strings für eine bessere JSON-Darstellung
     df.fillna("", inplace=True)
-    return jsonify(df.to_dict(orient="records"))
+
+    preview_type = "none"
+    if "1_startpositionen" in filename:
+        preview_type = "startpositionen"
+    elif "2_spielraum" in filename:
+        preview_type = "spielraum"
+    elif "3_bewegungen" in filename:
+        preview_type = "bewegungen"
+    elif "4_schrittweiten" in filename:
+        preview_type = "schrittweiten"
+    elif "5_wandler_abmessungen" in filename:
+        preview_type = "wandler_abmessungen"
+
+    return jsonify({"data": df.to_dict(orient="records"), "preview_type": preview_type})
 
 
 @data_editor_bp.route("/<string:filename>", methods=["POST"])
@@ -81,5 +94,5 @@ def save_csv_data(filename):
                 "message": f"Datei '{filename}' erfolgreich gespeichert.",
             }
         )
-    except Exception as e:
+    except (IOError, ValueError) as e:  # Spezifischere Exceptions
         return jsonify({"error": f"Fehler beim Speichern der Datei: {str(e)}"}), 500

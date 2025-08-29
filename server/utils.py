@@ -8,11 +8,12 @@ und zur Verarbeitung von FEMM-Ergebnisdateien.
 import json
 import secrets
 import re
+import os
 
 # --- Pfad-Konfiguration ---
 CONFIG_DIR = "conf"
-LIBRARY_FILE = "library.json"
-TAGS_FILE = "tags.json"
+LIBRARY_FILE = os.path.join(CONFIG_DIR, "library.json")
+TAGS_FILE = os.path.join(CONFIG_DIR, "tags.json")
 RESULTS_DIR = "res"
 
 

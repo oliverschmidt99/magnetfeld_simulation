@@ -1,85 +1,90 @@
 // static/js/tags.js
-let allTagsData = {};
+// Dieses Skript ist für die dynamische Tag-Verwaltung in der Anwendung verantwortlich.
 
-async function loadTags() {
-  if (Object.keys(allTagsData).length > 0) return;
-  try {
-    const response = await fetch("/api/tags");
-    if (!response.ok) throw new Error("Netzwerk-Antwort war nicht ok.");
-    allTagsData = await response.json();
-  } catch (error) {
-    console.error("Fehler beim Laden der Tags:", error);
-    allTagsData = { categories: [] };
-  }
-}
+document.addEventListener("DOMContentLoaded", () => {
+  // Öffnet ein Modalfenster zur Auswahl von Tags
+  window.openTagModal = (element, currentTags) => {
+    const modal = document.getElementById("tag-modal");
+    const selectedTagsContainer = document.getElementById(
+      "modal-selected-tags"
+    );
+    const tagListContainer = document.getElementById("modal-tag-list");
+    const searchInput = document.getElementById("tag-search-input");
+    const saveBtn = document.getElementById("modal-save-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
 
-function getTagBadge(tagName, removable = false) {
-  let tagInfo = null;
-  if (allTagsData.categories) {
-    for (const category of allTagsData.categories) {
-      const foundTag = category.tags.find((t) => t.name === tagName);
-      if (foundTag) {
-        tagInfo = foundTag;
-        break;
-      }
+    let allTags = [];
+    let selectedTags = new Set(currentTags || []);
+
+    // Funktion zum Laden und Anzeigen aller Tags
+    function loadAllTags() {
+      fetch("/api/tags")
+        .then((response) => response.json())
+        .then((data) => {
+          allTags = data.categories.flatMap((cat) =>
+            cat.tags.map((t) => ({
+              name: t.name,
+              color: t.color,
+            }))
+          );
+          renderTagList();
+        })
+        .catch((error) => console.error("Fehler beim Laden der Tags:", error));
     }
-  }
 
-  const removeBtn = removable
-    ? `<span class="remove-tag" title="Tag entfernen">&times;</span>`
-    : "";
-  const tagDataAttr = `data-tag="${tagName}"`;
+    // Rendert die Liste der auswählbaren Tags
+    function renderTagList(filter = "") {
+      tagListContainer.innerHTML = "";
+      const filteredTags = allTags.filter((t) =>
+        t.name.toLowerCase().includes(filter.toLowerCase())
+      );
+      filteredTags.forEach((tag) => {
+        const tagElement = document.createElement("span");
+        tagElement.className = "tag selectable-tag";
+        tagElement.textContent = tag.name;
+        tagElement.style.backgroundColor = tag.color;
+        if (selectedTags.has(tag.name)) {
+          tagElement.classList.add("selected");
+        }
+        tagElement.addEventListener("click", () => {
+          if (selectedTags.has(tag.name)) {
+            selectedTags.delete(tag.name);
+          } else {
+            selectedTags.add(tag.name);
+          }
+          renderSelectedTags();
+          renderTagList(searchInput.value); // Aktualisiere Liste, um den "selected"-Status zu zeigen
+        });
+        tagListContainer.appendChild(tagElement);
+      });
+    }
 
-  if (tagInfo) {
-    const textColor = getTextColor(tagInfo.color);
-    return `<span class="tag-badge" ${tagDataAttr} style="background-color: ${tagInfo.color}; color: ${textColor};">${tagName}${removeBtn}</span>`;
-  }
-  return `<span class="tag-badge" ${tagDataAttr} style="background-color: #e9ecef; color: #495057;">${tagName}${removeBtn}</span>`;
-}
+    // Rendert die ausgewählten Tags
+    function renderSelectedTags() {
+      selectedTagsContainer.innerHTML = Array.from(selectedTags)
+        .map((tagName) => {
+          const tag = allTags.find((t) => t.name === tagName);
+          const color = tag ? tag.color : "#ccc";
+          return `<span class="tag" style="background-color: ${color};">${tagName}</span>`;
+        })
+        .join("");
+    }
 
-function getTextColor(hexcolor) {
-  if (!hexcolor || hexcolor.length < 7) return "#000000";
-  const r = parseInt(hexcolor.substr(1, 2), 16);
-  const g = parseInt(hexcolor.substr(3, 2), 16);
-  const b = parseInt(hexcolor.substr(5, 2), 16);
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  return yiq >= 128 ? "#343a40" : "#FFFFFF";
-}
+    searchInput.addEventListener("input", (e) => {
+      renderTagList(e.target.value);
+    });
 
-function getTagColor(tagName) {
-  let hash = 0;
-  for (let i = 0; i < tagName.length; i++) {
-    hash = tagName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return `hsl(${hash % 360}, 90%, 85%)`;
-}
+    saveBtn.addEventListener("click", () => {
+      element.value = Array.from(selectedTags).join(", ");
+      modal.style.display = "none";
+    });
 
-function updateSelectedTagsDisplay(containerId, tags) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
+    cancelBtn.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
 
-  const addBtn = container.querySelector(".add-tags-btn");
-  container.innerHTML = "";
-
-  tags.forEach((tag) => {
-    const badge = document.createElement("span");
-    badge.className = "tag-badge";
-    badge.style.backgroundColor = getTagColor(tag);
-    badge.textContent = tag;
-
-    const removeBtn = document.createElement("span");
-    removeBtn.className = "remove-tag";
-    removeBtn.innerHTML = "&times;";
-    removeBtn.onclick = (e) => {
-      e.stopPropagation();
-      currentEditingTags = currentEditingTags.filter((t) => t !== tag);
-      updateSelectedTagsDisplay(containerId, currentEditingTags);
-    };
-    badge.appendChild(removeBtn);
-    container.appendChild(badge);
-  });
-
-  if (addBtn) {
-    container.appendChild(addBtn);
-  }
-}
+    renderSelectedTags();
+    loadAllTags();
+    modal.style.display = "flex";
+  };
+});

@@ -1,502 +1,400 @@
-// Diese Funktion muss definiert werden, um den ReferenceError zu beheben.
-// Du kannst sie später mit der echten Logik füllen.
-function updateAssemblyPhaseDropdowns() {
-  console.log("Aktualisiere Assembly-Phase-Dropdowns...");
-  // Beispiel-Logik:
-  // const dropdowns = document.querySelectorAll('.assembly-phase-dropdown');
-  // dropdowns.forEach(dropdown => { ... });
-}
+// static/js/configurator.js
+// JavaScript für die Konfigurator-Seite
+let libraryData = {};
+let currentConfig = {};
+const savedScenariosSelect = document.getElementById("saved-scenarios");
+const assembliesList = document.getElementById("assemblies-list");
+const standaloneList = document.getElementById("standalone-list");
+const electricalSystemList = document.getElementById("electrical-system-list");
+const summaryOutput = document.getElementById("summary-output");
 
-document.addEventListener("DOMContentLoaded", async () => {
-  let libraryData = {};
-
-  async function initializeConfigurator() {
-    try {
-      // KORREKTUR: Die URL wurde auf /api/library geändert
-      const response = await fetch("/api/library");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      libraryData = await response.json();
-      console.log("Bibliothek für Konfigurator geladen:", libraryData);
-
-      // Beispiel: Lade einen gespeicherten Zustand (falls vorhanden)
-      // loadState(); // Diese Funktion müsstest du implementieren
-    } catch (error) {
-      console.error("Fehler beim Initialisieren des Konfigurators:", error);
-    }
+document.addEventListener("DOMContentLoaded", () => {
+  // Lade Bibliotheksdaten aus dem DOM
+  try {
+    libraryData = JSON.parse(
+      document.getElementById("library-data").textContent
+    );
+  } catch (e) {
+    console.error("Fehler beim Laden der Bibliotheksdaten:", e);
   }
 
-  function addAssembly() {
-    // Beispiel-Funktion, um eine Baugruppe hinzuzufügen
-    console.log("Füge Baugruppe hinzu...");
-    // KORREKTUR: Rufe die jetzt definierte Funktion auf
-    updateAssemblyPhaseDropdowns();
-  }
+  // Initialisiere mit einer Standardkonfiguration
+  loadDefaultConfig();
 
-  function loadState() {
-    // Beispiel-Funktion, um einen Zustand zu laden
-    const assemblies = [{}, {}]; // Beispiel-Daten
-    assemblies.forEach(() => addAssembly());
-  }
+  // Lade gespeicherte Szenarien
+  loadSavedScenarios();
 
-  initializeConfigurator();
-});
-
-let currentConfigData = {};
-let library = {};
-let phaseCounter = 0;
-let assemblyCounter = 0;
-let standaloneCounter = 0;
-const SQRT2 = Math.sqrt(2);
-
-async function initializeConfigurator() {
-  const libraryDataElement = document.getElementById("library-data");
-  library = libraryDataElement
-    ? JSON.parse(libraryDataElement.textContent)
-    : {};
-
-  initializeCardNavigation("config-nav", "config-sections");
-  loadState();
-
-  const form = document.getElementById("simulation-form");
-  form.addEventListener("input", saveState);
-  form.addEventListener("click", (e) => {
-    if (e.target.tagName === "BUTTON" && e.target.type === "button") {
-      setTimeout(saveState, 50);
+  // Event-Listener für die Navigation
+  document.getElementById("config-nav").addEventListener("click", (e) => {
+    const card = e.target.closest(".card");
+    if (!card) return;
+    document
+      .querySelectorAll("#config-nav .card")
+      .forEach((c) => c.classList.remove("active"));
+    card.classList.add("active");
+    const targetId = card.dataset.target;
+    document.querySelectorAll(".config-section").forEach((section) => {
+      section.classList.remove("active");
+    });
+    document.getElementById(targetId).classList.add("active");
+    if (targetId === "config-summary") {
+      updateSummary();
     }
   });
 
+  // Event-Listener für Buttons
   document
     .getElementById("save-scenario-btn")
-    ?.addEventListener("click", saveScenario);
+    .addEventListener("click", saveScenario);
   document
     .getElementById("load-scenario-btn")
-    ?.addEventListener("click", loadScenario);
+    .addEventListener("click", loadScenario);
   document
     .getElementById("delete-scenario-btn")
-    ?.addEventListener("click", deleteScenario);
+    .addEventListener("click", deleteScenario);
+  document
+    .getElementById("simulation-form")
+    .addEventListener("submit", createSimulationFile);
 
-  form.addEventListener("submit", function (event) {
-    event.preventDefault();
-    const data = gatherFormData();
-    fetch("/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-      .then((response) => response.json())
-      .then((result) => alert(result.message || result.error));
-  });
-}
+  // Event-Listener für dynamische Listen
+  assembliesList.addEventListener("input", updateConfigFromUI);
+  standaloneList.addEventListener("input", updateConfigFromUI);
+  electricalSystemList.addEventListener("input", updateConfigFromUI);
+  document
+    .getElementById("config-params")
+    .addEventListener("input", updateConfigFromUI);
+});
 
-function addAssembly(data = {}) {
-  assemblyCounter++;
-  const list = document.getElementById("assemblies-list");
-  const item = document.createElement("div");
-  item.className = "list-item";
-  item.id = `assembly-${assemblyCounter}`;
-
-  const transformerOptions = (library.components?.transformers || [])
-    .map(
-      (t) =>
-        `<option value="${t.templateProductInformation.name}" ${
-          data.transformerName === t.templateProductInformation.name
-            ? "selected"
-            : ""
-        }>${t.templateProductInformation.name}</option>`
-    )
-    .join("");
-
-  item.innerHTML = `
-      <h4>Baugruppe ${assemblyCounter}</h4>
-      <label>Name:</label><input type="text" class="assembly-name" value="${
-        data.name || `Assembly_${assemblyCounter}`
-      }">
-      <label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
-        data.phaseName || ""
-      }</select>
-      <label>Position X:</label><input type="number" class="pos-x" value="${
-        data.position?.x || 0
-      }">
-      <label>Position Y:</label><input type="number" class="pos-y" value="${
-        data.position?.y || 0
-      }">
-      
-      <label>Wandler:</label>
-      <select class="transformer" onchange="updateConductorOptions(this)">${transformerOptions}</select>
-      
-      <div class="form-group">
-          <label>Fensterkonfiguration:</label>
-          <select class="primary-conductor-select"></select>
-      </div>
-
-      <button type="button" class="danger" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>`;
-  list.appendChild(item);
-  updateAssemblyPhaseDropdowns();
-  updateConductorOptions(
-    item.querySelector(".transformer"),
-    data.primaryConductorName
-  );
-}
-
-function updateConductorOptions(transformerSelect, selectedConductorName) {
-  const transformerName = transformerSelect.value;
-  const assemblyItem = transformerSelect.closest(".list-item");
-  const conductorSelect = assemblyItem.querySelector(
-    ".primary-conductor-select"
-  );
-  conductorSelect.innerHTML = "";
-
-  const transformer = (library.components?.transformers || []).find(
-    (t) => t.templateProductInformation.name === transformerName
-  );
-
-  if (
-    transformer &&
-    transformer.specificProductInformation.availableWindowSizes
-  ) {
-    transformer.specificProductInformation.availableWindowSizes.forEach(
-      (size) => {
-        const option = document.createElement("option");
-        option.value = size;
-        option.textContent = size;
-        if (size === selectedConductorName) {
-          option.selected = true;
-        }
-        conductorSelect.appendChild(option);
-      }
-    );
-  }
-}
-
-function gatherFormData() {
-  const form = document.getElementById("simulation-form");
-  const data = {
+// Standardkonfiguration laden
+function loadDefaultConfig() {
+  currentConfig = {
     simulationParams: {
-      frequencyHz: form.querySelector("#frequencyHz").value,
-      problemDepthM: form.querySelector("#problemDepthM").value,
-      coreRelPermeability: form.querySelector("#coreRelPermeability").value,
+      frequencyHz: 50,
+      problemDepthM: 30,
+      coreRelPermeability: 2500,
     },
-    electricalSystem: [],
+    electricalSystem: [{ name: "L1", phaseShiftDeg: 0, peakCurrentA: 5656.85 }],
     assemblies: [],
     standAloneComponents: [],
   };
-
-  form
-    .querySelectorAll("#electrical-system-list .list-item")
-    .forEach((item) => {
-      data.electricalSystem.push({
-        name: item.querySelector(".phase-name").value,
-        phaseShiftDeg: parseInt(item.querySelector(".phase-shift").value),
-        peakCurrentA: parseFloat(item.querySelector(".phase-peak").value),
-      });
-    });
-
-  form.querySelectorAll("#assemblies-list .list-item").forEach((item) => {
-    data.assemblies.push({
-      name: item.querySelector(".assembly-name").value,
-      phaseName: item.querySelector(".assembly-phase-select").value,
-      position: {
-        x: parseInt(item.querySelector(".pos-x").value),
-        y: parseInt(item.querySelector(".pos-y").value),
-      },
-      transformerName: item.querySelector(".transformer").value,
-      primaryConductorName: item.querySelector(".primary-conductor-select")
-        .value,
-    });
-  });
-
-  form.querySelectorAll("#standalone-list .list-item").forEach((item) => {
-    data.standAloneComponents.push({
-      name: item.querySelector(".standalone-name").value,
-      position: {
-        x: parseInt(item.querySelector(".pos-x").value),
-        y: parseInt(item.querySelector(".pos-y").value),
-      },
-    });
-  });
-
-  return data;
+  renderUIFromConfig();
 }
 
-function addPhase(data = {}) {
-  phaseCounter++;
-  const list = document.getElementById("electrical-system-list");
-  const item = document.createElement("div");
-  item.className = "list-item";
-  item.id = `phase-${phaseCounter}`;
-  const defaultRms = 4000;
-  const peak = data.peakCurrentA || (defaultRms * SQRT2).toFixed(2);
-  const rms = (peak / SQRT2).toFixed(2);
-  item.innerHTML = `<h4>Phase ${phaseCounter}</h4><label>Name:</label><input type="text" class="phase-name" value="${
-    data.name || `L${phaseCounter}`
-  }" onkeyup="updateAssemblyPhaseDropdowns()"><label>Phasenverschiebung (°):</label><input type="number" class="phase-shift" value="${
-    data.phaseShiftDeg ?? 0
-  }"><div class="form-row"><div><label>Spitzenstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-peak" class="phase-peak" value="${peak}" oninput="updateRms(${phaseCounter}, 'phase')"></div><div><label>Effektivstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-rms" class="phase-rms" value="${rms}" oninput="updatePeak(${phaseCounter}, 'phase')"></div></div><button type="button" class="danger" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
-  list.appendChild(item);
-}
-
-function addStandalone(data = {}) {
-  standaloneCounter++;
-  const list = document.getElementById("standalone-list");
-  const item = document.createElement("div");
-  item.className = "list-item";
-  item.id = `standalone-${standaloneCounter}`;
-  let sheetOptions = (library.components?.transformerSheets || [])
-    .map(
-      (s) =>
-        `<option value="${s.templateProductInformation.name}" ${
-          data.name === s.templateProductInformation.name ? "selected" : ""
-        }>${s.templateProductInformation.name}</option>`
-    )
-    .join("");
-  item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4><label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select><label>Position X:</label><input type="number" class="pos-x" value="${
-    data.position?.x || 0
-  }"><label>Position Y:</label><input type="number" class="pos-y" value="${
-    data.position?.y || 0
-  }"><button type="button" class="danger" onclick="removeItem('standalone-${standaloneCounter}')">Entfernen</button>`;
-  list.appendChild(item);
-}
-
-function removeItem(id) {
-  const item = document.getElementById(id);
-  if (item) item.remove();
-}
-
-function saveState() {
-  if (!document.getElementById("simulation-form")) return;
-  const data = gatherFormData();
-  localStorage.setItem("latestSimConfig", JSON.stringify(data));
-  updateSummary();
-}
-
-function loadState(data = null) {
-  const configData =
-    data || JSON.parse(localStorage.getItem("latestSimConfig"));
-  const elsList = document.getElementById("electrical-system-list");
-  const asmList = document.getElementById("assemblies-list");
-  const stdList = document.getElementById("standalone-list");
-
-  if (!elsList || !asmList || !stdList) return;
-
-  elsList.innerHTML = "";
-  asmList.innerHTML = "";
-  stdList.innerHTML = "";
-  phaseCounter = 0;
-  assemblyCounter = 0;
-  standaloneCounter = 0;
-
-  if (!configData) {
-    initializeDefaultSetup();
-    return;
+// UI-Elemente basierend auf der aktuellen Konfiguration rendern
+function renderUIFromConfig() {
+  // Globale Parameter
+  for (const key in currentConfig.simulationParams) {
+    const input = document.getElementById(key);
+    if (input) input.value = currentConfig.simulationParams[key];
   }
-
-  const params = configData.simulationParams;
-  document.getElementById("frequencyHz").value = params.frequencyHz;
-  document.getElementById("problemDepthM").value = params.problemDepthM;
-  document.getElementById("coreRelPermeability").value =
-    params.coreRelPermeability;
-
-  configData.electricalSystem.forEach((phase) => addPhase(phase));
-  configData.assemblies.forEach((assembly) => addAssembly(assembly));
-  configData.standAloneComponents.forEach((comp) => addStandalone(comp));
-
-  updateAssemblyPhaseDropdowns();
-  configData.assemblies.forEach((assembly, index) => {
-    const select = document.querySelector(
-      `#assembly-${index + 1} .assembly-phase-select`
-    );
-    if (select) select.value = assembly.phaseName;
-  });
-
-  updateScenarioList();
+  // Dynamische Listen
+  renderElectricalSystem();
+  renderAssemblies();
+  renderStandaloneComponents();
   updateSummary();
 }
 
-function initializeDefaultSetup() {
-  addPhase({ name: "L1", phaseShiftDeg: 0 });
-  addPhase({ name: "L2", phaseShiftDeg: -120 });
-  addPhase({ name: "L3", phaseShiftDeg: 120 });
-  addAssembly({
-    name: "Assembly_1",
+// UI für das elektrische System rendern
+function renderElectricalSystem() {
+  electricalSystemList.innerHTML = "";
+  currentConfig.electricalSystem.forEach((phase, index) => {
+    const div = document.createElement("div");
+    div.className = "dynamic-item";
+    div.innerHTML = `
+            <div class="form-group-wrapper">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" value="${phase.name}">
+                </div>
+                <div class="form-group">
+                    <label>Phasenverschiebung (°)</label>
+                    <input type="number" name="phaseShiftDeg" value="${phase.phaseShiftDeg}">
+                </div>
+                <div class="form-group">
+                    <label>Spitzenstrom (A)</label>
+                    <input type="number" step="any" name="peakCurrentA" value="${phase.peakCurrentA}">
+                </div>
+            </div>
+            <button type="button" class="remove-btn" onclick="removeDynamicItem(this, 'electricalSystem', ${index})">&times;</button>
+        `;
+    electricalSystemList.appendChild(div);
+  });
+}
+window.addPhase = () => {
+  currentConfig.electricalSystem.push({
+    name: "",
+    phaseShiftDeg: 0,
+    peakCurrentA: 0,
+  });
+  renderElectricalSystem();
+};
+
+// UI für Baugruppen rendern
+function renderAssemblies() {
+  assembliesList.innerHTML = "";
+  currentConfig.assemblies.forEach((assembly, index) => {
+    const availableRails = (libraryData.components.copperRails || []).map(
+      (r) => r.templateProductInformation.name
+    );
+    const availableTransformers = (
+      libraryData.components.transformers || []
+    ).map((t) => t.templateProductInformation.name);
+    const railOptions = availableRails
+      .map(
+        (r) =>
+          `<option value="${r}" ${
+            r === assembly.copperRailName ? "selected" : ""
+          }>${r}</option>`
+      )
+      .join("");
+    const transformerOptions = availableTransformers
+      .map(
+        (t) =>
+          `<option value="${t}" ${
+            t === assembly.transformerName ? "selected" : ""
+          }>${t}</option>`
+      )
+      .join("");
+    const div = document.createElement("div");
+    div.className = "dynamic-item";
+    div.innerHTML = `
+            <div class="form-group-wrapper">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" value="${assembly.name}">
+                </div>
+                <div class="form-group">
+                    <label>Phase</label>
+                    <input type="text" name="phaseName" value="${assembly.phaseName}">
+                </div>
+                <div class="form-group">
+                    <label>X-Position (mm)</label>
+                    <input type="number" name="position.x" value="${assembly.position.x}">
+                </div>
+                <div class="form-group">
+                    <label>Y-Position (mm)</label>
+                    <input type="number" name="position.y" value="${assembly.position.y}">
+                </div>
+                <div class="form-group">
+                    <label>Kupferschiene</label>
+                    <select name="copperRailName">${railOptions}</select>
+                </div>
+                <div class="form-group">
+                    <label>Wandler</label>
+                    <select name="transformerName">${transformerOptions}</select>
+                </div>
+            </div>
+            <button type="button" class="remove-btn" onclick="removeDynamicItem(this, 'assemblies', ${index})">&times;</button>
+        `;
+    assembliesList.appendChild(div);
+  });
+}
+window.addAssembly = () => {
+  currentConfig.assemblies.push({
+    name: `Assembly_${currentConfig.assemblies.length + 1}`,
     phaseName: "L1",
     position: { x: 0, y: 0 },
+    copperRailName: (libraryData.components.copperRails[0] || {})
+      .templateProductInformation?.name,
+    transformerName: (libraryData.components.transformers[0] || {})
+      .templateProductInformation?.name,
   });
-  updateAssemblyPhaseDropdowns();
-  updateScenarioList();
-  saveState();
+  renderAssemblies();
+};
+
+// UI für Einzelbauteile rendern
+function renderStandaloneComponents() {
+  standaloneList.innerHTML = "";
+  currentConfig.standAloneComponents.forEach((component, index) => {
+    const availableSheets = (
+      libraryData.components.transformerSheets || []
+    ).map((s) => s.templateProductInformation.name);
+    const sheetOptions = availableSheets
+      .map(
+        (s) =>
+          `<option value="${s}" ${
+            s === component.name ? "selected" : ""
+          }>${s}</option>`
+      )
+      .join("");
+    const div = document.createElement("div");
+    div.className = "dynamic-item";
+    div.innerHTML = `
+            <div class="form-group-wrapper">
+                <div class="form-group">
+                    <label>Typ</label>
+                    <select name="name">${sheetOptions}</select>
+                </div>
+                <div class="form-group">
+                    <label>X-Position (mm)</label>
+                    <input type="number" name="position.x" value="${component.position.x}">
+                </div>
+                <div class="form-group">
+                    <label>Y-Position (mm)</label>
+                    <input type="number" name="position.y" value="${component.position.y}">
+                </div>
+            </div>
+            <button type="button" class="remove-btn" onclick="removeDynamicItem(this, 'standAloneComponents', ${index})">&times;</button>
+        `;
+    standaloneList.appendChild(div);
+  });
+}
+window.addStandalone = () => {
+  currentConfig.standAloneComponents.push({
+    name: (libraryData.components.transformerSheets[0] || {})
+      .templateProductInformation?.name,
+    position: { x: 0, y: 0 },
+  });
+  renderStandaloneComponents();
+};
+
+// Elemente aus den Listen entfernen
+window.removeDynamicItem = (btn, listName, index) => {
+  currentConfig[listName].splice(index, 1);
+  renderUIFromConfig();
+};
+
+// Konfiguration aus der UI aktualisieren
+function updateConfigFromUI() {
+  const form = document.getElementById("simulation-form");
+  const formData = new FormData(form);
+
+  // Globale Parameter
+  currentConfig.simulationParams.frequencyHz =
+    parseFloat(formData.get("frequencyHz")) || 0;
+  currentConfig.simulationParams.problemDepthM =
+    parseFloat(formData.get("problemDepthM")) || 0;
+  currentConfig.simulationParams.coreRelPermeability =
+    parseFloat(formData.get("coreRelPermeability")) || 0;
+
+  // Dynamische Listen
+  currentConfig.electricalSystem = parseDynamicList(electricalSystemList);
+  currentConfig.assemblies = parseDynamicList(assembliesList);
+  currentConfig.standAloneComponents = parseDynamicList(standaloneList);
+
+  updateSummary();
 }
 
-async function saveScenario() {
-  const name = document.getElementById("scenario-name").value;
-  if (!name) {
+function parseDynamicList(listElement) {
+  const items = [];
+  Array.from(listElement.children).forEach((item) => {
+    const itemData = {};
+    const inputs = item.querySelectorAll("input, select");
+    inputs.forEach((input) => {
+      let value = input.value;
+      if (!isNaN(parseFloat(value)) && isFinite(value)) {
+        value = parseFloat(value);
+      }
+      if (input.name.includes(".")) {
+        // Handle nested objects like position.x
+        const [parent, child] = input.name.split(".");
+        if (!itemData[parent]) itemData[parent] = {};
+        itemData[parent][child] = value;
+      } else {
+        itemData[input.name] = value;
+      }
+    });
+    items.push(itemData);
+  });
+  return items;
+}
+
+// Zusammenfassung aktualisieren
+function updateSummary() {
+  summaryOutput.innerHTML = `<pre>${JSON.stringify(
+    currentConfig,
+    null,
+    2
+  )}</pre>`;
+}
+
+// Szenarien-Verwaltung
+function loadSavedScenarios() {
+  fetch("/api/scenarios")
+    .then((response) => response.json())
+    .then((scenarios) => {
+      savedScenariosSelect.innerHTML =
+        '<option value="">-- Szenario auswählen --</option>';
+      scenarios.forEach((s) => {
+        const option = document.createElement("option");
+        option.value = s;
+        option.textContent = s;
+        savedScenariosSelect.appendChild(option);
+      });
+    })
+    .catch((error) => console.error("Fehler beim Laden der Szenarien:", error));
+}
+
+function saveScenario() {
+  const scenarioName = document.getElementById("scenario-name").value;
+  if (!scenarioName) {
     alert("Bitte gib einen Namen für das Szenario ein.");
     return;
   }
-  const data = gatherFormData();
-  const response = await fetch(`/scenarios/${name}`, {
+  fetch(`/api/scenarios/${scenarioName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  const result = await response.json();
-  alert(result.message || result.error);
-  if (response.ok) updateScenarioList();
+    body: JSON.stringify(currentConfig),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      alert(data.message);
+      loadSavedScenarios();
+    })
+    .catch((error) => alert(`Fehler beim Speichern: ${error.message}`));
 }
 
-async function loadScenario() {
-  const select = document.getElementById("saved-scenarios");
-  const name = select.value;
-  if (!name) {
+function loadScenario() {
+  const scenarioName = savedScenariosSelect.value;
+  if (!scenarioName) {
     alert("Bitte wähle ein Szenario zum Laden aus.");
     return;
   }
-  const response = await fetch(`/scenarios/${name}`);
-  const data = await response.json();
-  if (response.ok) {
-    loadState(data);
-    document.getElementById("scenario-name").value = name;
-    alert(`Szenario '${name}' geladen!`);
-  } else {
-    alert(`Fehler beim Laden: ${data.error}`);
-  }
+  fetch(`/api/scenarios/${scenarioName}`)
+    .then((response) => {
+      if (!response.ok) throw new Error("Szenario nicht gefunden.");
+      return response.json();
+    })
+    .then((data) => {
+      currentConfig = data;
+      renderUIFromConfig();
+      alert(`Szenario "${scenarioName}" geladen.`);
+    })
+    .catch((error) => alert(`Fehler beim Laden: ${error.message}`));
 }
 
-async function deleteScenario() {
-  const select = document.getElementById("saved-scenarios");
-  const name = select.value;
-  if (!name) {
+function deleteScenario() {
+  const scenarioName = savedScenariosSelect.value;
+  if (!scenarioName) {
     alert("Bitte wähle ein Szenario zum Löschen aus.");
     return;
   }
-  if (confirm(`Möchtest du das Szenario '${name}' wirklich löschen?`)) {
-    const response = await fetch(`/scenarios/${name}`, { method: "DELETE" });
-    const result = await response.json();
-    alert(result.message || result.error);
-    if (response.ok) updateScenarioList();
+  if (
+    !confirm(`Soll das Szenario "${scenarioName}" wirklich gelöscht werden?`)
+  ) {
+    return;
   }
-}
-
-async function updateScenarioList() {
-  const select = document.getElementById("saved-scenarios");
-  if (!select) return;
-  try {
-    const response = await fetch("/scenarios");
-    const scenarios = await response.json();
-    select.innerHTML = '<option value="">-- Szenario auswählen --</option>';
-    scenarios.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      select.appendChild(option);
-    });
-  } catch (e) {
-    console.error("Szenarien konnten nicht geladen werden:", e);
-  }
-}
-
-function updateSummary() {
-  const data = gatherFormData();
-  const output = document.getElementById("summary-output");
-  if (!output) return;
-  output.innerHTML = "";
-
-  let html = "<h3>Allgemeine Parameter</h3>";
-  html += `<div class="summary-box-item"><strong>Frequenz:</strong> <span>${data.simulationParams.frequencyHz} Hz</span></div>`;
-  html += `<div class="summary-box-item"><strong>Problem-Tiefe:</strong> <span>${data.simulationParams.problemDepthM} mm</span></div>`;
-  html += `<div class="summary-box-item"><strong>Permeabilität:</strong> <span>${data.simulationParams.coreRelPermeability}</span></div>`;
-
-  html += "<h3>Elektrisches System</h3>";
-  if (data.electricalSystem.length > 0) {
-    data.electricalSystem.forEach((p) => {
-      html += `<div class="summary-box-item"><strong>${
-        p.name
-      }:</strong> <span>${parseFloat(p.peakCurrentA).toFixed(2)} A (Peak), ${
-        p.phaseShiftDeg
-      }°</span></div>`;
-    });
-  } else {
-    html += "<span>Keine Phasen definiert.</span>";
-  }
-
-  html += "<h3>Baugruppen</h3>";
-  if (data.assemblies.length > 0) {
-    data.assemblies.forEach((a) => {
-      let conductorDesc = a.primaryConductorName || "Nicht gewählt";
-      html += `<div class="summary-box-item"><strong>${a.name} (Phase: ${a.phaseName})</strong><div class="summary-box-sub-item"><span>Wandler: ${a.transformerName}</span><br><span>Fenster: ${conductorDesc}</span><br><span>Position: (${a.position.x}, ${a.position.y})</span></div></div>`;
-    });
-  } else {
-    html += "<span>Keine Baugruppen definiert.</span>";
-  }
-
-  output.innerHTML = html;
-  updateVisualization(data);
-}
-
-function updateVisualization(data) {
-  const svg = document.getElementById("svg-canvas");
-  if (!svg) return;
-  svg.innerHTML = "";
-
-  fetch("/visualize", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
+  fetch(`/api/scenarios/${scenarioName}`, { method: "DELETE" })
     .then((response) => response.json())
-    .then((elements) => {
-      if (!elements || elements.length === 0) return;
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      elements.forEach((el) => {
-        minX = Math.min(minX, el.x);
-        minY = Math.min(minY, el.y);
-        maxX = Math.max(maxX, el.x + (el.width || 0));
-        maxY = Math.max(maxY, el.y + (el.height || 0));
-      });
-
-      const padding = 100;
-      const viewBoxWidth = maxX - minX + 2 * padding;
-      const viewBoxHeight = maxY - minY + 2 * padding;
-      svg.setAttribute(
-        "viewBox",
-        `${minX - padding} ${-maxY - padding} ${viewBoxWidth} ${viewBoxHeight}`
-      );
-
-      elements.forEach((el) => {
-        let shape = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          el.type
-        );
-        if (el.type === "rect") {
-          shape.setAttribute("x", el.x);
-          shape.setAttribute("y", -el.y - el.height);
-          shape.setAttribute("width", el.width);
-          shape.setAttribute("height", el.height);
-        }
-        shape.setAttribute("fill", el.fill);
-        shape.setAttribute("stroke", "black");
-        shape.setAttribute("stroke-width", "1");
-        svg.appendChild(shape);
-      });
-    });
+    .then((data) => {
+      alert(data.message);
+      loadSavedScenarios();
+      loadDefaultConfig();
+    })
+    .catch((error) => alert(`Fehler beim Löschen: ${error.message}`));
 }
 
-function initializeCardNavigation(navId, sectionsId) {
-  const navCards = document.querySelectorAll(`#${navId} .card`);
-  const sections = document.querySelectorAll(`#${sectionsId} .config-section`);
-  navCards.forEach((card) => {
-    card.addEventListener("click", () => {
-      const targetId = card.dataset.target;
-      navCards.forEach((c) => c.classList.remove("active"));
-      card.classList.add("active");
-      sections.forEach((s) => {
-        s.style.display = s.id === targetId ? "block" : "none";
-        if (s.id === "config-summary") updateSummary();
-      });
-    });
-  });
+// simulation.json erstellen
+function createSimulationFile(event) {
+  event.preventDefault();
+  updateConfigFromUI();
+  const payload = {
+    baseConfig: currentConfig,
+  };
+  // Wir senden nur die Basiskonfiguration. Das 'scenario' wird
+  // später auf der Simulation-Seite definiert und hinzugefügt.
+  alert(
+    "Simulation.json wurde erstellt und kann auf der Simulation-Seite verwendet werden."
+  );
+  console.log(" simulation.json content:", payload.baseConfig);
 }

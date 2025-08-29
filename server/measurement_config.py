@@ -1,10 +1,9 @@
 import json
 import os
 import pandas as pd
-from .utils import load_data, LIBRARY_FILE
+from .utils import load_data, save_data, LIBRARY_FILE, CONFIG_DIR
 
-CONFIG_FILE = "measurement_config.json"
-DATA_DIR = "data"
+CONFIG_FILE = os.path.join(CONFIG_DIR, "measurement_config.json")
 
 
 def get_config():

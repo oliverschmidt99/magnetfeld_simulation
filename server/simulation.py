@@ -5,7 +5,7 @@ Blueprint für den Start der MATLAB-Simulation.
 import os
 import subprocess
 from flask import Blueprint, jsonify, request
-from server.utils import save_data
+from server.utils import save_data, CONFIG_DIR
 
 simulation_bp = Blueprint("simulation", __name__)
 
@@ -22,7 +22,7 @@ def run_simulation():
         config = data.get("baseConfig")
         config["scenarioParams"] = data.get("scenario")
 
-        save_data("simulation_run.json", config)
+        save_data(os.path.join(CONFIG_DIR, "simulation_run.json"), config)
 
         matlab_command = "run('main.m'); exit;"
         # KORRIGIERT: os.path.dirname zweimal anwenden, um zum Projekt-Root zu gelangen.

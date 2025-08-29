@@ -25,10 +25,44 @@ def handle_tags():
     if request.method == "POST":
         try:
             tags_data = request.json
-            save_data(TAGS_FILE, tags_data)
-            return jsonify(
-                {"message": "Tags erfolgreich aktualisiert.", "tags": tags_data}
-            )
+            action = tags_data.get("action")
+
+            if action == "save":
+                # Standard-Speicherlogik, um Tags hinzuzufügen/aktualisieren
+                save_data(TAGS_FILE, tags_data.get("tags"))
+                return jsonify(
+                    {"message": "Tags erfolgreich aktualisiert.", "tags": tags_data}
+                )
+            elif action == "delete_category":
+                category_name = tags_data.get("categoryName")
+                current_tags = load_data(TAGS_FILE, {"categories": []})
+                current_tags["categories"] = [
+                    cat
+                    for cat in current_tags["categories"]
+                    if cat["name"] != category_name
+                ]
+                save_data(TAGS_FILE, current_tags)
+                return jsonify({"message": f"Kategorie '{category_name}' gelöscht."})
+            elif action == "edit_category":
+                original_name = tags_data.get("originalName")
+                new_name = tags_data.get("newName")
+                current_tags = load_data(TAGS_FILE, {"categories": []})
+                for cat in current_tags["categories"]:
+                    if cat["name"] == original_name:
+                        cat["name"] = new_name
+                        break
+                save_data(TAGS_FILE, current_tags)
+                return jsonify(
+                    {
+                        "message": f"Kategorie '{original_name}' zu '{new_name}' umbenannt."
+                    }
+                )
+            else:
+                save_data(TAGS_FILE, tags_data)
+                return jsonify(
+                    {"message": "Tags erfolgreich aktualisiert.", "tags": tags_data}
+                )
+
         except (IOError, TypeError) as e:
             return jsonify({"error": str(e)}), 500
 

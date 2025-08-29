@@ -1,45 +1,29 @@
+// static/js/main.js
+// Allgemeine JavaScript-Funktionen für die Navigation und das Verhalten der Website.
+
 document.addEventListener("DOMContentLoaded", () => {
-  handleNavSlider();
-});
+  const headerLogo = document.getElementById("header-logo");
 
-function handleNavSlider() {
-  const nav = document.getElementById("main-nav");
-  if (!nav) return;
-
-  const slider = nav.querySelector(".nav-slider");
-  const activeNavItem = nav.querySelector(
-    ".nav-item > a.active"
-  )?.parentElement;
-
-  if (activeNavItem) {
-    setTimeout(() => {
-      slider.style.width = `${activeNavItem.offsetWidth}px`;
-      slider.style.left = `${activeNavItem.offsetLeft}px`;
-    }, 10);
+  // Klick auf das Logo führt zur Startseite
+  if (headerLogo) {
+    headerLogo.addEventListener("click", () => {
+      window.location.href = "/";
+    });
   }
-}
 
-function initializeCardNavigation(navId, sectionContainerId) {
-  const cards = document.querySelectorAll(`#${navId} .card`);
-  const sections = document.querySelectorAll(
-    `#${sectionContainerId} .config-section`
-  );
-
-  cards.forEach((card) => {
-    card.addEventListener("click", () => {
-      sections.forEach((s) => s.classList.remove("active"));
-      cards.forEach((c) => c.classList.remove("active"));
-
-      const targetId = card.dataset.target;
-      const targetElement = document.getElementById(targetId);
-      if (targetElement) {
-        targetElement.classList.add("active");
-      }
-      card.classList.add("active");
-
-      if (navId === "config-nav" && targetId === "config-summary") {
-        updateSummary();
-      }
+  // Toggle-Funktion für Dropdown-Menüs
+  const dropdowns = document.querySelectorAll(".has-dropdown");
+  dropdowns.forEach((dropdown) => {
+    dropdown.addEventListener("click", (e) => {
+      e.stopPropagation(); // Verhindert, dass der Klick die Seite weiterleitet
+      dropdown.classList.toggle("open");
     });
   });
-}
+
+  // Dropdown schließen, wenn außerhalb geklickt wird
+  document.addEventListener("click", () => {
+    dropdowns.forEach((dropdown) => {
+      dropdown.classList.remove("open");
+    });
+  });
+});

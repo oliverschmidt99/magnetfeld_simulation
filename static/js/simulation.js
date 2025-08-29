@@ -1,235 +1,190 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  // Diese Funktion wird beim Laden der Seite aufgerufen
-  async function initializeSimulationPage() {
-    try {
-      // KORREKTUR: Die URL wurde auf /api/library geändert
-      const response = await fetch("/api/library");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const library = await response.json();
-      console.log("Bibliothek geladen:", library);
+// static/js/simulation.js
+// JavaScript für die Seite zur Durchführung der Simulation.
 
-      // Hier kannst du weiteren Code hinzufügen, um die geladenen
-      // Bibliotheksdaten auf der Simulations-Seite zu verwenden.
-      // Zum Beispiel: Dropdowns füllen, Visualisierungen erstellen, etc.
-    } catch (error) {
-      console.error("Fehler beim Initialisieren der Simulations-Seite:", error);
-      // Optional: Zeige eine Fehlermeldung auf der Seite an
+let baseConfig = {};
+let libraryData = {};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const baseScenarioSelect = document.getElementById("base-scenario-select");
+  const loadBaseScenarioBtn = document.getElementById("load-base-scenario-btn");
+  const runSimulationForm = document.getElementById("run-simulation-form");
+  const runSimulationBtn = document.getElementById("run-simulation-btn");
+  const analysisTypeSelect = document.getElementById("analysis-type");
+  const configPreview = document.getElementById("config-preview");
+  const configJsonPreview = document.getElementById("config-json-preview");
+
+  // Lade Bibliotheks- und Szenario-Daten
+  function loadData() {
+    // Lade Bibliotheksdaten aus dem statischen Skript
+    fetch("/api/library")
+      .then((response) => response.json())
+      .then((data) => {
+        libraryData = data;
+        populateDropdowns();
+      })
+      .catch((e) => console.error("Fehler beim Laden der Bibliothek:", e));
+
+    // Lade gespeicherte Szenarien
+    fetch("/api/scenarios")
+      .then((response) => response.json())
+      .then((scenarios) => {
+        baseScenarioSelect.innerHTML =
+          '<option value="">-- Bitte eine Konfiguration laden --</option>';
+        scenarios.forEach((s) => {
+          // Filtere die standardmäßigen JSON-Dateien aus
+          if (s !== "library" && s !== "tags" && s !== "measurement_config") {
+            const option = document.createElement("option");
+            option.value = s;
+            option.textContent = s;
+            baseScenarioSelect.appendChild(option);
+          }
+        });
+      })
+      .catch((e) => console.error("Fehler beim Laden der Szenarien:", e));
+  }
+
+  // Füllt Dropdowns basierend auf den Bibliotheksdaten
+  function populateDropdowns() {
+    const assemblies = baseConfig.assemblies || [];
+    const standaloneSheets = libraryData.components.transformerSheets || [];
+
+    // Füllt den Baugruppen-Dropdown für die Abstandsanalyse
+    const distanceAssemblySelect = document.getElementById("distance-assembly");
+    distanceAssemblySelect.innerHTML = assemblies
+      .map((a) => `<option value="${a.name}">${a.name}</option>`)
+      .join("");
+
+    // Füllt den Abschirmblech-Dropdown
+    const shieldingSheetSelect = document.getElementById("shielding-sheet");
+    shieldingSheetSelect.innerHTML = standaloneSheets
+      .map(
+        (s) =>
+          `<option value="${s.templateProductInformation.name}">${s.templateProductInformation.name}</option>`
+      )
+      .join("");
+
+    // Zeige die Szenario-Details an, falls bereits ein Typ ausgewählt wurde
+    showScenarioDetails();
+  }
+
+  // Lade Basiskonfiguration
+  loadBaseScenarioBtn.addEventListener("click", () => {
+    const scenarioName = baseScenarioSelect.value;
+    if (!scenarioName) {
+      alert("Bitte wähle ein Szenario aus.");
+      return;
     }
-  }
 
-  // Initialisierung aufrufen
-  initializeSimulationPage();
-});
-
-let currentConfigData = null;
-let libraryData = null;
-
-async function initializeSimulationPage() {
-  await fetch("/library")
-    .then((res) => res.json())
-    .then((data) => {
-      libraryData = data.library;
-      populateSheetDropdown();
-    });
-
-  await updateScenarioList();
-
-  document
-    .getElementById("analysis-type")
-    .addEventListener("change", handleScenarioChange);
-  document
-    .getElementById("load-base-scenario-btn")
-    .addEventListener("click", loadAndPreviewScenario);
-  document
-    .getElementById("run-simulation-form")
-    .addEventListener("submit", runSimulation);
-}
-
-async function updateScenarioList() {
-  const select = document.getElementById("base-scenario-select");
-  if (!select) return;
-  try {
-    const response = await fetch("/scenarios");
-    const scenarios = await response.json();
-    select.innerHTML =
-      '<option value="">-- Bitte eine Konfiguration laden --</option>';
-    scenarios.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      select.appendChild(option);
-    });
-  } catch (e) {
-    console.error("Szenarien konnten nicht geladen werden:", e);
-  }
-}
-
-async function loadAndPreviewScenario() {
-  const select = document.getElementById("base-scenario-select");
-  const name = select.value;
-  if (!name) {
-    alert("Bitte wähle ein Szenario zum Laden aus.");
-    return;
-  }
-
-  const response = await fetch(`/scenarios/${name}`);
-  const data = await response.json();
-
-  if (response.ok) {
-    currentConfigData = data;
-    const previewContainer = document.getElementById("config-preview");
-    const jsonPreview = document.getElementById("config-json-preview");
-
-    jsonPreview.textContent = JSON.stringify(data, null, 2);
-    previewContainer.style.display = "block";
-
-    populateAssemblyDropdown(data.assemblies);
-
-    document.getElementById("run-simulation-btn").disabled = false;
-    alert(`Szenario '${name}' geladen und bereit zur Simulation.`);
-  } else {
-    alert(`Fehler beim Laden: ${data.error}`);
-    document.getElementById("run-simulation-btn").disabled = true;
-  }
-}
-
-function handleScenarioChange() {
-  document
-    .querySelectorAll(".scenario-details")
-    .forEach((el) => (el.style.display = "none"));
-  const selectedValue = document.getElementById("analysis-type").value;
-  if (selectedValue !== "none") {
-    const targetElement = document.getElementById(`${selectedValue}-scenario`);
-    if (targetElement) {
-      targetElement.style.display = "block";
-    }
-  }
-}
-
-function populateAssemblyDropdown(assemblies = []) {
-  const select = document.getElementById("distance-assembly");
-  if (!select) return;
-  select.innerHTML = "";
-
-  assemblies.forEach((asm, index) => {
-    const option = document.createElement("option");
-    option.value = index;
-    option.textContent = asm.name || `Baugruppe ${index + 1}`;
-    select.appendChild(option);
-
-    if (index === 0) {
-      document.getElementById("distance-x-start").value = asm.position.x;
-      document.getElementById("distance-y-start").value = asm.position.y;
-      document.getElementById("distance-x-end").value = asm.position.x + 200;
-      document.getElementById("distance-y-end").value = asm.position.y;
-    }
+    fetch(`/api/scenarios/${scenarioName}`)
+      .then((response) => {
+        if (!response.ok) throw new Error("Szenario nicht gefunden.");
+        return response.json();
+      })
+      .then((config) => {
+        baseConfig = config;
+        configJsonPreview.textContent = JSON.stringify(baseConfig, null, 2);
+        configPreview.style.display = "block";
+        runSimulationBtn.disabled = false;
+        populateDropdowns();
+      })
+      .catch((error) => {
+        alert(`Fehler beim Laden: ${error.message}`);
+        runSimulationBtn.disabled = true;
+      });
   });
-}
 
-function populateSheetDropdown() {
-  const select = document.getElementById("shielding-sheet");
-  if (!select || !libraryData) return;
-  select.innerHTML = "";
+  // Zeige/verstecke die Szenario-Details basierend auf der Auswahl
+  analysisTypeSelect.addEventListener("change", showScenarioDetails);
 
-  libraryData.components.transformerSheets.forEach((sheet) => {
-    const option = document.createElement("option");
-    option.value = sheet.templateProductInformation.name;
-    option.textContent = sheet.templateProductInformation.name;
-    select.appendChild(option);
-  });
-}
-
-async function runSimulation(event) {
-  event.preventDefault();
-  if (!currentConfigData) {
-    alert("Bitte lade zuerst eine Basiskonfiguration.");
-    return;
+  function showScenarioDetails() {
+    document.querySelectorAll(".scenario-details").forEach((div) => {
+      div.style.display = "none";
+    });
+    const selectedType = analysisTypeSelect.value;
+    if (selectedType !== "none") {
+      document.getElementById(`${selectedType}-scenario`).style.display =
+        "block";
+    }
   }
 
-  const statusDiv = document.getElementById("simulation-status");
-  statusDiv.textContent = "Simulation wird vorbereitet...";
+  // Formular absenden
+  runSimulationForm.addEventListener("submit", (event) => {
+    event.preventDefault();
 
-  const analysisType = document.getElementById("analysis-type").value;
-  let scenarioParams = { type: analysisType };
+    const analysisType = analysisTypeSelect.value;
+    let scenarioParams = {};
 
-  scenarioParams.phaseStart = parseFloat(
-    document.getElementById("phase-start").value
-  );
-  scenarioParams.phaseEnd = parseFloat(
-    document.getElementById("phase-end").value
-  );
-  scenarioParams.phaseStepSize = parseFloat(
-    document.getElementById("phase-step-size").value
-  );
+    // Sammle die Parameter basierend auf dem ausgewählten Typ
+    if (analysisType === "current") {
+      scenarioParams = {
+        type: "current",
+        start: parseFloat(document.getElementById("current-start").value),
+        end: parseFloat(document.getElementById("current-end").value),
+        stepSize: parseFloat(
+          document.getElementById("current-step-size").value
+        ),
+      };
+    } else if (analysisType === "distance") {
+      scenarioParams = {
+        type: "distance",
+        assembly: document.getElementById("distance-assembly").value,
+        startX: parseFloat(document.getElementById("distance-x-start").value),
+        endX: parseFloat(document.getElementById("distance-x-end").value),
+        startY: parseFloat(document.getElementById("distance-y-start").value),
+        endY: parseFloat(document.getElementById("distance-y-end").value),
+        stepSize: parseFloat(
+          document.getElementById("distance-step-size").value
+        ),
+      };
+    } else if (analysisType === "shielding") {
+      scenarioParams = {
+        type: "shielding",
+        sheet: document.getElementById("shielding-sheet").value,
+        startX: parseFloat(document.getElementById("shielding-x-start").value),
+        endX: parseFloat(document.getElementById("shielding-x-end").value),
+        startY: parseFloat(document.getElementById("shielding-y-start").value),
+        endY: parseFloat(document.getElementById("shielding-y-end").value),
+        stepSize: parseFloat(
+          document.getElementById("shielding-step-size").value
+        ),
+      };
+    } else {
+      scenarioParams = { type: "none" };
+    }
 
-  if (analysisType === "current") {
-    scenarioParams.start = parseFloat(
-      document.getElementById("current-start").value
-    );
-    scenarioParams.end = parseFloat(
-      document.getElementById("current-end").value
-    );
-    scenarioParams.stepSize = parseFloat(
-      document.getElementById("current-step-size").value
-    );
-  } else if (analysisType === "distance") {
-    scenarioParams.assemblyIndex = parseInt(
-      document.getElementById("distance-assembly").value
-    );
-    scenarioParams.x_start = parseFloat(
-      document.getElementById("distance-x-start").value
-    );
-    scenarioParams.x_end = parseFloat(
-      document.getElementById("distance-x-end").value
-    );
-    scenarioParams.y_start = parseFloat(
-      document.getElementById("distance-y-start").value
-    );
-    scenarioParams.y_end = parseFloat(
-      document.getElementById("distance-y-end").value
-    );
-    scenarioParams.stepSize = parseFloat(
-      document.getElementById("distance-step-size").value
-    );
-  } else if (analysisType === "shielding") {
-    scenarioParams.sheetName = document.getElementById("shielding-sheet").value;
-    scenarioParams.x_start = parseFloat(
-      document.getElementById("shielding-x-start").value
-    );
-    scenarioParams.x_end = parseFloat(
-      document.getElementById("shielding-x-end").value
-    );
-    scenarioParams.y_start = parseFloat(
-      document.getElementById("shielding-y-start").value
-    );
-    scenarioParams.y_end = parseFloat(
-      document.getElementById("shielding-y-end").value
-    );
-    scenarioParams.stepSize = parseFloat(
-      document.getElementById("shielding-step-size").value
-    );
-  }
+    const payload = {
+      baseConfig: baseConfig,
+      scenario: {
+        phaseSweep: {
+          start: parseFloat(document.getElementById("phase-start").value),
+          end: parseFloat(document.getElementById("phase-end").value),
+          stepSize: parseFloat(
+            document.getElementById("phase-step-size").value
+          ),
+        },
+        ...scenarioParams,
+      },
+    };
 
-  const payload = {
-    baseConfig: currentConfigData,
-    scenario: scenarioParams,
-  };
+    const statusDiv = document.getElementById("simulation-status");
+    statusDiv.textContent = "Simulation wird gestartet...";
+    statusDiv.style.color = "blue";
 
-  try {
-    const response = await fetch("/run_simulation", {
+    fetch("/run_simulation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    if (response.ok) {
-      statusDiv.textContent = `Erfolg: ${result.message}. Starte nun MATLAB, um die Berechnung auszuführen.`;
-    } else {
-      statusDiv.textContent = `Fehler: ${result.error}`;
-    }
-  } catch (error) {
-    statusDiv.textContent = `Ein Netzwerkfehler ist aufgetreten: ${error}`;
-  }
-}
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        statusDiv.textContent = data.message;
+        statusDiv.style.color = "green";
+      })
+      .catch((error) => {
+        statusDiv.textContent = `Fehler beim Starten der Simulation: ${error.message}`;
+        statusDiv.style.color = "red";
+      });
+  });
+
+  loadData();
+});

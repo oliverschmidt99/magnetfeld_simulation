@@ -11,29 +11,29 @@
 
 {% block content %}
 <div class="admin-layout-grid">
-    <!-- Linke Spalte: Sidebar -->
     <aside class="admin-sidebar">
         <h3>Dateien</h3>
         <ul id="file-list">
-            <!-- Dateiliste wird per JS geladen -->
         </ul>
     </aside>
 
-    <!-- Rechte Spalte: Hauptinhalt -->
     <main class="admin-main-content">
         <h2 id="current-file-title">Bitte eine Datei auswählen</h2>
 
-        <!-- Oberer Bereich: Visualisierung -->
-        <div class="visualization-panel">
+        <div class="visualization-panel" style="display: none;">
             <div id="visualization-controls" class="panel-controls">
-                <!-- Steuerelemente (z.B. Dropdowns) werden per JS geladen -->
+                <div class="form-group">
+                    <label for="strom-select">Visualisierung für Stromstärke:</label>
+                    <select id="strom-select">
+                        <option value="">-- Stromstärke auswählen --</option>
+                    </select>
+                </div>
             </div>
             <div id="visualization-container">
                 <svg id="admin-preview-svg"></svg>
             </div>
         </div>
 
-        <!-- Unterer Bereich: Tabelle -->
         <div class="table-panel">
             <div id="grid-container">
                 <table id="csv-table" class="display" style="width:100%"></table>
@@ -53,6 +53,6 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css" />
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
-
+<script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 {% endblock %}

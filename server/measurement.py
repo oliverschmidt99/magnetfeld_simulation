@@ -2,7 +2,7 @@
 # Es liest die Konfigurationsdaten aus den CSV-Dateien im 'data'-Verzeichnis,
 # berechnet die resultierenden Positionen und Kollisionen und erstellt
 # interaktive Plots mit Plotly.
-"""
+
 import os
 import pandas as pd
 import numpy as np
@@ -59,7 +59,7 @@ def get_plot_data():
 
         start_df = start_df.set_index("Strom")
         # KORREKTUR: Behandeln der leeren Zeile in spielraum_df und erneutes Setzen des Indexes
-        spielraum_df = spielraum_df.dropna(subset=['Strom']).set_index("Strom")
+        spielraum_df = spielraum_df.dropna(subset=["Strom"]).set_index("Strom")
         schrittweite_df = schrittweite_df.set_index("Strom")
         wandler_df = wandler_df.set_index("Strom")
     except KeyError as e:

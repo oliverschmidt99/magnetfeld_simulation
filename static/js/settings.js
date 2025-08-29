@@ -1,249 +1,280 @@
+// static/js/settings.js
+// JavaScript für die Einstellungsseite (Tag-Verwaltung).
+
 document.addEventListener("DOMContentLoaded", () => {
-  loadCategories();
-
+  const categoriesContainer = document.getElementById("categories-container");
   const addCategoryForm = document.getElementById("add-category-form");
-  if (addCategoryForm) {
-    addCategoryForm.addEventListener("submit", handleAddCategory);
-  }
-
+  const editTagModal = document.getElementById("edit-tag-modal");
   const editTagForm = document.getElementById("edit-tag-form");
-  if (editTagForm) {
-    editTagForm.addEventListener("submit", handleSaveTag);
+
+  let currentTagsData = { categories: [] };
+  let selectedColor = "#FFFFFF";
+
+  // Funktion zum Laden der Tags vom Server
+  function loadTags() {
+    fetch("/api/tags")
+      .then((response) => response.json())
+      .then((data) => {
+        currentTagsData = data;
+        renderTags();
+      })
+      .catch((error) => console.error("Fehler beim Laden der Tags:", error));
   }
 
-  document
-    .getElementById("edit-tag-modal-cancel")
-    .addEventListener("click", () => {
-      document.getElementById("edit-tag-modal").style.display = "none";
+  // Funktion zum Rendern der Kategorien und Tags
+  function renderTags() {
+    categoriesContainer.innerHTML = "";
+    currentTagsData.categories.forEach((category) => {
+      const categoryDiv = document.createElement("div");
+      categoryDiv.className = "category-card";
+      categoryDiv.innerHTML = `
+                <h4>
+                    ${category.name}
+                    <button type="button" class="edit-category-btn" data-category-name="${
+                      category.name
+                    }">✏️</button>
+                    <button type="button" class="delete-category-btn" data-category-name="${
+                      category.name
+                    }">&times;</button>
+                </h4>
+                <div class="tags-container" data-category="${category.name}">
+                    ${category.tags
+                      .map(
+                        (tag) => `
+                        <span class="tag" style="background-color: ${tag.color};"
+                              data-tag-name="${tag.name}">
+                            ${tag.name}
+                            <button type="button" class="edit-tag-btn" data-tag-name="${tag.name}" data-category-name="${category.name}">✏️</button>
+                            <button type="button" class="delete-tag-btn" data-tag-name="${tag.name}" data-category-name="${category.name}">&times;</button>
+                        </span>
+                    `
+                      )
+                      .join("")}
+                    <button type="button" class="add-tag-btn" data-category-name="${
+                      category.name
+                    }">+ Tag</button>
+                </div>
+            `;
+      categoriesContainer.appendChild(categoryDiv);
     });
-});
 
-let currentTagsData = {};
-const pastelColors = [
-  "#FFADAD",
-  "#FFD6A5",
-  "#FDFFB6",
-  "#CAFFBF",
-  "#9BF6FF",
-  "#A0C4FF",
-  "#BDB2FF",
-  "#FFC6FF",
-  "#FFADAD",
-  "#FFD6A5",
-];
-
-async function loadCategories() {
-  try {
-    const response = await fetch("/api/tags");
-    currentTagsData = await response.json();
-    renderCategories();
-  } catch (error) {
-    console.error("Fehler beim Laden der Tags:", error);
+    // Event-Listener für Buttons hinzufügen
+    document.querySelectorAll(".edit-tag-btn").forEach((button) => {
+      button.addEventListener("click", openEditTagModal);
+    });
+    document.querySelectorAll(".delete-tag-btn").forEach((button) => {
+      button.addEventListener("click", deleteTag);
+    });
+    document.querySelectorAll(".add-tag-btn").forEach((button) => {
+      button.addEventListener("click", openAddTagModal);
+    });
+    document.querySelectorAll(".edit-category-btn").forEach((button) => {
+      button.addEventListener("click", editCategory);
+    });
+    document.querySelectorAll(".delete-category-btn").forEach((button) => {
+      button.addEventListener("click", deleteCategory);
+    });
   }
-}
 
-async function saveAllTags() {
-  try {
-    await fetch("/api/tags", {
+  // Funktion zum Speichern der gesamten Tag-Daten
+  function saveTags() {
+    fetch("/api/tags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(currentTagsData),
-    });
-    renderCategories(); // Neu rendern, um die Ansicht zu aktualisieren
-  } catch (error) {
-    console.error("Fehler beim Speichern der Tags:", error);
-  }
-}
-
-function renderCategories() {
-  const container = document.getElementById("categories-container");
-  container.innerHTML = "";
-
-  if (!currentTagsData.categories || currentTagsData.categories.length === 0) {
-    container.innerHTML = "<p>Noch keine Kategorien erstellt.</p>";
-    return;
+      body: JSON.stringify({ action: "save", tags: currentTagsData }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Tags gespeichert:", data.message);
+        loadTags();
+      })
+      .catch((error) =>
+        console.error("Fehler beim Speichern der Tags:", error)
+      );
   }
 
-  currentTagsData.categories.forEach((category) => {
-    const categoryElement = document.createElement("div");
-    categoryElement.className = "category-card";
-
-    let tagsHtml = (category.tags || [])
-      .map(
-        (tag) => `
-            <span class="tag-badge" style="background-color: ${
-              tag.color
-            }; color: ${getTextColor(tag.color)};">
-                ${tag.name}
-                <span class="tag-actions">
-                    <button class="edit-tag-btn" data-category="${
-                      category.name
-                    }" data-tag="${tag.name}">✎</button>
-                    <button class="delete-tag-btn" data-category="${
-                      category.name
-                    }" data-tag="${tag.name}">×</button>
-                </span>
-            </span>
-        `
-      )
-      .join("");
-
-    categoryElement.innerHTML = `
-            <div class="category-header">
-                <h3>${category.name}</h3>
-                <button class="delete-category-btn" data-category="${category.name}">Kategorie löschen</button>
-            </div>
-            <div class="tags-list">${tagsHtml}</div>
-            <form class="add-tag-form" data-category="${category.name}">
-                <input type="text" placeholder="Neuer Tag-Name..." required>
-                <button type="submit">+ Tag</button>
-            </form>
-        `;
-    container.appendChild(categoryElement);
-  });
-
-  // Event Listeners für die neuen Elemente hinzufügen
-  addEventListenersToCategories();
-}
-
-function addEventListenersToCategories() {
-  document
-    .querySelectorAll(".delete-category-btn")
-    .forEach((btn) => btn.addEventListener("click", handleDeleteCategory));
-  document
-    .querySelectorAll(".add-tag-form")
-    .forEach((form) => form.addEventListener("submit", handleAddTag));
-  document
-    .querySelectorAll(".edit-tag-btn")
-    .forEach((btn) => btn.addEventListener("click", handleEditTag));
-  document
-    .querySelectorAll(".delete-tag-btn")
-    .forEach((btn) => btn.addEventListener("click", handleDeleteTag));
-}
-
-function handleAddCategory(event) {
-  event.preventDefault();
-  const input = document.getElementById("new-category-name");
-  const newCategoryName = input.value.trim();
-  if (
-    newCategoryName &&
-    !currentTagsData.categories.find((c) => c.name === newCategoryName)
-  ) {
-    currentTagsData.categories.push({ name: newCategoryName, tags: [] });
-    saveAllTags();
-    input.value = "";
-  } else {
-    alert("Kategoriename ist ungültig oder existiert bereits.");
-  }
-}
-
-function handleDeleteCategory(event) {
-  const categoryName = event.target.dataset.category;
-  if (
-    confirm(`Soll die Kategorie "${categoryName}" wirklich gelöscht werden?`)
-  ) {
-    currentTagsData.categories = currentTagsData.categories.filter(
-      (c) => c.name !== categoryName
+  // Modal öffnen, um einen Tag zu bearbeiten
+  function openEditTagModal(event) {
+    const tagName = event.target.dataset.tagName;
+    const categoryName = event.target.dataset.categoryName;
+    const category = currentTagsData.categories.find(
+      (c) => c.name === categoryName
     );
-    saveAllTags();
-  }
-}
+    const tag = category.tags.find((t) => t.name === tagName);
 
-function handleAddTag(event) {
-  event.preventDefault();
-  const categoryName = event.target.dataset.category;
-  const input = event.target.querySelector("input");
-  const tagName = input.value.trim();
-
-  const category = currentTagsData.categories.find(
-    (c) => c.name === categoryName
-  );
-  if (tagName && category && !category.tags.find((t) => t.name === tagName)) {
-    const colorIndex = (category.tags.length || 0) % pastelColors.length;
-    category.tags.push({ name: tagName, color: pastelColors[colorIndex] });
-    saveAllTags();
-    input.value = "";
-  } else {
-    alert("Tag-Name ist ungültig oder existiert bereits in dieser Kategorie.");
-  }
-}
-
-function handleEditTag(event) {
-  const categoryName = event.target.dataset.category;
-  const tagName = event.target.dataset.tag;
-  const category = currentTagsData.categories.find(
-    (c) => c.name === categoryName
-  );
-  const tag = category ? category.tags.find((t) => t.name === tagName) : null;
-
-  if (tag) {
-    document.getElementById("edit-tag-original-name").value = tag.name;
+    document.getElementById("edit-tag-original-name").value = tagName;
     document.getElementById("edit-tag-category-name").value = categoryName;
-    document.getElementById("edit-tag-name").value = tag.name;
+    document.getElementById("edit-tag-name").value = tagName;
+    selectedColor = tag.color;
+    renderColorPalette();
+    editTagModal.style.display = "flex";
+  }
 
+  // Modal öffnen, um einen neuen Tag hinzuzufügen
+  function openAddTagModal(event) {
+    const categoryName = event.target.dataset.categoryName;
+    document.getElementById("edit-tag-original-name").value = "";
+    document.getElementById("edit-tag-category-name").value = categoryName;
+    document.getElementById("edit-tag-name").value = "";
+    selectedColor = "#A0C4FF"; // Standardfarbe
+    renderColorPalette();
+    editTagModal.style.display = "flex";
+  }
+
+  // Farbauswahl im Modal rendern
+  function renderColorPalette() {
     const palette = document.getElementById("edit-tag-color-palette");
     palette.innerHTML = "";
-    pastelColors.forEach((color) => {
-      const swatch = document.createElement("div");
-      swatch.className = "color-swatch";
-      swatch.style.backgroundColor = color;
-      swatch.dataset.color = color;
-      if (color === tag.color) {
-        swatch.classList.add("selected");
+    const colors = [
+      "#A0C4FF",
+      "#FFD6A5",
+      "#C65911",
+      "#305496",
+      "#FDFFB6",
+      "#CAFFBF",
+      "#9BF6FF",
+      "#BDB2FF",
+      "#FFC6FF",
+      "#FFADAD",
+    ];
+    colors.forEach((color) => {
+      const span = document.createElement("span");
+      span.className = "color-swatch";
+      span.style.backgroundColor = color;
+      if (color === selectedColor) {
+        span.classList.add("active");
       }
-      swatch.addEventListener("click", () => {
-        palette.querySelector(".selected")?.classList.remove("selected");
-        swatch.classList.add("selected");
+      span.addEventListener("click", () => {
+        document
+          .querySelectorAll(".color-swatch")
+          .forEach((sw) => sw.classList.remove("active"));
+        span.classList.add("active");
+        selectedColor = color;
       });
-      palette.appendChild(swatch);
+      palette.appendChild(span);
     });
-
-    document.getElementById("edit-tag-modal").style.display = "flex";
   }
-}
 
-function handleSaveTag(event) {
-  event.preventDefault();
-  const originalName = document.getElementById("edit-tag-original-name").value;
-  const categoryName = document.getElementById("edit-tag-category-name").value;
-  const newName = document.getElementById("edit-tag-name").value.trim();
-  const selectedColor = document.querySelector(
-    "#edit-tag-color-palette .selected"
-  ).dataset.color;
+  // Speichern/Bearbeiten-Logik für einen Tag
+  editTagForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const originalName = document.getElementById(
+      "edit-tag-original-name"
+    ).value;
+    const categoryName = document.getElementById(
+      "edit-tag-category-name"
+    ).value;
+    const newName = document.getElementById("edit-tag-name").value;
+    const newColor = selectedColor;
 
-  const category = currentTagsData.categories.find(
-    (c) => c.name === categoryName
-  );
-  const tagIndex = category
-    ? category.tags.findIndex((t) => t.name === originalName)
-    : -1;
+    const category = currentTagsData.categories.find(
+      (c) => c.name === categoryName
+    );
+    if (!category) return;
 
-  if (tagIndex > -1) {
-    category.tags[tagIndex] = { name: newName, color: selectedColor };
-    saveAllTags();
-    document.getElementById("edit-tag-modal").style.display = "none";
-  }
-}
+    if (originalName) {
+      // Bearbeiten eines bestehenden Tags
+      const tag = category.tags.find((t) => t.name === originalName);
+      if (tag) {
+        tag.name = newName;
+        tag.color = newColor;
+      }
+    } else {
+      // Hinzufügen eines neuen Tags
+      category.tags.push({ name: newName, color: newColor });
+    }
 
-function handleDeleteTag(event) {
-  const categoryName = event.target.dataset.category;
-  const tagName = event.target.dataset.tag;
-  if (confirm(`Soll der Tag "${tagName}" wirklich gelöscht werden?`)) {
+    saveTags();
+    editTagModal.style.display = "none";
+  });
+
+  // Löschen eines Tags
+  function deleteTag(event) {
+    if (!confirm("Soll dieser Tag wirklich gelöscht werden?")) return;
+    const tagName = event.target.dataset.tagName;
+    const categoryName = event.target.dataset.categoryName;
+
     const category = currentTagsData.categories.find(
       (c) => c.name === categoryName
     );
     if (category) {
       category.tags = category.tags.filter((t) => t.name !== tagName);
-      saveAllTags();
+      saveTags();
     }
   }
-}
 
-function getTextColor(hexcolor) {
-  if (!hexcolor) return "#000000";
-  const r = parseInt(hexcolor.substr(1, 2), 16);
-  const g = parseInt(hexcolor.substr(3, 2), 16);
-  const b = parseInt(hexcolor.substr(5, 2), 16);
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  return yiq >= 128 ? "#343a40" : "#FFFFFF";
-}
+  // Neue Kategorie hinzufügen
+  addCategoryForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const newCategoryName = document.getElementById("new-category-name").value;
+    if (
+      newCategoryName &&
+      !currentTagsData.categories.some((c) => c.name === newCategoryName)
+    ) {
+      currentTagsData.categories.push({ name: newCategoryName, tags: [] });
+      saveTags();
+      document.getElementById("new-category-name").value = "";
+    } else {
+      alert("Die Kategorie existiert bereits oder der Name ist ungültig.");
+    }
+  });
+
+  // Kategorie bearbeiten
+  function editCategory(event) {
+    const originalName = event.target.dataset.categoryName;
+    const newName = prompt(
+      `Neuen Namen für die Kategorie "${originalName}" eingeben:`
+    );
+    if (newName && newName !== originalName) {
+      fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "edit_category",
+          originalName: originalName,
+          newName: newName,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          alert(data.message);
+          loadTags();
+        })
+        .catch((error) => alert("Fehler beim Umbenennen der Kategorie."));
+    }
+  }
+
+  // Kategorie löschen
+  function deleteCategory(event) {
+    const categoryName = event.target.dataset.categoryName;
+    if (
+      confirm(
+        `Soll die Kategorie "${categoryName}" und alle ihre Tags wirklich gelöscht werden?`
+      )
+    ) {
+      fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete_category",
+          categoryName: categoryName,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          alert(data.message);
+          loadTags();
+        })
+        .catch((error) => alert("Fehler beim Löschen der Kategorie."));
+    }
+  }
+
+  // Modal schließen
+  document
+    .getElementById("edit-tag-modal-cancel")
+    .addEventListener("click", () => {
+      editTagModal.style.display = "none";
+    });
+
+  loadTags();
+});

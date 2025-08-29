@@ -1,10 +1,8 @@
+# Dieses Modul generiert die Plot-Daten für die Messungs-Visualisierungsseite.
+# Es liest die Konfigurationsdaten aus den CSV-Dateien im 'data'-Verzeichnis,
+# berechnet die resultierenden Positionen und Kollisionen und erstellt
+# interaktive Plots mit Plotly.
 """
-Dieses Modul generiert die Plot-Daten für die Messungs-Visualisierungsseite.
-Es liest die Konfigurationsdaten aus den CSV-Dateien im 'data'-Verzeichnis,
-berechnet die resultierenden Positionen und Kollisionen und erstellt
-interaktive Plots mit Plotly.
-"""
-
 import os
 import pandas as pd
 import numpy as np
@@ -46,11 +44,24 @@ def get_plot_data():
         abort(500, description=f"Fehler beim Lesen der CSV-Dateien: {e}")
 
     try:
-        start_df = dataframes["start"].set_index("Strom")
-        schrittweite_df = dataframes["schrittweite"].set_index("Strom")
-        wandler_df = dataframes["wandler"].set_index("Strom")
-        bewegungen_df = dataframes["bewegungen"]
+        start_df = dataframes["start"]
         spielraum_df = dataframes["spielraum"]
+        bewegungen_df = dataframes["bewegungen"]
+        schrittweite_df = dataframes["schrittweite"]
+        wandler_df = dataframes["wandler"]
+
+        # KORREKTUR: Entferne Leerzeichen aus Spaltennamen
+        start_df.columns = start_df.columns.str.strip()
+        spielraum_df.columns = spielraum_df.columns.str.strip()
+        bewegungen_df.columns = bewegungen_df.columns.str.strip()
+        schrittweite_df.columns = schrittweite_df.columns.str.strip()
+        wandler_df.columns = wandler_df.columns.str.strip()
+
+        start_df = start_df.set_index("Strom")
+        # KORREKTUR: Behandeln der leeren Zeile in spielraum_df und erneutes Setzen des Indexes
+        spielraum_df = spielraum_df.dropna(subset=['Strom']).set_index("Strom")
+        schrittweite_df = schrittweite_df.set_index("Strom")
+        wandler_df = wandler_df.set_index("Strom")
     except KeyError as e:
         abort(
             500, description=f"Fehlende Spalte 'Strom' in einer CSV-Datei. Fehler: {e}"
@@ -79,6 +90,7 @@ def get_plot_data():
 
     ergebnisse = []
     sicherheitsabstand = 20.0
+    # KORREKTUR: Sicherstellen, dass nur die erste Zeile von spielraum_df gelesen wird.
     grenzen = spielraum_df.iloc[0]
 
     # --- KORREKTE LOGIK NACH DEINEM VORSCHLAG ---
@@ -170,7 +182,7 @@ def get_plot_data():
 
             # Startpositionen als eine Spur mit 3 Punkten und Hover-Labels
             start_x = [startpos.get(f"x_L{i}", 0) for i in range(1, 4)]
-            start_y = [startpos.get(f"y_L{i}", 0) for i in range(1, 4)]
+            start_y = [start_pos.get(f"y_L{i}", 0) for i in range(1, 4)]
             start_labels = [f"Startposition L{i}" for i in range(1, 4)]
             fig.add_trace(
                 go.Scatter(

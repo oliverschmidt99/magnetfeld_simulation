@@ -41,12 +41,12 @@ $(document).ready(function () {
     currentFileName = filename;
     currentFileTitle.text(filename);
 
-    $.getJSON(`/data/${filename}`, function (response) {
-      originalData = JSON.parse(JSON.stringify(response.data)); // Tiefe Kopie für Reset
-      currentPreviewType = response.preview_type;
+    $.getJSON(`/data/${filename}`, function (data) {
+      originalData = JSON.parse(JSON.stringify(data));
+      currentPreviewType = filename.replace(/\d+_|.csv/g, "");
 
-      initDataTable(response.data);
-      renderVisualization(currentPreviewType, response.data);
+      initDataTable(data);
+      renderVisualization(currentPreviewType, data);
 
       saveButton.prop("disabled", false);
       resetButton.prop("disabled", false);
@@ -63,15 +63,33 @@ $(document).ready(function () {
       table.destroy();
       $("#csv-table").empty();
     }
+    // Korrektur: Überprüfe, ob das Daten-Array leer ist, bevor du auf data[0] zugreifst
     if (!data || data.length === 0) {
       $("#grid-container").html("<p>Keine Daten in dieser Datei gefunden.</p>");
       return;
     }
 
-    const columns = Object.keys(data[0]).map((key) => ({
-      title: key,
-      data: key,
-    }));
+    const allKeys = Object.keys(data[0]);
+    const specialColumns = ["ID", "Strom"];
+    let columns = [];
+
+    specialColumns.forEach((key) => {
+      if (allKeys.includes(key)) {
+        columns.push({
+          title: key,
+          data: key,
+        });
+      }
+    });
+
+    allKeys.forEach((key) => {
+      if (!specialColumns.includes(key)) {
+        columns.push({
+          title: key,
+          data: key,
+        });
+      }
+    });
 
     table = $("#csv-table").DataTable({
       data: data,
@@ -80,6 +98,12 @@ $(document).ready(function () {
       scrollY: "400px",
       scrollCollapse: true,
       scrollX: true,
+      initComplete: function () {
+        $("#csv-table tbody").on("change", "input", function () {
+          const rowData = table.rows().data().toArray();
+          renderVisualization(currentPreviewType, rowData);
+        });
+      },
     });
 
     // Zellen editierbar machen
@@ -113,7 +137,7 @@ $(document).ready(function () {
   function saveFile() {
     if (!table || !currentFileName) return;
     const dataToSave = table.rows().data().toArray();
-    originalData = JSON.parse(JSON.stringify(dataToSave)); // Nach Speichern ist der neue Stand der "originale"
+    originalData = JSON.parse(JSON.stringify(dataToSave));
 
     saveStatus.text("Speichern...").css("color", "orange");
     $.ajax({
@@ -148,13 +172,9 @@ $(document).ready(function () {
   }
 
   // --- Visualisierungs-Funktionen ---
-  const svgNS = "http://www.w3.org/2000/svg";
-  const svg = document.getElementById("admin-preview-svg");
-  const controls = document.getElementById("visualization-controls");
-
   function clearVisualization() {
     svg.innerHTML = "";
-    controls.innerHTML = "";
+    controls.empty();
   }
 
   function renderVisualization(type, data) {
@@ -162,35 +182,180 @@ $(document).ready(function () {
     if (!data || data.length === 0) return;
     switch (type) {
       case "startpositionen":
-        renderStartPositionen(data);
+      case "schrittweiten":
+      case "wandler_abmessungen":
+        renderByStrom(type, data);
         break;
       case "spielraum":
-        renderSpielraum(data[0]);
+        if (data.length > 0) renderSpielraum(data[0]);
         break;
       case "bewegungen":
         renderBewegungen(data);
         break;
-      case "schrittweiten":
-        renderSchrittweiten(data);
-        break;
-      case "wandler_abmessungen":
-        renderWandlerAbmessungen(data);
-        break;
     }
   }
 
+  function renderByStrom(type, data) {
+    let currentIndex = 0;
+    const stromValues = [...new Set(data.map((d) => d.Strom))].filter(Boolean);
+
+    if (stromValues.length > 1) {
+      controls.html(
+        `<label for="strom-select">Stromstärke:</label><select id="strom-select">${stromValues
+          .map((s, i) => `<option value="${i}">${s} A</option>`)
+          .join("")}</select>`
+      );
+      $("#strom-select").on("change", function () {
+        currentIndex = parseInt($(this).val());
+        drawCurrentVisualization();
+      });
+    }
+
+    const drawCurrentVisualization = () => {
+      const row = data.find((d) => d.Strom === stromValues[currentIndex]);
+      if (!row) return;
+
+      switch (type) {
+        case "startpositionen":
+          drawStartPositionen(row);
+          break;
+        case "schrittweiten":
+          drawSchrittweiten(row);
+          break;
+        case "wandler_abmessungen":
+          drawWandlerAbmessungen(row);
+          break;
+      }
+    };
+    drawCurrentVisualization();
+  }
+
+  function renderBewegungen(data) {
+    const groups = [...new Set(data.map((d) => d.PosGruppe))].filter(Boolean);
+    controls.html(
+      groups
+        .map(
+          (group, i) =>
+            `<label class="checkbox-item"><input type="checkbox" value="${group}" checked><span>${group}</span></label>`
+        )
+        .join("")
+    );
+
+    const drawMovements = () => {
+      const activeGroups = controls
+        .find("input:checked")
+        .map((_, el) => $(el).val())
+        .get();
+      setupSVG(100, { minX: -150, maxX: 150, minY: -150, maxY: 150 });
+      data
+        .filter((row) => activeGroups.includes(row.PosGruppe))
+        .forEach((row) => {
+          const dirMap = {
+            "← Westen": [-1, 0],
+            "→ Osten": [1, 0],
+            "↑ Norden": [0, 1],
+            "↓ Süden": [0, -1],
+            "↗ Nordosten": [1, 1],
+            "↘ Südosten": [1, -1],
+            "↙ Südwesten": [-1, -1],
+            "↖ Nordwesten": [-1, 1],
+          };
+          ["L1", "L2", "L3"].forEach((leiter) => {
+            const direction = String(row[leiter]).trim();
+            if (direction && dirMap[direction]) {
+              const [dx, dy] = dirMap[direction];
+              drawArrow(
+                0,
+                0,
+                dx * 50,
+                dy * 50,
+                leiter === "L1" ? "red" : leiter === "L2" ? "green" : "blue",
+                `${row.PosGruppe} ${leiter}`
+              );
+            }
+          });
+        });
+    };
+
+    controls.find("input").on("change", drawMovements);
+    drawMovements();
+  }
+
+  function drawStartPositionen(row) {
+    const points = [
+      { x: parseFloat(row.x_L1), y: parseFloat(row.y_L1), label: "L1" },
+      { x: parseFloat(row.x_L2), y: parseFloat(row.y_L2), label: "L2" },
+      { x: parseFloat(row.x_L3), y: parseFloat(row.y_L3), label: "L3" },
+    ].filter((p) => !isNaN(p.x) && !isNaN(p.y));
+    const bounds = getBoundsFromPoints(points, { x: 0, y: 0 });
+    setupSVG(100, bounds);
+    points.forEach((p) => drawPoint(p.x, p.y, "blue", p.label));
+  }
+
+  function renderSpielraum(row) {
+    const bounds = {
+      minX: parseFloat(row["-maxX"]) || 0,
+      maxX: parseFloat(row["+maxX"]) || 0,
+      minY: parseFloat(row["-maxY"]) || 0,
+      maxY: parseFloat(row["+maxY"]) || 0,
+    };
+    setupSVG(50, bounds);
+    drawRectangle(
+      bounds.minX,
+      bounds.minY,
+      bounds.maxX - bounds.minX,
+      bounds.maxY - bounds.minY,
+      "rgba(0, 100, 255, 0.2)"
+    );
+  }
+
+  function drawSchrittweiten(row) {
+    const maxVal = Math.max(
+      ...Object.keys(row)
+        .filter((key) => key.startsWith("Pos"))
+        .map((key) => parseFloat(row[key]))
+        .filter((v) => !isNaN(v))
+    );
+    const posKeys = Object.keys(row).filter((key) => key.startsWith("Pos"));
+    const numBars = posKeys.length;
+    setupSVG(50, {
+      minX: 0,
+      maxX: numBars * 80,
+      minY: 0,
+      maxY: maxVal + 20,
+    });
+    const barWidth = 20;
+    posKeys.forEach((key, index) => {
+      const x_base = index * 80 + 10;
+      const height = parseFloat(row[key]) || 0;
+      drawRectangle(
+        x_base,
+        0,
+        barWidth,
+        height,
+        `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, 200, 0.6)`
+      );
+      drawText(x_base + barWidth / 2, height / 2, `${height}`);
+      drawText(x_base + barWidth / 2, -10, key);
+    });
+  }
+
+  function drawWandlerAbmessungen(row) {
+    const w = parseFloat(row.Breite) || 0;
+    const h = parseFloat(row.Hoehe) || 0;
+    const bounds = { minX: -w / 2, maxX: w / 2, minY: -h / 2, maxY: h / 2 };
+    setupSVG(50, bounds);
+    drawRectangle(bounds.minX, bounds.minY, w, h, "rgba(128, 128, 128, 0.5)");
+    drawText(0, 0, `${w} x ${h} mm`);
+  }
+
+  // --- SVG Hilfsfunktionen ---
   function setupSVG(padding = 50, dataBounds = null) {
     svg.innerHTML = "";
-    const bounds = dataBounds || {
-      minX: -250,
-      maxX: 250,
-      minY: -250,
-      maxY: 250,
-    };
-    const minX = isNaN(bounds.minX) ? -250 : bounds.minX;
-    const maxX = isNaN(bounds.maxX) ? 250 : bounds.maxX;
-    const minY = isNaN(bounds.minY) ? -250 : bounds.minY;
-    const maxY = isNaN(bounds.maxY) ? 250 : bounds.maxY;
+    const minX = !isNaN(dataBounds?.minX) ? dataBounds.minX : -250;
+    const maxX = !isNaN(dataBounds?.maxX) ? dataBounds.maxX : 250;
+    const minY = !isNaN(dataBounds?.minY) ? dataBounds.minY : -250;
+    const maxY = !isNaN(dataBounds?.maxY) ? dataBounds.maxY : 250;
     const width = maxX - minX;
     const height = maxY - minY;
     const viewBox = {
@@ -217,143 +382,6 @@ $(document).ready(function () {
     svg.appendChild(gridRect);
   }
 
-  function renderStartPositionen(data) {
-    let currentIndex = 0;
-    const stromValues = [...new Set(data.map((d) => d.Strom))];
-    if (stromValues.length > 1) {
-      controls.innerHTML = `<label for="strom-select">Stromstärke:</label><select id="strom-select">${stromValues
-        .map((s, i) => `<option value="${i}">${s} A</option>`)
-        .join("")}</select>`;
-      $("#strom-select").on("change", function () {
-        currentIndex = parseInt($(this).val());
-        drawPoints();
-      });
-    }
-    const drawPoints = () => {
-      const row = data[currentIndex];
-      const points = [
-        { x: parseFloat(row.x_L1), y: parseFloat(row.y_L1), label: "L1" },
-        { x: parseFloat(row.x_L2), y: parseFloat(row.y_L2), label: "L2" },
-        { x: parseFloat(row.x_L3), y: parseFloat(row.y_L3), label: "L3" },
-      ].filter((p) => !isNaN(p.x) && !isNaN(p.y));
-      const bounds = getBoundsFromPoints(points, { x: 0, y: 0 });
-      setupSVG(100, bounds);
-      points.forEach((p) => drawPoint(p.x, p.y, "blue", p.label));
-    };
-    drawPoints();
-  }
-
-  function renderSpielraum(row) {
-    const bounds = {
-      minX: parseFloat(row["-maxX"]),
-      maxX: parseFloat(row["+maxX"]),
-      minY: parseFloat(row["-maxY"]),
-      maxY: parseFloat(row["+maxY"]),
-    };
-    setupSVG(50, bounds);
-    drawRectangle(
-      bounds.minX,
-      bounds.minY,
-      bounds.maxX - bounds.minX,
-      bounds.maxY - bounds.minY,
-      "rgba(0, 100, 255, 0.2)"
-    );
-  }
-
-  function renderBewegungen(data) {
-    setupSVG(100, { minX: -50, maxX: 50, minY: -50, maxY: 50 });
-    const dirMap = {
-      "← Westen": [-1, 0],
-      "→ Osten": [1, 0],
-      "↑ Norden": [0, 1],
-      "↓ Süden": [0, -1],
-      "↗ Nordosten": [1, 1],
-      "↘ Südosten": [1, -1],
-      "↙ Südwesten": [-1, -1],
-      "↖ Nordwesten": [-1, 1],
-    };
-    data.forEach((row) => {
-      ["L1", "L2", "L3"].forEach((leiter) => {
-        if (row[leiter] && dirMap[row[leiter]]) {
-          const [dx, dy] = dirMap[row[leiter]];
-          drawArrow(
-            0,
-            0,
-            dx * 50,
-            dy * 50,
-            leiter === "L1" ? "red" : leiter === "L2" ? "green" : "blue",
-            `${row.PosGruppe} ${leiter}`
-          );
-        }
-      });
-    });
-  }
-
-  function renderSchrittweiten(data) {
-    const maxVal = Math.max(
-      ...data
-        .flatMap((d) => [
-          parseFloat(d.Pos1),
-          parseFloat(d.Pos2),
-          parseFloat(d.Pos3),
-        ])
-        .filter((v) => !isNaN(v))
-    );
-    setupSVG(50, { minX: 0, maxX: data.length * 80, minY: 0, maxY: maxVal });
-    const barWidth = 20;
-    data.forEach((row, index) => {
-      const x_base = index * 80 + 10;
-      drawRectangle(
-        x_base,
-        0,
-        barWidth,
-        parseFloat(row.Pos1),
-        "rgba(0,0,255,0.6)"
-      );
-      drawRectangle(
-        x_base + barWidth + 5,
-        0,
-        barWidth,
-        parseFloat(row.Pos2),
-        "rgba(255,0,0,0.6)"
-      );
-      drawRectangle(
-        x_base + 2 * (barWidth + 5),
-        0,
-        barWidth,
-        parseFloat(row.Pos3),
-        "rgba(0,255,0,0.6)"
-      );
-      drawText(x_base + 30, -20, `${row.Strom}A`);
-    });
-  }
-
-  function renderWandlerAbmessungen(data) {
-    let currentIndex = 0;
-    const stromValues = [...new Set(data.map((d) => d.Strom))];
-    if (stromValues.length > 1) {
-      controls.innerHTML = `<label for="strom-select">Stromstärke:</label><select id="strom-select">${stromValues
-        .map((s, i) => `<option value="${i}">${s} A</option>`)
-        .join("")}</select>`;
-      $("#strom-select").on("change", function () {
-        currentIndex = parseInt($(this).val());
-        drawWandler();
-      });
-    }
-    const drawWandler = () => {
-      const row = data[currentIndex];
-      const w = parseFloat(row.Breite);
-      const h = parseFloat(row.Hoehe);
-      if (isNaN(w) || isNaN(h)) return;
-      const bounds = { minX: -w / 2, maxX: w / 2, minY: -h / 2, maxY: h / 2 };
-      setupSVG(50, bounds);
-      drawRectangle(bounds.minX, bounds.minY, w, h, "rgba(128, 128, 128, 0.5)");
-      drawText(0, 0, `${w} x ${h} mm`);
-    };
-    drawWandler();
-  }
-
-  // --- SVG Hilfsfunktionen ---
   function drawText(x, y, content, size = 12) {
     const text = document.createElementNS(svgNS, "text");
     text.setAttribute("x", x);

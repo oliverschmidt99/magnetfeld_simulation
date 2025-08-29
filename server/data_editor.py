@@ -8,6 +8,7 @@ als JSON-Daten.
 import os
 import pandas as pd
 from flask import Blueprint, jsonify, request, abort
+from .measurement import get_all_visualization_data
 
 data_editor_bp = Blueprint("data_editor_bp", __name__, url_prefix="/data")
 DATA_DIR = "data"
@@ -96,3 +97,16 @@ def save_csv_data(filename):
         )
     except (IOError, ValueError) as e:  # Spezifischere Exceptions
         return jsonify({"error": f"Fehler beim Speichern der Datei: {str(e)}"}), 500
+
+
+@data_editor_bp.route("/visualization_data", methods=["GET"])
+def get_visualization_data():
+    """Ruft die vollständigen Plot-Daten für die Visualisierung ab."""
+    try:
+        ergebnisse, grenzen = get_all_visualization_data()
+        return jsonify({"ergebnisse": ergebnisse, "grenzen": grenzen})
+    except Exception as e:
+        return (
+            jsonify({"error": f"Fehler beim Abrufen der Visualisierungsdaten: {e}"}),
+            500,
+        )

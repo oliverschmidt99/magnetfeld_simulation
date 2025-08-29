@@ -12,6 +12,7 @@ $(document).ready(function () {
   let currentData = null;
   let currentFilename = null;
   let currentGrid = null;
+  let allVisualizationData = null;
 
   // Funktion zum Laden der Dateiliste
   function loadFileList() {
@@ -44,7 +45,8 @@ $(document).ready(function () {
         currentFileTitle.text(`Bearbeite: ${filename}`);
         saveStatus.text("").removeClass("success error");
         initGrid(currentData);
-        handlePreview(filename, currentData);
+        // Lade Visualisierungsdaten asynchron
+        loadVisualizationData(filename);
       })
       .fail(function (jqXHR) {
         const error = jqXHR.responseJSON
@@ -54,6 +56,74 @@ $(document).ready(function () {
           .text(`Fehler beim Laden der Datei: ${error}`)
           .addClass("error");
       });
+  }
+
+  // Funktion zum Laden der gesamten Visualisierungsdaten
+  function loadVisualizationData(filename) {
+    // Prüfe, ob eine Visualisierung relevant ist
+    if (
+      [
+        "1_startpositionen.csv",
+        "2_spielraum.csv",
+        "3_bewegungen.csv",
+        "4_schrittweiten.csv",
+        "5_wandler_abmessungen.csv",
+      ].includes(filename)
+    ) {
+      visualizationPanel.show();
+      fetch("/data/visualization_data")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          allVisualizationData = data;
+          if (data.ergebnisse && data.ergebnisse.length > 0) {
+            populateStromSelect(data.ergebnisse);
+          } else {
+            handleNoVisualizationData();
+          }
+        })
+        .catch((error) => {
+          console.error("Fehler beim Laden der Visualisierungsdaten:", error);
+          handleNoVisualizationData();
+          saveStatus.text(`Fehler: ${error.message}`).addClass("error");
+        });
+    } else {
+      // Keine Visualisierung für diese Datei
+      visualizationPanel.hide();
+    }
+  }
+
+  function populateStromSelect(ergebnisse) {
+    stromSelect
+      .empty()
+      .append('<option value="">-- Stromstärke auswählen --</option>');
+    const stromstaerken = [...new Set(ergebnisse.map((d) => d.Strom))].sort(
+      (a, b) => a - b
+    );
+    stromstaerken.forEach((strom) => {
+      const option = $("<option>").val(strom).text(`${strom}A`);
+      stromSelect.append(option);
+    });
+
+    stromSelect.off("change").on("change", function () {
+      const selectedStrom = $(this).val();
+      if (selectedStrom && allVisualizationData) {
+        createSimplePreview(selectedStrom, allVisualizationData);
+      } else {
+        $("#admin-preview-svg").empty();
+      }
+    });
+  }
+
+  function handleNoVisualizationData() {
+    stromSelect
+      .empty()
+      .append('<option value="">-- Keine Daten verfügbar --</option>');
+    $("#admin-preview-svg").empty();
   }
 
   // Initialisiert oder aktualisiert das Datenraster (DataGrid)
@@ -142,97 +212,38 @@ $(document).ready(function () {
     }
   });
 
-  // Funktion für die Vorschau
-  function handlePreview(filename, data) {
-    $("#admin-preview-svg").empty();
-    visualizationPanel.hide();
-    stromSelect
-      .empty()
-      .append('<option value="">-- Stromstärke auswählen --</option>');
-
-    // Zeige Visualisierung nur für relevante Dateien
-    if (
-      filename.includes("startpositionen.csv") ||
-      filename.includes("spielraum.csv") ||
-      filename.includes("bewegungen.csv")
-    ) {
-      visualizationPanel.show();
-
-      // Befülle das Stromstärke-Dropdown
-      const stromstaerken = [...new Set(data.map((d) => d.Strom))].sort(
-        (a, b) => a - b
-      );
-      stromstaerken.forEach((strom) => {
-        const option = $("<option>").val(strom).text(`${strom}A`);
-        stromSelect.append(option);
-      });
-
-      // Event-Listener für das Dropdown
-      stromSelect.off("change").on("change", function () {
-        const selectedStrom = $(this).val();
-        if (selectedStrom) {
-          const filteredData = data.filter((d) => d.Strom == selectedStrom);
-          createSimplePreview(filteredData, filename);
-        } else {
-          $("#admin-preview-svg").empty();
-        }
-      });
-    }
-  }
-
-  function createSimplePreview(data, filename) {
+  // Erstellt die SVG-Visualisierung
+  function createSimplePreview(selectedStrom, allData) {
     const svg = d3.select("#admin-preview-svg");
+    svg.empty(); // SVG leeren
+
+    const ergebnisse = allData.ergebnisse.filter(
+      (d) => d.Strom == selectedStrom
+    );
+    if (ergebnisse.length === 0) {
+      svg
+        .append("text")
+        .attr("x", 10)
+        .attr("y", 20)
+        .text("Keine Ergebnisse für diese Stromstärke gefunden.");
+      return;
+    }
+
+    const grenzen = allData.grenzen;
     const svgWidth = 600;
     const svgHeight = 400;
-    const margin = 20;
-
-    // Finde die Grenzen für die Skalierung
-    let xCoords = data.flatMap((d) => [
-      d.X || d.x1_in,
-      d.X || d.x2_in,
-      d.X || d.x3_in,
-      d.x_res,
-      d.x_res,
-    ]);
-    let yCoords = data.flatMap((d) => [
-      d.Y || d.y1_in,
-      d.Y || d.y2_in,
-      d.Y || d.y3_in,
-      d.y_res,
-      d.y_res,
-    ]);
-
-    // Ignoriere leere Werte
-    xCoords = xCoords.filter((n) => !isNaN(n));
-    yCoords = yCoords.filter((n) => !isNaN(n));
-
-    const minX = d3.min(xCoords) || -100;
-    const maxX = d3.max(xCoords) || 100;
-    const minY = d3.min(yCoords) || -100;
-    const maxY = d3.max(yCoords) || 100;
+    const margin = 50;
 
     const scaleX = d3
       .scaleLinear()
-      .domain([minX - margin, maxX + margin])
-      .range([0, svgWidth]);
+      .domain([grenzen["-maxX"] - 50, grenzen["+maxX"] + 50])
+      .range([margin, svgWidth - margin]);
     const scaleY = d3
       .scaleLinear()
-      .domain([minY - margin, maxY + margin])
-      .range([svgHeight, 0]);
+      .domain([grenzen["-maxY"] - 50, grenzen["+maxY"] + 50])
+      .range([svgHeight - margin, margin]);
 
     svg.attr("width", svgWidth).attr("height", svgHeight);
-    svg.empty(); // SVG leeren
-
-    // Achsen hinzufügen
-    const xAxis = d3.axisBottom(scaleX);
-    const yAxis = d3.axisLeft(scaleY);
-
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${svgHeight - margin})`)
-      .call(xAxis);
-
-    svg.append("g").attr("transform", `translate(${margin}, 0)`).call(yAxis);
 
     // Titel hinzufügen
     svg
@@ -242,22 +253,63 @@ $(document).ready(function () {
       .attr("text-anchor", "middle")
       .style("font-size", "16px")
       .style("font-weight", "bold")
-      .text(`Vorschau: ${filename} (Strom: ${data[0].Strom || "N/A"}A)`);
+      .text(`Visualisierung für ${selectedStrom}A`);
 
-    // Datenpunkte zeichnen
-    const points = data.filter((d) => d.x_res != null && d.y_res != null);
+    // Spielraum-Rechteck
     svg
-      .selectAll(".point")
-      .data(points)
+      .append("rect")
+      .attr("x", scaleX(grenzen["-maxX"]))
+      .attr("y", scaleY(grenzen["+maxY"]))
+      .attr("width", scaleX(grenzen["+maxX"]) - scaleX(grenzen["-maxX"]))
+      .attr("height", scaleY(grenzen["-maxY"]) - scaleY(grenzen["+maxY"]))
+      .attr("fill", "lightgrey")
+      .attr("stroke", "black")
+      .attr("stroke-width", 2)
+      .attr("opacity", 0.5);
+
+    // Sicherer Spielraum-Rechteck
+    const sicherheitsabstand = 20;
+    svg
+      .append("rect")
+      .attr("x", scaleX(grenzen["-maxX"] + sicherheitsabstand))
+      .attr("y", scaleY(grenzen["+maxY"] - sicherheitsabstand))
+      .attr(
+        "width",
+        scaleX(grenzen["+maxX"] - sicherheitsabstand) -
+          scaleX(grenzen["-maxX"] + sicherheitsabstand)
+      )
+      .attr(
+        "height",
+        scaleY(grenzen["-maxY"] + sicherheitsabstand) -
+          scaleY(grenzen["+maxY"] - sicherheitsabstand)
+      )
+      .attr("fill", "none")
+      .attr("stroke", "red")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "5,5");
+
+    // Datenpunkte (Ergebnisse)
+    svg
+      .selectAll(".result-point")
+      .data(ergebnisse)
       .enter()
       .append("circle")
-      .attr("class", "point")
+      .attr(
+        "class",
+        (d) =>
+          `result-point ${d.Kollision === "Kollision" ? "collision" : "ok"}`
+      )
       .attr("cx", (d) => scaleX(d.x_res))
       .attr("cy", (d) => scaleY(d.y_res))
-      .attr("r", 5)
-      .attr("fill", "blue")
+      .attr("r", (d) => (d.Kollision === "Kollision" ? 8 : 6))
+      .attr("fill", (d) => (d.Kollision === "Kollision" ? "red" : "green"))
+      .attr("stroke", "black")
+      .attr("stroke-width", 1)
       .append("title")
-      .text((d) => `Leiter: ${d.Leiter}, X: ${d.x_res}, Y: ${d.y_res}`);
+      .text(
+        (d) =>
+          `Leiter: ${d.Leiter}, Position: ${d.PosGruppe}, Status: ${d.Kollision}`
+      );
   }
 
   loadFileList();

@@ -13,10 +13,10 @@ measurement_bp = Blueprint("measurement_bp", __name__)
 DATA_DIR = "data"
 
 
-def get_plot_data():
+def get_all_visualization_data():
     """
-    Liest die CSV-Daten, berechnet die Positionen und erstellt die Plot-JSONs.
-    Diese Funktion ist robust gegenüber Inkonsistenzen in den CSV-Dateien.
+    Liest die CSV-Daten, berechnet die Positionen und gibt die Ergebnisse
+    und Grenzwerte zurück.
     """
     csv_files = {
         "start": os.path.join(DATA_DIR, "1_startpositionen.csv"),
@@ -71,7 +71,7 @@ def get_plot_data():
         list(set(start_df.index) & set(schrittweite_df.index) & set(wandler_df.index))
     )
     if not common_currents:
-        return jsonify({"plots": [], "trace_maps": []})
+        return [], {}, None, None, None
 
     direction_map = {
         "← Westen": np.array([-1, 0]),
@@ -90,8 +90,16 @@ def get_plot_data():
 
     ergebnisse = []
     sicherheitsabstand = 20.0
-    # KORREKTUR: Sicherstellen, dass nur die erste Zeile von spielraum_df gelesen wird.
-    grenzen = spielraum_df.iloc[0]
+
+    # KORREKTUR: Robuster Zugriff auf die Grenzwerte
+    # Füge eine Logik hinzu, um die Grenzen aus Länge und Breite zu berechnen
+    spielraum_df["-maxX"] = -spielraum_df["Länge"] / 2
+    spielraum_df["+maxX"] = spielraum_df["Länge"] / 2
+    spielraum_df["-maxY"] = -spielraum_df["Breite"] / 2
+    spielraum_df["+maxY"] = spielraum_df["Breite"] / 2
+
+    # Verwende .loc, um die Grenzwerte abzurufen, unabhängig vom Index
+    grenzen = spielraum_df.loc[spielraum_df.index[0]]
 
     # --- KORREKTE LOGIK NACH DEINEM VORSCHLAG ---
     for strom in common_currents:
@@ -135,6 +143,8 @@ def get_plot_data():
                     end_vektor[1] - wandler_dims["Hoehe"] / 2,
                     end_vektor[1] + wandler_dims["Hoehe"] / 2,
                 )
+
+                # Verwende die korrekte `grenzen` Series
                 kollision = not (
                     grenzen["-maxX"] + sicherheitsabstand <= x_min
                     and x_max <= grenzen["+maxX"] - sicherheitsabstand
@@ -153,7 +163,15 @@ def get_plot_data():
                         "Kollision": "Kollision" if kollision else "OK",
                     }
                 )
+    return ergebnisse, grenzen, start_df, wandler_df
 
+
+@measurement_bp.route("/measurement/data")
+def get_measurement_plots():
+    """Stellt die Plot-Daten als JSON für das Frontend bereit."""
+    ergebnisse, grenzen, start_df, wandler_df = get_all_visualization_data()
+
+    # Der restliche Code bleibt unverändert für die Plotly-Plots
     if not ergebnisse:
         return jsonify({"plots": [], "trace_maps": []})
 
@@ -321,9 +339,3 @@ def get_plot_data():
     return jsonify(
         {"plots": plots_json, "trace_maps": []}
     )  # trace_maps wird nicht mehr benötigt
-
-
-@measurement_bp.route("/measurement/data")
-def measurement_data():
-    """Stellt die Plot-Daten als JSON für das Frontend bereit."""
-    return get_plot_data()

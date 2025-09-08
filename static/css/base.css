@@ -1,45 +1,55 @@
 :root {
+    /* Custom brand color */
     --rj-dark-blue: #003358;
-    --rj-light-gray: #f8f9fa;
+
+    /* Base font size for responsive rem units */
+    --font-size-base: 1rem;
+}
+
+html {
+    font-size: 100%;
 }
 
 body {
-    background-color: var(--rj-light-gray);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    font-size: var(--font-size-base);
 }
 
-.navbar {
+/* Apply custom brand color to navbar and footer */
+.navbar,
+.footer {
     background-color: var(--rj-dark-blue) !important;
 }
 
 .navbar-logo {
-    height: 30px;
+    height: 1.875rem; /* 30px */
     width: auto;
 }
 
+/* Adjust main content padding to account for fixed navbar */
 main.container {
     flex: 1 0 auto;
-    padding-top: 2rem;
+    padding-top: 5rem; /* Increased padding for better spacing */
     padding-bottom: 2rem;
 }
 
+/* The .main-content-wrapper seems redundant with the new padding on main.container,
+   but I will leave it for now to avoid breaking the structure of individual pages.
+   I will remove the fixed padding from it. */
 .main-content-wrapper {
-    padding-top: 56px;
+    padding-top: 0;
 }
 
 .page-header {
     margin-bottom: 2rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid #dee2e6;
+    /* Let Bootstrap's dark theme handle the border color */
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
-.footer {
-    flex-shrink: 0;
-    background-color: var(--rj-dark-blue) !important;
-}
-
+/* Ensure dropdowns in navbar have no extra background or border */
 .navbar .nav-item .nav-link.dropdown-toggle {
     background: none;
     border: none;

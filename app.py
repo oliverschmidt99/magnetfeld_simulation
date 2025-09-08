@@ -51,5 +51,11 @@ def analysis():
     return render_template("analysis.html")
 
 
+@app.route("/settings")
+def settings():
+    """Einstellungs-Seite."""
+    return render_template("settings.html")
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7070, debug=True)

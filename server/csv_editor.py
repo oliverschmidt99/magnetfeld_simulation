@@ -6,7 +6,7 @@ import os
 import pandas as pd
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_DIR = os.path.join(BASE_DIR, "..", "data", "csv")
+CSV_DIR = os.path.join(BASE_DIR, "..", "data")
 BEWEGUNGEN_FILE = "3_bewegungen.csv"
 BEWEGUNGEN_FILE_PATH = os.path.join(CSV_DIR, BEWEGUNGEN_FILE)
 
@@ -45,6 +45,8 @@ def get_csv_data(filename):
         else:
             new_order.append("Strom")
     df = df[new_order]
+    # Ersetze NaN durch None (was zu null in JSON wird)
+    df = df.where(pd.notna(df), None)
     return {"headers": df.columns.tolist(), "rows": df.to_dict("records")}
 
 

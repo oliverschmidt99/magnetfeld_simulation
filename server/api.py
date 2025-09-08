@@ -173,30 +173,21 @@ def get_csv_files():
     return jsonify(files)
 
 
-@api_bp.route("/csv-data/<path:filename>", methods=["GET"])
-def get_csv_file_data(filename):
+@api_bp.route("/csv-data/<path:filename>", methods=["GET", "POST"])
+def handle_csv_file_data(filename):
+    if request.method == "POST":
+        data = request.get_json()
+        success, message = csv_editor.save_csv_data(filename, data)
+        if not success:
+            return jsonify({"message": message}), 500
+        return jsonify({"message": message})
+
+    # GET request
     data = csv_editor.get_csv_data(filename)
     if data is None:
-        return jsonify({"error": "Datei nicht gefunden"}), 404
+        # Return a valid structure even if the file is not found
+        return jsonify({"headers": [], "rows": []})
     return jsonify(data)
-
-
-@api_bp.route("/csv-data/<path:filename>", methods=["POST"])
-def save_csv_file_data(filename):
-    data = request.get_json()
-    success, message = csv_editor.save_csv_data(filename, data)
-    if not success:
-        return jsonify({"message": message}), 500
-    return jsonify({"message": message})
-
-
-@api_bp.route("/bewegungen-data", methods=["GET"])
-def get_bewegungen_file_data():
-    rows = csv_editor.get_bewegungen_data()
-    options = csv_editor.get_bewegungen_options()
-    if rows is None:
-        return jsonify({"error": "Datei 3_bewegungen.csv nicht gefunden"}), 404
-    return jsonify({"rows": rows, "options": options})
 
 
 @api_bp.route("/bewegungen-data", methods=["POST"])

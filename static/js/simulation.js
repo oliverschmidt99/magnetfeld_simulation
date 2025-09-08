@@ -1,190 +1,187 @@
 // static/js/simulation.js
-// JavaScript für die Seite zur Durchführung der Simulation.
-
-let baseConfig = {};
-let libraryData = {};
+// JavaScript für die neue 5-Schritt-Simulationsseite.
 
 document.addEventListener("DOMContentLoaded", () => {
-  const baseScenarioSelect = document.getElementById("base-scenario-select");
-  const loadBaseScenarioBtn = document.getElementById("load-base-scenario-btn");
-  const runSimulationForm = document.getElementById("run-simulation-form");
-  const runSimulationBtn = document.getElementById("run-simulation-btn");
-  const analysisTypeSelect = document.getElementById("analysis-type");
-  const configPreview = document.getElementById("config-preview");
-  const configJsonPreview = document.getElementById("config-json-preview");
+    const wizard = document.getElementById("simulation-wizard");
+    const steps = wizard.querySelectorAll(".step-content");
+    const stepIndicators = wizard.querySelectorAll(".step-item");
+    const navButtons = wizard.querySelectorAll(".nav-btn");
+    const startSimBtn = document.getElementById("start-simulation-btn");
 
-  // Lade Bibliotheks- und Szenario-Daten
-  function loadData() {
-    // Lade Bibliotheksdaten aus dem statischen Skript
-    fetch("/api/library")
-      .then((response) => response.json())
-      .then((data) => {
-        libraryData = data;
-        populateDropdowns();
-      })
-      .catch((e) => console.error("Fehler beim Laden der Bibliothek:", e));
+    const csvFiles = [
+        "1_startpositionen.csv",
+        "2_spielraum.csv",
+        "3_bewegungen.csv",
+        "4_schrittweiten.csv",
+        "5_wandler_abmessungen.csv",
+    ];
 
-    // Lade gespeicherte Szenarien
-    fetch("/api/scenarios")
-      .then((response) => response.json())
-      .then((scenarios) => {
-        baseScenarioSelect.innerHTML =
-          '<option value="">-- Bitte eine Konfiguration laden --</option>';
-        scenarios.forEach((s) => {
-          // Filtere die standardmäßigen JSON-Dateien aus
-          if (s !== "library" && s !== "tags" && s !== "measurement_config") {
-            const option = document.createElement("option");
-            option.value = s;
-            option.textContent = s;
-            baseScenarioSelect.appendChild(option);
-          }
+    let currentStep = 1;
+
+    // --- Wizard Navigation ---
+    function showStep(stepNumber) {
+        steps.forEach(step => step.classList.remove("active"));
+        stepIndicators.forEach(indicator => indicator.classList.remove("active"));
+
+        wizard.querySelector(`.step-content[data-step="${stepNumber}"]`).classList.add("active");
+        wizard.querySelector(`.step-item[data-step="${stepNumber}"]`).classList.add("active");
+        currentStep = stepNumber;
+    }
+
+    navButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            const targetStep = button.classList.contains("next-btn")
+                ? parseInt(button.dataset.next)
+                : parseInt(button.dataset.prev);
+            showStep(targetStep);
         });
-      })
-      .catch((e) => console.error("Fehler beim Laden der Szenarien:", e));
-  }
-
-  // Füllt Dropdowns basierend auf den Bibliotheksdaten
-  function populateDropdowns() {
-    const assemblies = baseConfig.assemblies || [];
-    const standaloneSheets = libraryData.components.transformerSheets || [];
-
-    // Füllt den Baugruppen-Dropdown für die Abstandsanalyse
-    const distanceAssemblySelect = document.getElementById("distance-assembly");
-    distanceAssemblySelect.innerHTML = assemblies
-      .map((a) => `<option value="${a.name}">${a.name}</option>`)
-      .join("");
-
-    // Füllt den Abschirmblech-Dropdown
-    const shieldingSheetSelect = document.getElementById("shielding-sheet");
-    shieldingSheetSelect.innerHTML = standaloneSheets
-      .map(
-        (s) =>
-          `<option value="${s.templateProductInformation.name}">${s.templateProductInformation.name}</option>`
-      )
-      .join("");
-
-    // Zeige die Szenario-Details an, falls bereits ein Typ ausgewählt wurde
-    showScenarioDetails();
-  }
-
-  // Lade Basiskonfiguration
-  loadBaseScenarioBtn.addEventListener("click", () => {
-    const scenarioName = baseScenarioSelect.value;
-    if (!scenarioName) {
-      alert("Bitte wähle ein Szenario aus.");
-      return;
-    }
-
-    fetch(`/api/scenarios/${scenarioName}`)
-      .then((response) => {
-        if (!response.ok) throw new Error("Szenario nicht gefunden.");
-        return response.json();
-      })
-      .then((config) => {
-        baseConfig = config;
-        configJsonPreview.textContent = JSON.stringify(baseConfig, null, 2);
-        configPreview.style.display = "block";
-        runSimulationBtn.disabled = false;
-        populateDropdowns();
-      })
-      .catch((error) => {
-        alert(`Fehler beim Laden: ${error.message}`);
-        runSimulationBtn.disabled = true;
-      });
-  });
-
-  // Zeige/verstecke die Szenario-Details basierend auf der Auswahl
-  analysisTypeSelect.addEventListener("change", showScenarioDetails);
-
-  function showScenarioDetails() {
-    document.querySelectorAll(".scenario-details").forEach((div) => {
-      div.style.display = "none";
     });
-    const selectedType = analysisTypeSelect.value;
-    if (selectedType !== "none") {
-      document.getElementById(`${selectedType}-scenario`).style.display =
-        "block";
-    }
-  }
 
-  // Formular absenden
-  runSimulationForm.addEventListener("submit", (event) => {
-    event.preventDefault();
+    // --- CSV Table Logic ---
+    async function loadCsvData(step) {
+        const file = csvFiles[step - 1];
+        const tableContainer = document.getElementById(`csv-table-${step}`);
+        if (!file || !tableContainer) return;
 
-    const analysisType = analysisTypeSelect.value;
-    let scenarioParams = {};
-
-    // Sammle die Parameter basierend auf dem ausgewählten Typ
-    if (analysisType === "current") {
-      scenarioParams = {
-        type: "current",
-        start: parseFloat(document.getElementById("current-start").value),
-        end: parseFloat(document.getElementById("current-end").value),
-        stepSize: parseFloat(
-          document.getElementById("current-step-size").value
-        ),
-      };
-    } else if (analysisType === "distance") {
-      scenarioParams = {
-        type: "distance",
-        assembly: document.getElementById("distance-assembly").value,
-        startX: parseFloat(document.getElementById("distance-x-start").value),
-        endX: parseFloat(document.getElementById("distance-x-end").value),
-        startY: parseFloat(document.getElementById("distance-y-start").value),
-        endY: parseFloat(document.getElementById("distance-y-end").value),
-        stepSize: parseFloat(
-          document.getElementById("distance-step-size").value
-        ),
-      };
-    } else if (analysisType === "shielding") {
-      scenarioParams = {
-        type: "shielding",
-        sheet: document.getElementById("shielding-sheet").value,
-        startX: parseFloat(document.getElementById("shielding-x-start").value),
-        endX: parseFloat(document.getElementById("shielding-x-end").value),
-        startY: parseFloat(document.getElementById("shielding-y-start").value),
-        endY: parseFloat(document.getElementById("shielding-y-end").value),
-        stepSize: parseFloat(
-          document.getElementById("shielding-step-size").value
-        ),
-      };
-    } else {
-      scenarioParams = { type: "none" };
+        try {
+            const response = await fetch(`/api/csv-data/${file}`);
+            if (!response.ok) throw new Error(`Fehler beim Laden von ${file}`);
+            const data = await response.json();
+            renderTable(tableContainer, data.headers, data.rows, file);
+        } catch (error) {
+            tableContainer.innerHTML = `<p class="error">${error.message}</p>`;
+        }
     }
 
-    const payload = {
-      baseConfig: baseConfig,
-      scenario: {
-        phaseSweep: {
-          start: parseFloat(document.getElementById("phase-start").value),
-          end: parseFloat(document.getElementById("phase-end").value),
-          stepSize: parseFloat(
-            document.getElementById("phase-step-size").value
-          ),
-        },
-        ...scenarioParams,
-      },
-    };
+    function renderTable(container, headers, rows, filename) {
+        if (!rows || rows.length === 0) {
+            container.innerHTML = "<p>Keine Daten gefunden.</p>";
+            return;
+        }
 
-    const statusDiv = document.getElementById("simulation-status");
-    statusDiv.textContent = "Simulation wird gestartet...";
-    statusDiv.style.color = "blue";
+        const table = document.createElement("table");
+        table.className = "table table-bordered table-striped";
 
-    fetch("/run_simulation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        statusDiv.textContent = data.message;
-        statusDiv.style.color = "green";
-      })
-      .catch((error) => {
-        statusDiv.textContent = `Fehler beim Starten der Simulation: ${error.message}`;
-        statusDiv.style.color = "red";
-      });
-  });
+        // Header
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        headers.forEach(h => {
+            const th = document.createElement("th");
+            th.textContent = h;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
 
-  loadData();
+        // Body
+        const tbody = document.createElement("tbody");
+        rows.forEach(rowData => {
+            const tr = document.createElement("tr");
+            headers.forEach(header => {
+                const td = document.createElement("td");
+                td.textContent = rowData[header];
+                td.setAttribute("contenteditable", "true");
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        container.innerHTML = "";
+        container.appendChild(table);
+
+        // Make table draggable
+        new Sortable(tbody, {
+            animation: 150,
+            ghostClass: 'blue-background-class'
+        });
+
+        // Add save button
+        const saveBtn = document.createElement("button");
+        saveBtn.textContent = "Änderungen speichern";
+        saveBtn.className = "btn-primary";
+        saveBtn.style.marginTop = "1rem";
+        saveBtn.addEventListener("click", () => saveTableData(container, filename));
+        container.appendChild(saveBtn);
+    }
+
+    async function saveTableData(container, filename) {
+        const table = container.querySelector("table");
+        const headers = Array.from(table.querySelectorAll("th")).map(th => th.textContent);
+        const rows = Array.from(table.querySelectorAll("tbody tr"));
+        const dataToSave = rows.map(row => {
+            const cells = Array.from(row.querySelectorAll("td"));
+            const rowData = {};
+            headers.forEach((header, index) => {
+                rowData[header] = cells[index].textContent;
+            });
+            return rowData;
+        });
+
+        try {
+            const response = await fetch(`/api/csv-data/${filename}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dataToSave),
+            });
+            const result = await response.json();
+            alert(result.message);
+        } catch (error) {
+            alert(`Fehler beim Speichern: ${error.message}`);
+        }
+    }
+
+    // --- Simulation Logic ---
+    function updateSimulationProgress() {
+        const progressBar = document.getElementById("progress-bar");
+        const statusText = document.getElementById("simulation-status-text");
+
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch("/simulation_status");
+                const data = await response.json();
+
+                progressBar.style.width = `${data.progress}%`;
+                progressBar.textContent = `${data.progress}%`;
+                statusText.textContent = data.status_text;
+
+                if (!data.running) {
+                    clearInterval(interval);
+                    startSimBtn.disabled = false;
+                }
+            } catch (error) {
+                statusText.textContent = "Fehler beim Abrufen des Status.";
+                clearInterval(interval);
+                startSimBtn.disabled = false;
+            }
+        }, 1000);
+    }
+
+    startSimBtn.addEventListener("click", async () => {
+        const progressDiv = document.getElementById("simulation-progress");
+        const statusText = document.getElementById("simulation-status-text");
+
+        progressDiv.style.display = "block";
+        statusText.textContent = "Simulation wird gestartet...";
+        startSimBtn.disabled = true;
+
+        try {
+            await fetch("/start_new_simulation", { method: "POST" });
+            updateSimulationProgress();
+        } catch (error) {
+            statusText.textContent = `Fehler beim Starten der Simulation: ${error.message}`;
+            startSimBtn.disabled = false;
+        }
+    });
+
+
+    // --- Initialisierung ---
+    function initialize() {
+        // Load data for all tables on startup
+        for (let i = 1; i <= csvFiles.length; i++) {
+            loadCsvData(i);
+        }
+        showStep(1); // Show the first step
+    }
+
+    initialize();
 });

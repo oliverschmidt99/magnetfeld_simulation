@@ -1,9 +1,13 @@
 from flask import Flask, render_template
 from server.api import api_bp
+from server.simulation import simulation_bp
+from server.new_simulation import new_simulation_bp
 from server.utils import load_data, LIBRARY_FILE
 
 app = Flask(__name__)
 app.register_blueprint(api_bp)
+app.register_blueprint(simulation_bp)
+app.register_blueprint(new_simulation_bp)
 
 
 # Routen für die Hauptseiten

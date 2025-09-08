@@ -1,43 +1,57 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
 
-{% block title %}Messung{% endblock %}
+{% block title %}Messkonfiguration{% endblock %}
 
-{% block sub_nav %}
-<div class="sub-nav-bar">
-    <h2>Mess-Konfiguration und Visualisierung</h2>
-</div>
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ag-theme-quartz.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/measurement.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="container measurement-container">
+<h1 class="page-header">Messkonfiguration & CSV-Editor</h1>
 
-    <div class="measurement-config-panel">
-        <h3>Konfiguration</h3>
-        <div id="config-editor">
-            <h4>Globale Einstellungen</h4>
-            <div class="config-section" id="global-settings"></div>
-
-            <h4>Positionsgruppen</h4>
-            <div id="positionsgruppen-list"></div>
-            <button id="add-group-btn" class="btn-primary">Neue Positionsgruppe hinzufügen</button>
-        </div>
-        <div class="config-actions">
-            <button id="save-config-btn" class="btn-success">Konfiguration Speichern</button>
-            <button id="reload-plots-btn" class="btn-secondary">Plots Neu Laden</button>
-        </div>
-        <div id="save-status" class="save-status"></div>
+<div class="card">
+    <div class="card-header">
+        CSV-Dateien bearbeiten
     </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label for="csv-file-select" class="form-label">CSV-Datei auswählen:</label>
+            <select id="csv-file-select" class="form-select">
+                <option value="" selected>Bitte eine Datei auswählen...</option>
+                <option value="3_bewegungen.csv">3_bewegungen.csv</option>
+            </select>
+        </div>
 
-    <div class="measurement-plots-panel">
-        <h3>Visualisierung</h3>
-        <div id="custom-legend-container" class="custom-legend"></div>
-        <div class="dashboard-container" id="dashboard-container"></div>
+        <div id="csv-grid-container" class="editor-container">
+            <div id="csv-grid" class="ag-theme-quartz" style="height: 500px; width: 100%;"></div>
+        </div>
+
+        <div id="bewegungen-editor-container" class="editor-container">
+            <div class="table-responsive">
+                <table id="bewegungen-table" class="table table-bordered table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>L1</th>
+                            <th>L2</th>
+                            <th>L3</th>
+                            <th>PosGruppe</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <button type="button" id="save-csv-button" class="btn btn-primary editor-container mt-3">
+            Änderungen speichern
+        </button>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/ag-grid-community.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/measurement.js') }}"></script>
 {% endblock %}

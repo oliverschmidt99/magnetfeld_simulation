@@ -1,7 +1,5 @@
 """
 Blueprint für die API-Endpunkte zur Verwaltung von Daten.
-
-Enthält Routen für Tags, die Bauteil-Bibliothek und Simulations-Szenarien.
 """
 
 import os
@@ -14,8 +12,8 @@ from .utils import (
     LIBRARY_FILE,
     TAGS_FILE,
 )
+from . import csv_editor
 
-# KORREKTUR: Blueprint mit einem zentralen URL-Präfix für alle Routen
 api_bp = Blueprint("api_bp", __name__, url_prefix="/api")
 
 
@@ -28,7 +26,6 @@ def handle_tags():
             action = tags_data.get("action")
 
             if action == "save":
-                # Standard-Speicherlogik, um Tags hinzuzufügen/aktualisieren
                 save_data(TAGS_FILE, tags_data.get("tags"))
                 return jsonify(
                     {"message": "Tags erfolgreich aktualisiert.", "tags": tags_data}
@@ -62,10 +59,8 @@ def handle_tags():
                 return jsonify(
                     {"message": "Tags erfolgreich aktualisiert.", "tags": tags_data}
                 )
-
         except (IOError, TypeError) as e:
             return jsonify({"error": str(e)}), 500
-
     tags_data = load_data(TAGS_FILE, {"categories": []})
     return jsonify(tags_data)
 
@@ -74,20 +69,16 @@ def handle_tags():
 def handle_library():
     """Verwaltet die Bauteil-Bibliothek."""
     library_data = load_data(LIBRARY_FILE, {"components": {}})
-
     if request.method == "GET":
         return jsonify(library_data)
-
     try:
         data = request.json
         comp_type = data.get("type")
         original_name = data.get("originalName")
         message = ""
-
         if comp_type not in library_data.get("components", {}):
             library_data["components"][comp_type] = []
         component_list = library_data["components"][comp_type]
-
         if data.get("action") == "save":
             component_data = data.get("component")
             idx = next(
@@ -125,7 +116,6 @@ def handle_library():
             message = "Bauteil gelöscht."
         else:
             return jsonify({"error": "Unbekannte Aktion"}), 400
-
         save_data(LIBRARY_FILE, library_data)
         return jsonify({"message": message, "library": library_data})
     except (IOError, TypeError, KeyError) as e:
@@ -137,7 +127,7 @@ def get_scenarios():
     """Gibt eine Liste aller Szenarien zurück."""
     try:
         if not os.path.exists(CONFIG_DIR):
-            return jsonify([])  # Leere Liste, wenn der Ordner nicht existiert
+            return jsonify([])
         files = [
             f.replace(".json", "")
             for f in os.listdir(CONFIG_DIR)
@@ -155,7 +145,6 @@ def handle_scenario(name):
     if not safe_name:
         return jsonify({"error": "Ungültiger Szenario-Name"}), 400
     filepath = os.path.join(CONFIG_DIR, f"{safe_name}.json")
-
     if request.method == "POST":
         try:
             save_data(filepath, request.json)
@@ -175,3 +164,45 @@ def handle_scenario(name):
             return jsonify({"error": "Szenario nicht gefunden"}), 404
         except OSError as e:
             return jsonify({"error": str(e)}), 500
+
+
+# --- Routen für den CSV-Editor ---
+@api_bp.route("/csv-files", methods=["GET"])
+def get_csv_files():
+    files = csv_editor.list_csv_files()
+    return jsonify(files)
+
+
+@api_bp.route("/csv-data/<path:filename>", methods=["GET"])
+def get_csv_file_data(filename):
+    data = csv_editor.get_csv_data(filename)
+    if data is None:
+        return jsonify({"error": "Datei nicht gefunden"}), 404
+    return jsonify(data)
+
+
+@api_bp.route("/csv-data/<path:filename>", methods=["POST"])
+def save_csv_file_data(filename):
+    data = request.get_json()
+    success, message = csv_editor.save_csv_data(filename, data)
+    if not success:
+        return jsonify({"message": message}), 500
+    return jsonify({"message": message})
+
+
+@api_bp.route("/bewegungen-data", methods=["GET"])
+def get_bewegungen_file_data():
+    rows = csv_editor.get_bewegungen_data()
+    options = csv_editor.get_bewegungen_options()
+    if rows is None:
+        return jsonify({"error": "Datei 3_bewegungen.csv nicht gefunden"}), 404
+    return jsonify({"rows": rows, "options": options})
+
+
+@api_bp.route("/bewegungen-data", methods=["POST"])
+def save_bewegungen_file_data():
+    data = request.get_json()
+    success, message = csv_editor.save_bewegungen_data(data)
+    if not success:
+        return jsonify({"message": message}), 500
+    return jsonify({"message": message})

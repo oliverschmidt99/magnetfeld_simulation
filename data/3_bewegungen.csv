@@ -1,0 +1,13 @@
+L1,L2,L3,PosGruppe
+← Westen,,→ Osten,Pos11
+← Westen,,→ Osten,Pos12
+← Westen,,→ Osten,Pos13
+↙ Südwesten,,↗ Nordosten,Pos21
+↙ Südwesten,,↗ Nordosten,Pos22
+↙ Südwesten,,↗ Nordosten,Pos23
+↓ Süden,↑ Norden,↓ Süden,Pos31
+↓ Süden,↑ Norden,↓ Süden,Pos32
+↓ Süden,↑ Norden,↓ Süden,Pos33
+↙ Südwesten,↑ Norden,↘ Südosten,Pos41
+↙ Südwesten,↑ Norden,↘ Südosten,Pos42
+↙ Südwesten,↑ Norden,↘ Südosten,Pos43

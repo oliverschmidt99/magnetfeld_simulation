@@ -7,7 +7,7 @@ __pycache__/
 *.ans
 *.pdf
 *.fem
-*.csv
+
 
 # C extensions
 *.so

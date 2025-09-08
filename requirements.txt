@@ -2,5 +2,4 @@ Flask
 matplotlib
 pandas
 plotly
-cmath
-math
+cmaths

@@ -29,7 +29,6 @@ def list_runs():
             date_path = os.path.join(RESULTS_DIR, date_dir)
             if os.path.isdir(date_path):
                 for run_dir in sorted(os.listdir(date_path), reverse=True):
-                    # Prüfen, ob eine summary.csv existiert
                     summary_path = safe_join(
                         date_path, run_dir, f"{run_dir}_summary.csv"
                     )
@@ -43,26 +42,24 @@ def list_runs():
 
 @analysis_bp.route("/analysis/summary_csv/<date_dir>/<time_dir>")
 def get_summary_csv(date_dir, time_dir):
-    """Liest die summary.csv-Datei mit Pandas und gibt sie als JSON zurück."""
+    """Liest die summary.csv-Datei und gibt sie als JSON zurück."""
     try:
         run_dir_name = f"{time_dir}"
-        # Sicheren Pfad zur CSV-Datei erstellen
         csv_filename = f"{run_dir_name}_summary.csv"
         safe_path = safe_join(
             os.path.abspath(RESULTS_DIR), date_dir, run_dir_name, csv_filename
         )
-
         if not safe_path or not os.path.exists(safe_path):
             return jsonify({"error": "CSV-Datei nicht gefunden"}), 404
-
-        # CSV mit Pandas einlesen und als JSON im 'records'-Format zurückgeben
         df = pd.read_csv(safe_path)
         return jsonify(df.to_dict(orient="records"))
-
     except (OSError, pd.errors.EmptyDataError) as e:
         return jsonify({"error": f"Fehler beim Lesen der CSV-Datei: {e}"}), 500
-    except Exception as e:
-        return jsonify({"error": f"Ein unerwarteter Fehler ist aufgetreten: {e}"}), 500
+    except (ValueError, KeyError) as e:  # Spezifischere Exceptions
+        return (
+            jsonify({"error": f"Ein unerwarteter Daten-Fehler ist aufgetreten: {e}"}),
+            500,
+        )
 
 
 @analysis_bp.route("/analysis/files/<path:run_dir>")
@@ -72,11 +69,9 @@ def list_files_in_run(run_dir):
         safe_run_path = safe_join(os.path.abspath(RESULTS_DIR), run_dir)
         if not safe_run_path or not os.path.isdir(safe_run_path):
             return jsonify({"error": "Ungültiger Pfad"}), 404
-
         femm_files_path = os.path.join(safe_run_path, "femm_files")
         if not os.path.isdir(femm_files_path):
             return jsonify([])
-
         ans_files = sorted(
             [f for f in os.listdir(femm_files_path) if f.endswith(".ans")]
         )
@@ -87,21 +82,17 @@ def list_files_in_run(run_dir):
 
 @analysis_bp.route("/analysis/data/<path:filepath>")
 def get_analysis_data(filepath):
-    """Parst eine .ans- und .fem-Datei und gibt die Plot-Daten als JSON zurück."""
+    """Parst eine .ans- und .fem-Datei und gibt die Plot-Daten zurück."""
     try:
-        # Pfade für beide Dateien erstellen
         ans_path = safe_join(os.path.abspath(RESULTS_DIR), filepath)
         fem_path = ans_path.replace(".ans", ".fem")
-
         if not all(
             [ans_path, fem_path, os.path.exists(ans_path), os.path.exists(fem_path)]
         ):
             return jsonify({"error": ".ans- oder .fem-Datei nicht gefunden"}), 404
-
         nodes, elements, solution = parse_fem_ans_files(fem_path, ans_path)
         if not all([nodes, elements, solution]):
             return jsonify({"error": "Datei konnte nicht geparst werden."}), 500
-
         elements_data = [
             {
                 "nodes": [nodes[n1], nodes[n2], nodes[n3]],
@@ -121,7 +112,6 @@ def get_analysis_data(filepath):
             ]
         ]
         field_lines = get_contour_lines(nodes, elements, solution)
-
         return jsonify(
             {
                 "nodes": list(nodes.values()),
@@ -129,7 +119,7 @@ def get_analysis_data(filepath):
                 "field_lines": field_lines,
             }
         )
-    except (IOError, AttributeError) as e:
+    except (IOError, AttributeError, KeyError) as e:
         return jsonify({"error": f"Fehler bei Dateiverarbeitung: {e}"}), 500
 
 
@@ -146,7 +136,6 @@ def get_transformer_components(t, pos):
     dims = ["outerAir", "coreOuter", "coreInner", "inner"]
     labels = ["Outer Air", "Steel Core", "Inner Air", "Air Gap"]
     fills = ["#f0f8ff", "#d3d3d3", "#f0f8ff", "#ffffff"]
-
     for i, dim_name in enumerate(dims):
         w, h = get_dim(f"{dim_name}Width"), get_dim(f"{dim_name}Height")
         components.append(
@@ -169,11 +158,9 @@ def visualize_setup():
     library = load_data(LIBRARY_FILE, {"components": {}})
     form_data = request.json
     svg_elements = []
-
     all_rails = library.get("components", {}).get("copperRails", [])
     all_transformers = library.get("components", {}).get("transformers", [])
     all_sheets = library.get("components", {}).get("transformerSheets", [])
-
     for asm in form_data.get("assemblies", []):
         pos = asm.get("position", {})
         transformer = next(
@@ -186,7 +173,6 @@ def visualize_setup():
         )
         if transformer:
             svg_elements.extend(get_transformer_components(transformer, pos))
-
         rail = next(
             (
                 r
@@ -209,7 +195,6 @@ def visualize_setup():
                     "label": asm.get("copperRailName"),
                 }
             )
-
     for comp in form_data.get("standAloneComponents", []):
         pos = comp.get("position", {})
         sheet = next(
@@ -234,5 +219,4 @@ def visualize_setup():
                     "label": comp.get("name"),
                 }
             )
-
     return jsonify(svg_elements)

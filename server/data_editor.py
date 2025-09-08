@@ -40,24 +40,18 @@ def get_csv_data(filename):
         return jsonify({"error": f"Datei '{filename}' nicht gefunden."}), 404
 
     try:
-        # Versuche zuerst die universelle UTF-8-Kodierung
         df = pd.read_csv(filepath, encoding="utf-8")
     except UnicodeDecodeError:
         try:
-            # Wenn das fehlschlägt, versuche die ältere Windows-Kodierung
             df = pd.read_csv(filepath, encoding="cp1252")
-        except (IOError, pd.errors.ParserError) as e:  # Spezifischere Exceptions
-            return (
-                jsonify({"error": f"Fehler beim Lesen der Datei mit cp1252: {str(e)}"}),
-                500,
-            )
-    except (IOError, pd.errors.ParserError) as e:  # Spezifischere Exceptions
+        except (IOError, pd.errors.ParserError) as e:
+            return jsonify({"error": f"Fehler beim Lesen der Datei: {str(e)}"}), 500
+    except (IOError, pd.errors.ParserError) as e:
         return (
             jsonify({"error": f"Allgemeiner Fehler beim Lesen der Datei: {str(e)}"}),
             500,
         )
 
-    # Ersetze NaN-Werte (leere Zellen) durch leere Strings für eine bessere JSON-Darstellung
     df.fillna("", inplace=True)
 
     preview_type = "none"
@@ -87,7 +81,6 @@ def save_csv_data(filename):
 
     try:
         df = pd.DataFrame(data)
-        # Speichere immer im universellen UTF-8-Format, ohne den DataFrame-Index
         df.to_csv(filepath, index=False, encoding="utf-8")
         return jsonify(
             {
@@ -95,7 +88,7 @@ def save_csv_data(filename):
                 "message": f"Datei '{filename}' erfolgreich gespeichert.",
             }
         )
-    except (IOError, ValueError) as e:  # Spezifischere Exceptions
+    except (IOError, ValueError) as e:
         return jsonify({"error": f"Fehler beim Speichern der Datei: {str(e)}"}), 500
 
 
@@ -103,9 +96,10 @@ def save_csv_data(filename):
 def get_visualization_data():
     """Ruft die vollständigen Plot-Daten für die Visualisierung ab."""
     try:
-        ergebnisse, grenzen = get_all_visualization_data()
+        # KORREKTUR: Entpackt die Rückgabewerte korrekt
+        ergebnisse, grenzen, _, _ = get_all_visualization_data()
         return jsonify({"ergebnisse": ergebnisse, "grenzen": grenzen})
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         return (
             jsonify({"error": f"Fehler beim Abrufen der Visualisierungsdaten: {e}"}),
             500,

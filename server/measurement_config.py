@@ -1,110 +1,70 @@
-import json
+"""
+Dieses Modul verwaltet die Konfiguration für die Mess-Seite,
+indem es die CSV-Dateien ausliest und die relevanten Daten extrahiert.
+"""
+
 import os
 import pandas as pd
-from .utils import load_data, save_data, LIBRARY_FILE, CONFIG_DIR
+from server.utils import load_data, save_data, CONFIG_DIR
 
-CONFIG_FILE = os.path.join(CONFIG_DIR, "measurement_config.json")
+# Globale Konstanten für Dateipfade
+MEASUREMENT_CONFIG_FILE = os.path.join(CONFIG_DIR, "measurement_config.json")
+DATA_DIR = "data"  # KORREKTUR: Fehlende Definition hinzugefügt
 
 
 def get_config():
-    """Lädt die Konfiguration aus der JSON-Datei oder erstellt eine neue aus den CSVs."""
-    if not os.path.exists(CONFIG_FILE):
-        return create_config_from_csv()
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_config(config_data):
-    """Speichert die Konfiguration in der JSON-Datei."""
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, indent=2, ensure_ascii=False)
-
-
-def create_config_from_csv():
-    """Erstellt eine initiale Konfigurations-JSON aus den alten CSV-Dateien."""
-    try:
-        start_df = pd.read_csv(
-            os.path.join(DATA_DIR, "1_startpositionen.csv"), encoding="utf-8"
-        )
-        spielraum_df = pd.read_csv(
-            os.path.join(DATA_DIR, "2_spielraum.csv"), encoding="utf-8"
-        )
-        bewegungen_df = pd.read_csv(
-            os.path.join(DATA_DIR, "3_bewegungen.csv"), encoding="utf-8"
-        )
-        schrittweite_df = pd.read_csv(
-            os.path.join(DATA_DIR, "4_schrittweiten.csv"), encoding="utf-8"
-        )
-    except Exception:
-        # Fallback für Windows-Kodierung
-        start_df = pd.read_csv(
-            os.path.join(DATA_DIR, "1_startpositionen.csv"), encoding="cp1252"
-        )
-        spielraum_df = pd.read_csv(
-            os.path.join(DATA_DIR, "2_spielraum.csv"), encoding="cp1252"
-        )
-        bewegungen_df = pd.read_csv(
-            os.path.join(DATA_DIR, "3_bewegungen.csv"), encoding="cp1252"
-        )
-        schrittweite_df = pd.read_csv(
-            os.path.join(DATA_DIR, "4_schrittweiten.csv"), encoding="cp1252"
-        )
-
-    library = load_data(LIBRARY_FILE, {})
-    first_transformer = (library.get("components", {}).get("transformers") or [{}])[0]
-    first_transformer_id = (
-        first_transformer.get("templateProductInformation") or {}
-    ).get("uniqueNumber") or (
-        first_transformer.get("templateProductInformation") or {}
-    ).get(
-        "name"
-    )
-
-    config = {
-        "startpositionen": start_df.to_dict(orient="records"),
-        "spielraum": [],
-        "positionsgruppen": [],
-    }
-
-    ströme = start_df["Strom"].unique()
-    for strom in ströme:
-        spielraum_eintrag = spielraum_df.iloc[0].to_dict()
-        spielraum_eintrag["Strom"] = int(strom)
-        config["spielraum"].append(spielraum_eintrag)
-
-    schrittweite_records = schrittweite_df.to_dict(orient="records")
-    for record in schrittweite_records:
-        record["enabled"] = True
-
-    bewegungen_records = bewegungen_df.to_dict(orient="records")
-    neue_bewegungen = []
-    for record in bewegungen_records:
-        new_record = {"PosGruppe": record.get("PosGruppe")}
-        for leiter in ["L1", "L2", "L3"]:
-            richtung = record.get(leiter)
-            if pd.notna(richtung):
-                new_record[leiter] = {"richtung": richtung, "faktor": 1.0}
-        neue_bewegungen.append(new_record)
-
-    gruppen_namen = (
-        bewegungen_df["PosGruppe"].str.extract(r"(Pos\d)\d").iloc[:, 0].unique()
-    )
-    for name in gruppen_namen:
-        if pd.isna(name):
-            continue
-
-        gruppen_bewegungen = [
-            b for b in neue_bewegungen if b.get("PosGruppe", "").startswith(name)
-        ]
-
-        config["positionsgruppen"].append(
-            {
-                "name": name,
-                "bewegungen": gruppen_bewegungen,
-                "schrittweiten": schrittweite_records,
-                "wandler": first_transformer_id,
-            }
-        )
-
-    save_config(config)
+    """Lädt die aktuelle Mess-Konfiguration und reichert sie mit Daten aus CSVs an."""
+    config = load_data(MEASUREMENT_CONFIG_FILE, {})
+    config["csv_data"] = get_all_csv_data()
     return config
+
+
+def save_config(data):
+    """Speichert die Mess-Konfiguration."""
+    # Speichere nur die Konfigurationsdaten, nicht die CSV-Daten
+    config_to_save = {k: v for k, v in data.items() if k != "csv_data"}
+    save_data(MEASUREMENT_CONFIG_FILE, config_to_save)
+
+
+def get_all_csv_data():
+    """Liest alle relevanten CSV-Dateien und gibt deren Inhalte zurück."""
+    csv_files = {
+        "startpositionen": os.path.join(DATA_DIR, "1_startpositionen.csv"),
+        "spielraum": os.path.join(DATA_DIR, "2_spielraum.csv"),
+        "bewegungen": os.path.join(DATA_DIR, "3_bewegungen.csv"),
+        "schrittweiten": os.path.join(DATA_DIR, "4_schrittweiten.csv"),
+    }
+    all_data = {}
+    for name, path in csv_files.items():
+        try:
+            # Versuche, die CSV-Dateien mit verschiedenen Kodierungen zu lesen
+            try:
+                df = pd.read_csv(path, encoding="utf-8")
+            except UnicodeDecodeError:
+                df = pd.read_csv(path, encoding="cp1252")
+
+            # Konvertiere alle Daten in ein Dictionary
+            all_data[name] = df.to_dict(orient="records")
+        except (IOError, pd.errors.ParserError) as e:
+            # Gib eine leere Liste zurück, wenn eine Datei nicht gelesen werden kann
+            print(f"Warnung: Konnte '{path}' nicht laden. Fehler: {e}")
+            all_data[name] = []
+
+    # Extrahiere die eindeutigen Stromstärken
+    all_data["stromstaerken"] = extract_unique_currents(
+        all_data.get("startpositionen", [])
+    )
+    return all_data
+
+
+def extract_unique_currents(startpositionen_data):
+    """Extrahiert eine sortierte Liste eindeutiger Stromstärken."""
+    if not startpositionen_data:
+        return []
+    try:
+        # KORREKTUR: Variable mit ASCII-konformem Namen
+        currents = sorted(list(set(item["Strom"] for item in startpositionen_data)))
+        return currents
+    except KeyError:
+        # Fehler abfangen, falls die Spalte 'Strom' nicht existiert
+        return []

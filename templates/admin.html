@@ -3,6 +3,16 @@
 
 {% block title %}Admin-Oberfläche{% endblock %}
 
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
+<style>
+    .full-width-table {
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
 {% block sub_nav %}
 <div class="sub-nav-bar">
     <h2>CSV-Daten Editor</h2>
@@ -36,11 +46,11 @@
 
         <div class="table-panel">
             <div id="grid-container">
-                <table id="csv-table" class="display" style="width:100%"></table>
+                <table id="csv-table" class="display full-width-table"></table>
             </div>
             <div class="panel-footer">
-                <button id="reset-button" class="button secondary">↩️ Zurücksetzen</button>
-                <button id="save-button" class="button">💾 Speichern</button>
+                <button type="button" id="reset-button" class="button secondary">↩️ Zurücksetzen</button>
+                <button type="button" id="save-button" class="button">💾 Speichern</button>
                 <div id="save-status"></div>
             </div>
         </div>
@@ -49,9 +59,10 @@
 {% endblock %}
 
 {% block scripts %}
-{# Online-Skripte (CDN) für jQuery und DataTables verwenden #}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css" />
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+{# KORREKTUR: Lädt zuerst die Skripte aus base.html (inkl. jQuery) #}
+{{ super() }}
+
+{# Lädt DANACH die zusätzlich benötigten Skripte für diese Seite #}
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>

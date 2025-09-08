@@ -1,7 +1,6 @@
-# Dieses Modul generiert die Plot-Daten für die Messungs-Visualisierungsseite.
-# Es liest die Konfigurationsdaten aus den CSV-Dateien im 'data'-Verzeichnis,
-# berechnet die resultierenden Positionen und Kollisionen und erstellt
-# interaktive Plots mit Plotly.
+"""
+Dieses Modul generiert die Plot-Daten für die Messungs-Visualisierungsseite.
+"""
 
 import os
 import pandas as pd
@@ -16,7 +15,7 @@ DATA_DIR = "data"
 def get_all_visualization_data():
     """
     Liest die CSV-Daten, berechnet die Positionen und gibt die Ergebnisse
-    und Grenzwerte zurück.
+    und Grenzwerte als JSON-kompatible Typen zurück.
     """
     csv_files = {
         "start": os.path.join(DATA_DIR, "1_startpositionen.csv"),
@@ -37,9 +36,7 @@ def get_all_visualization_data():
                 for name, path in csv_files.items()
             }
         except (IOError, pd.errors.ParserError) as e:
-            abort(
-                500, description=f"Fehler beim Lesen der CSVs mit UTF-8 & CP1252: {e}"
-            )
+            abort(500, description=f"Fehler beim Lesen der CSVs mit CP1252: {e}")
     except (IOError, pd.errors.ParserError) as e:
         abort(500, description=f"Fehler beim Lesen der CSV-Dateien: {e}")
 
@@ -50,7 +47,6 @@ def get_all_visualization_data():
         schrittweite_df = dataframes["schrittweite"]
         wandler_df = dataframes["wandler"]
 
-        # KORREKTUR: Entferne Leerzeichen aus Spaltennamen
         start_df.columns = start_df.columns.str.strip()
         spielraum_df.columns = spielraum_df.columns.str.strip()
         bewegungen_df.columns = bewegungen_df.columns.str.strip()
@@ -58,20 +54,17 @@ def get_all_visualization_data():
         wandler_df.columns = wandler_df.columns.str.strip()
 
         start_df = start_df.set_index("Strom")
-        # KORREKTUR: Behandeln der leeren Zeile in spielraum_df und erneutes Setzen des Indexes
         spielraum_df = spielraum_df.dropna(subset=["Strom"]).set_index("Strom")
         schrittweite_df = schrittweite_df.set_index("Strom")
         wandler_df = wandler_df.set_index("Strom")
     except KeyError as e:
-        abort(
-            500, description=f"Fehlende Spalte 'Strom' in einer CSV-Datei. Fehler: {e}"
-        )
+        abort(500, description=f"Fehlende Spalte 'Strom' in einer CSV. Fehler: {e}")
 
     common_currents = sorted(
         list(set(start_df.index) & set(schrittweite_df.index) & set(wandler_df.index))
     )
     if not common_currents:
-        return [], {}, None, None, None
+        return [], {}, None, None
 
     direction_map = {
         "← Westen": np.array([-1, 0]),
@@ -90,29 +83,20 @@ def get_all_visualization_data():
 
     ergebnisse = []
     sicherheitsabstand = 20.0
-
-    # KORREKTUR: Robuster Zugriff auf die Grenzwerte
-    # Füge eine Logik hinzu, um die Grenzen aus Länge und Breite zu berechnen
     spielraum_df["-maxX"] = -spielraum_df["Länge"] / 2
     spielraum_df["+maxX"] = spielraum_df["Länge"] / 2
     spielraum_df["-maxY"] = -spielraum_df["Breite"] / 2
     spielraum_df["+maxY"] = spielraum_df["Breite"] / 2
+    grenzen_series = spielraum_df.loc[spielraum_df.index[0]]
 
-    # Verwende .loc, um die Grenzwerte abzurufen, unabhängig vom Index
-    grenzen = spielraum_df.loc[spielraum_df.index[0]]
-
-    # --- KORREKTE LOGIK NACH DEINEM VORSCHLAG ---
     for strom in common_currents:
         start_pos = start_df.loc[strom]
         schritte = schrittweite_df.loc[strom]
         wandler_dims = wandler_df.loc[strom]
-
-        # Feste Startpositionen für diese Stromstärke (nur einmal definieren)
         startpunkte = {
             i: np.array([start_pos.get(f"x_L{i}", 0), start_pos.get(f"y_L{i}", 0)])
             for i in range(1, 4)
         }
-
         for _, bewegung in bewegungen_df.iterrows():
             pos_gruppe_name = bewegung.get("PosGruppe")
             if not isinstance(pos_gruppe_name, str) or not pos_gruppe_name.startswith(
@@ -124,17 +108,13 @@ def get_all_visualization_data():
                 schritt = schritte[f"Pos{pos_num_y}"]
             except (ValueError, IndexError, KeyError):
                 continue
-
-            # Berechne für jede Bewegung die Endpunkte von den festen Startpositionen aus
             for i, start_vektor in startpunkte.items():
                 richtung = bewegung.get(f"L{i}")
                 if pd.isna(richtung):
                     continue
-
                 end_vektor = start_vektor + (
                     direction_map.get(str(richtung).strip(), np.array([0, 0])) * schritt
                 )
-
                 x_min, x_max = (
                     end_vektor[0] - wandler_dims["Breite"] / 2,
                     end_vektor[0] + wandler_dims["Breite"] / 2,
@@ -143,16 +123,12 @@ def get_all_visualization_data():
                     end_vektor[1] - wandler_dims["Hoehe"] / 2,
                     end_vektor[1] + wandler_dims["Hoehe"] / 2,
                 )
-
-                # Verwende die korrekte `grenzen` Series
                 kollision = not (
-                    grenzen["-maxX"] + sicherheitsabstand <= x_min
-                    and x_max <= grenzen["+maxX"] - sicherheitsabstand
-                    and grenzen["-maxY"] + sicherheitsabstand <= y_min
-                    and y_max <= grenzen["+maxY"] - sicherheitsabstand
+                    grenzen_series["-maxX"] + sicherheitsabstand <= x_min
+                    and x_max <= grenzen_series["+maxX"] - sicherheitsabstand
+                    and grenzen_series["-maxY"] + sicherheitsabstand <= y_min
+                    and y_max <= grenzen_series["+maxY"] - sicherheitsabstand
                 )
-
-                # Speichere nur die Subposition ab
                 ergebnisse.append(
                     {
                         "Strom": strom,
@@ -163,15 +139,19 @@ def get_all_visualization_data():
                         "Kollision": "Kollision" if kollision else "OK",
                     }
                 )
-    return ergebnisse, grenzen, start_df, wandler_df
+
+    # KORREKTUR: Konvertiere die Pandas Series in ein Dictionary, bevor sie zurückgegeben wird
+    grenzen_dict = grenzen_series.to_dict()
+
+    return ergebnisse, grenzen_dict, start_df, wandler_df
 
 
 @measurement_bp.route("/measurement/data")
 def get_measurement_plots():
     """Stellt die Plot-Daten als JSON für das Frontend bereit."""
-    ergebnisse, grenzen, start_df, wandler_df = get_all_visualization_data()
+    ergebnisse, grenzen, start_df, _ = get_all_visualization_data()
+    sicherheitsabstand = 20.0
 
-    # Der restliche Code bleibt unverändert für die Plotly-Plots
     if not ergebnisse:
         return jsonify({"plots": [], "trace_maps": []})
 
@@ -196,11 +176,8 @@ def get_measurement_plots():
                 & (ergebnis_df["Strom"] == strom)
             ]
             startpos = start_df.loc[strom]
-            wandler_dims = wandler_df.loc[strom]
-
-            # Startpositionen als eine Spur mit 3 Punkten und Hover-Labels
             start_x = [startpos.get(f"x_L{i}", 0) for i in range(1, 4)]
-            start_y = [start_pos.get(f"y_L{i}", 0) for i in range(1, 4)]
+            start_y = [startpos.get(f"y_L{i}", 0) for i in range(1, 4)]
             start_labels = [f"Startposition L{i}" for i in range(1, 4)]
             fig.add_trace(
                 go.Scatter(
@@ -215,8 +192,6 @@ def get_measurement_plots():
                     visible=(strom_idx == 0),
                 )
             )
-
-            # Füge leere Platzhalter hinzu, damit die Spurenanzahl konsistent bleibt
             fig.add_trace(
                 go.Scatter(
                     x=[None],
@@ -226,12 +201,8 @@ def get_measurement_plots():
                     visible="legendonly",
                 )
             )
-
-            # Feste Anzahl an möglichen Positionstypen (Pos 1 bis 4)
             for pos_num_y in range(1, 5):
                 df_pos = df_strom[df_strom["PosGruppe"].str.endswith(str(pos_num_y))]
-
-                # Auch wenn es keine Daten gibt, eine leere Spur für Konsistenz hinzufügen
                 if df_pos.empty:
                     fig.add_trace(
                         go.Scatter(
@@ -243,13 +214,17 @@ def get_measurement_plots():
                         )
                     )
                     continue
-
-                # Gruppiere nach Status für effizientes Plotten
                 for status in ["OK", "Kollision"]:
                     df_status = df_pos[df_pos["Kollision"] == status]
                     if df_status.empty:
                         continue
-
+                    hovertext = [
+                        (
+                            f"Leiter: {row['Leiter']}<br>Pos: {row['PosGruppe']}<br>"
+                            f"X: {row['x_res']:.1f}<br>Y: {row['y_res']:.1f}<br>Status: {row['Kollision']}"
+                        )
+                        for _, row in df_status.iterrows()
+                    ]
                     fig.add_trace(
                         go.Scatter(
                             x=df_status["x_res"],
@@ -264,10 +239,7 @@ def get_measurement_plots():
                             name=f"Pos {pos_num_y}",
                             legendgroup=f"Pos {pos_num_y}",
                             hoverinfo="text",
-                            hovertext=[
-                                f"Leiter: {row['Leiter']}<br>Pos: {row['PosGruppe']}<br>X: {row['x_res']:.1f}<br>Y: {row['y_res']:.1f}<br>Status: {row['Kollision']}"
-                                for _, row in df_status.iterrows()
-                            ],
+                            hovertext=hovertext,
                             visible=(strom_idx == 0),
                         )
                     )
@@ -333,9 +305,6 @@ def get_measurement_plots():
             line=dict(color="red", width=2, dash="dash"),
             layer="below",
         )
-
         plots_json.append(fig.to_json())
 
-    return jsonify(
-        {"plots": plots_json, "trace_maps": []}
-    )  # trace_maps wird nicht mehr benötigt
+    return jsonify({"plots": plots_json, "trace_maps": []})

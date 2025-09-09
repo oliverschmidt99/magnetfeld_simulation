@@ -1,5 +1,4 @@
 // static/js/configurator.js
-// JavaScript für die Konfigurator-Seite
 let libraryData = {};
 let currentConfig = {};
 const savedScenariosSelect = document.getElementById("saved-scenarios");
@@ -8,8 +7,21 @@ const standaloneList = document.getElementById("standalone-list");
 const electricalSystemList = document.getElementById("electrical-system-list");
 const summaryOutput = document.getElementById("summary-output");
 
+// Funktion zum Anzeigen des richtigen Konfigurations-Abschnitts
+function setActiveTab(targetId) {
+  document.querySelectorAll(".config-section").forEach((section) => {
+    section.classList.remove("active");
+  });
+  const targetSection = document.getElementById(targetId);
+  if (targetSection) {
+    targetSection.classList.add("active");
+  }
+  if (targetId === "config-summary") {
+    updateSummary();
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  // Lade Bibliotheksdaten aus dem DOM
   try {
     libraryData = JSON.parse(
       document.getElementById("library-data").textContent
@@ -18,29 +30,17 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("Fehler beim Laden der Bibliotheksdaten:", e);
   }
 
-  // Initialisiere mit einer Standardkonfiguration
   loadDefaultConfig();
-
-  // Lade gespeicherte Szenarien
   loadSavedScenarios();
 
-  // Event-Listener für die Navigation
-  document.getElementById("config-nav").addEventListener("click", (e) => {
-    const card = e.target.closest(".card");
-    if (!card) return;
-    document
-      .querySelectorAll("#config-nav .card")
-      .forEach((c) => c.classList.remove("active"));
-    card.classList.add("active");
-    const targetId = card.dataset.target;
-    document.querySelectorAll(".config-section").forEach((section) => {
-      section.classList.remove("active");
-    });
-    document.getElementById(targetId).classList.add("active");
-    if (targetId === "config-summary") {
-      updateSummary();
-    }
-  });
+  // Funktion, die aufgerufen wird, wenn sich der Hash in der URL ändert (z.B. #config-params)
+  function handleHashChange() {
+    const hash = window.location.hash.substring(1) || "config-summary";
+    setActiveTab(hash);
+  }
+
+  window.addEventListener("hashchange", handleHashChange);
+  handleHashChange(); // Direkt beim Laden der Seite ausführen
 
   // Event-Listener für Buttons
   document
@@ -56,16 +56,15 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("simulation-form")
     .addEventListener("submit", createSimulationFile);
 
-  // Event-Listener für dynamische Listen
-  assembliesList.addEventListener("input", updateConfigFromUI);
-  standaloneList.addEventListener("input", updateConfigFromUI);
-  electricalSystemList.addEventListener("input", updateConfigFromUI);
+  // Event-Listener für Formular-Änderungen
   document
     .getElementById("config-params")
     .addEventListener("input", updateConfigFromUI);
+  electricalSystemList.addEventListener("input", updateConfigFromUI);
+  assembliesList.addEventListener("input", updateConfigFromUI);
+  standaloneList.addEventListener("input", updateConfigFromUI);
 });
 
-// Standardkonfiguration laden
 function loadDefaultConfig() {
   currentConfig = {
     simulationParams: {
@@ -80,21 +79,17 @@ function loadDefaultConfig() {
   renderUIFromConfig();
 }
 
-// UI-Elemente basierend auf der aktuellen Konfiguration rendern
 function renderUIFromConfig() {
-  // Globale Parameter
   for (const key in currentConfig.simulationParams) {
     const input = document.getElementById(key);
     if (input) input.value = currentConfig.simulationParams[key];
   }
-  // Dynamische Listen
   renderElectricalSystem();
   renderAssemblies();
   renderStandaloneComponents();
   updateSummary();
 }
 
-// UI für das elektrische System rendern
 function renderElectricalSystem() {
   electricalSystemList.innerHTML = "";
   currentConfig.electricalSystem.forEach((phase, index) => {
@@ -102,24 +97,15 @@ function renderElectricalSystem() {
     div.className = "dynamic-item";
     div.innerHTML = `
             <div class="form-group-wrapper">
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" name="name" value="${phase.name}">
-                </div>
-                <div class="form-group">
-                    <label>Phasenverschiebung (°)</label>
-                    <input type="number" name="phaseShiftDeg" value="${phase.phaseShiftDeg}">
-                </div>
-                <div class="form-group">
-                    <label>Spitzenstrom (A)</label>
-                    <input type="number" step="any" name="peakCurrentA" value="${phase.peakCurrentA}">
-                </div>
+                <div class="form-group"><label>Name</label><input type="text" name="name" value="${phase.name}"></div>
+                <div class="form-group"><label>Phasenverschiebung (°)</label><input type="number" name="phaseShiftDeg" value="${phase.phaseShiftDeg}"></div>
+                <div class="form-group"><label>Spitzenstrom (A)</label><input type="number" step="any" name="peakCurrentA" value="${phase.peakCurrentA}"></div>
             </div>
-            <button type="button" class="remove-btn" onclick="removeDynamicItem(this, 'electricalSystem', ${index})">&times;</button>
-        `;
+            <button type="button" class="remove-btn" onclick="removeDynamicItem('electricalSystem', ${index})">&times;</button>`;
     electricalSystemList.appendChild(div);
   });
 }
+
 window.addPhase = () => {
   currentConfig.electricalSystem.push({
     name: "",
@@ -129,164 +115,125 @@ window.addPhase = () => {
   renderElectricalSystem();
 };
 
-// UI für Baugruppen rendern
 function renderAssemblies() {
   assembliesList.innerHTML = "";
   currentConfig.assemblies.forEach((assembly, index) => {
-    const availableRails = (libraryData.components.copperRails || []).map(
-      (r) => r.templateProductInformation.name
-    );
-    const availableTransformers = (
-      libraryData.components.transformers || []
-    ).map((t) => t.templateProductInformation.name);
-    const railOptions = availableRails
+    const railOptions = (libraryData.components.copperRails || [])
       .map(
         (r) =>
-          `<option value="${r}" ${
-            r === assembly.copperRailName ? "selected" : ""
-          }>${r}</option>`
+          `<option value="${r.templateProductInformation.name}" ${
+            r.templateProductInformation.name === assembly.copperRailName
+              ? "selected"
+              : ""
+          }>${r.templateProductInformation.name}</option>`
       )
       .join("");
-    const transformerOptions = availableTransformers
+    const transformerOptions = (libraryData.components.transformers || [])
       .map(
         (t) =>
-          `<option value="${t}" ${
-            t === assembly.transformerName ? "selected" : ""
-          }>${t}</option>`
+          `<option value="${t.templateProductInformation.name}" ${
+            t.templateProductInformation.name === assembly.transformerName
+              ? "selected"
+              : ""
+          }>${t.templateProductInformation.name}</option>`
       )
       .join("");
     const div = document.createElement("div");
     div.className = "dynamic-item";
     div.innerHTML = `
             <div class="form-group-wrapper">
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" name="name" value="${assembly.name}">
-                </div>
-                <div class="form-group">
-                    <label>Phase</label>
-                    <input type="text" name="phaseName" value="${assembly.phaseName}">
-                </div>
-                <div class="form-group">
-                    <label>X-Position (mm)</label>
-                    <input type="number" name="position.x" value="${assembly.position.x}">
-                </div>
-                <div class="form-group">
-                    <label>Y-Position (mm)</label>
-                    <input type="number" name="position.y" value="${assembly.position.y}">
-                </div>
-                <div class="form-group">
-                    <label>Kupferschiene</label>
-                    <select name="copperRailName">${railOptions}</select>
-                </div>
-                <div class="form-group">
-                    <label>Wandler</label>
-                    <select name="transformerName">${transformerOptions}</select>
-                </div>
+                <div class="form-group"><label>Name</label><input type="text" name="name" value="${assembly.name}"></div>
+                <div class="form-group"><label>Phase</label><input type="text" name="phaseName" value="${assembly.phaseName}"></div>
+                <div class="form-group"><label>X-Position (mm)</label><input type="number" name="position.x" value="${assembly.position.x}"></div>
+                <div class="form-group"><label>Y-Position (mm)</label><input type="number" name="position.y" value="${assembly.position.y}"></div>
+                <div class="form-group"><label>Kupferschiene</label><select name="copperRailName">${railOptions}</select></div>
+                <div class="form-group"><label>Wandler</label><select name="transformerName">${transformerOptions}</select></div>
             </div>
-            <button type="button" class="remove-btn" onclick="removeDynamicItem(this, 'assemblies', ${index})">&times;</button>
-        `;
+            <button type="button" class="remove-btn" onclick="removeDynamicItem('assemblies', ${index})">&times;</button>`;
     assembliesList.appendChild(div);
   });
 }
+
 window.addAssembly = () => {
   currentConfig.assemblies.push({
     name: `Assembly_${currentConfig.assemblies.length + 1}`,
     phaseName: "L1",
     position: { x: 0, y: 0 },
-    copperRailName: (libraryData.components.copperRails[0] || {})
-      .templateProductInformation?.name,
-    transformerName: (libraryData.components.transformers[0] || {})
-      .templateProductInformation?.name,
+    copperRailName:
+      libraryData.components.copperRails?.[0]?.templateProductInformation
+        ?.name || "",
+    transformerName:
+      libraryData.components.transformers?.[0]?.templateProductInformation
+        ?.name || "",
   });
   renderAssemblies();
 };
 
-// UI für Einzelbauteile rendern
 function renderStandaloneComponents() {
   standaloneList.innerHTML = "";
   currentConfig.standAloneComponents.forEach((component, index) => {
-    const availableSheets = (
-      libraryData.components.transformerSheets || []
-    ).map((s) => s.templateProductInformation.name);
-    const sheetOptions = availableSheets
+    const sheetOptions = (libraryData.components.transformerSheets || [])
       .map(
         (s) =>
-          `<option value="${s}" ${
-            s === component.name ? "selected" : ""
-          }>${s}</option>`
+          `<option value="${s.templateProductInformation.name}" ${
+            s.templateProductInformation.name === component.name
+              ? "selected"
+              : ""
+          }>${s.templateProductInformation.name}</option>`
       )
       .join("");
     const div = document.createElement("div");
     div.className = "dynamic-item";
     div.innerHTML = `
             <div class="form-group-wrapper">
-                <div class="form-group">
-                    <label>Typ</label>
-                    <select name="name">${sheetOptions}</select>
-                </div>
-                <div class="form-group">
-                    <label>X-Position (mm)</label>
-                    <input type="number" name="position.x" value="${component.position.x}">
-                </div>
-                <div class="form-group">
-                    <label>Y-Position (mm)</label>
-                    <input type="number" name="position.y" value="${component.position.y}">
-                </div>
+                <div class="form-group"><label>Typ</label><select name="name">${sheetOptions}</select></div>
+                <div class="form-group"><label>X-Position (mm)</label><input type="number" name="position.x" value="${component.position.x}"></div>
+                <div class="form-group"><label>Y-Position (mm)</label><input type="number" name="position.y" value="${component.position.y}"></div>
             </div>
-            <button type="button" class="remove-btn" onclick="removeDynamicItem(this, 'standAloneComponents', ${index})">&times;</button>
-        `;
+            <button type="button" class="remove-btn" onclick="removeDynamicItem('standAloneComponents', ${index})">&times;</button>`;
     standaloneList.appendChild(div);
   });
 }
+
 window.addStandalone = () => {
   currentConfig.standAloneComponents.push({
-    name: (libraryData.components.transformerSheets[0] || {})
-      .templateProductInformation?.name,
+    name:
+      libraryData.components.transformerSheets?.[0]?.templateProductInformation
+        ?.name || "",
     position: { x: 0, y: 0 },
   });
   renderStandaloneComponents();
 };
 
-// Elemente aus den Listen entfernen
-window.removeDynamicItem = (btn, listName, index) => {
+window.removeDynamicItem = (listName, index) => {
   currentConfig[listName].splice(index, 1);
   renderUIFromConfig();
 };
 
-// Konfiguration aus der UI aktualisieren
 function updateConfigFromUI() {
-  const form = document.getElementById("simulation-form");
-  const formData = new FormData(form);
-
   // Globale Parameter
   currentConfig.simulationParams.frequencyHz =
-    parseFloat(formData.get("frequencyHz")) || 0;
+    parseFloat(document.getElementById("frequencyHz").value) || 0;
   currentConfig.simulationParams.problemDepthM =
-    parseFloat(formData.get("problemDepthM")) || 0;
+    parseFloat(document.getElementById("problemDepthM").value) || 0;
   currentConfig.simulationParams.coreRelPermeability =
-    parseFloat(formData.get("coreRelPermeability")) || 0;
-
+    parseFloat(document.getElementById("coreRelPermeability").value) || 0;
   // Dynamische Listen
   currentConfig.electricalSystem = parseDynamicList(electricalSystemList);
   currentConfig.assemblies = parseDynamicList(assembliesList);
   currentConfig.standAloneComponents = parseDynamicList(standaloneList);
-
   updateSummary();
 }
 
 function parseDynamicList(listElement) {
-  const items = [];
-  Array.from(listElement.children).forEach((item) => {
+  return Array.from(listElement.children).map((item) => {
     const itemData = {};
-    const inputs = item.querySelectorAll("input, select");
-    inputs.forEach((input) => {
+    item.querySelectorAll("input, select").forEach((input) => {
       let value = input.value;
-      if (!isNaN(parseFloat(value)) && isFinite(value)) {
+      if (!isNaN(parseFloat(value)) && isFinite(value) && value.trim() !== "") {
         value = parseFloat(value);
       }
       if (input.name.includes(".")) {
-        // Handle nested objects like position.x
         const [parent, child] = input.name.split(".");
         if (!itemData[parent]) itemData[parent] = {};
         itemData[parent][child] = value;
@@ -294,12 +241,10 @@ function parseDynamicList(listElement) {
         itemData[input.name] = value;
       }
     });
-    items.push(itemData);
+    return itemData;
   });
-  return items;
 }
 
-// Zusammenfassung aktualisieren
 function updateSummary() {
   summaryOutput.innerHTML = `<pre>${JSON.stringify(
     currentConfig,
@@ -308,7 +253,6 @@ function updateSummary() {
   )}</pre>`;
 }
 
-// Szenarien-Verwaltung
 function loadSavedScenarios() {
   fetch("/api/scenarios")
     .then((response) => response.json())
@@ -327,10 +271,9 @@ function loadSavedScenarios() {
 
 function saveScenario() {
   const scenarioName = document.getElementById("scenario-name").value;
-  if (!scenarioName) {
-    alert("Bitte gib einen Namen für das Szenario ein.");
-    return;
-  }
+  if (!scenarioName)
+    return alert("Bitte gib einen Namen für das Szenario ein.");
+  updateConfigFromUI();
   fetch(`/api/scenarios/${scenarioName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -346,10 +289,7 @@ function saveScenario() {
 
 function loadScenario() {
   const scenarioName = savedScenariosSelect.value;
-  if (!scenarioName) {
-    alert("Bitte wähle ein Szenario zum Laden aus.");
-    return;
-  }
+  if (!scenarioName) return alert("Bitte wähle ein Szenario zum Laden aus.");
   fetch(`/api/scenarios/${scenarioName}`)
     .then((response) => {
       if (!response.ok) throw new Error("Szenario nicht gefunden.");
@@ -358,6 +298,7 @@ function loadScenario() {
     .then((data) => {
       currentConfig = data;
       renderUIFromConfig();
+      document.getElementById("scenario-name").value = scenarioName;
       alert(`Szenario "${scenarioName}" geladen.`);
     })
     .catch((error) => alert(`Fehler beim Laden: ${error.message}`));
@@ -365,36 +306,26 @@ function loadScenario() {
 
 function deleteScenario() {
   const scenarioName = savedScenariosSelect.value;
-  if (!scenarioName) {
-    alert("Bitte wähle ein Szenario zum Löschen aus.");
+  if (!scenarioName) return alert("Bitte wähle ein Szenario zum Löschen aus.");
+  if (!confirm(`Soll das Szenario "${scenarioName}" wirklich gelöscht werden?`))
     return;
-  }
-  if (
-    !confirm(`Soll das Szenario "${scenarioName}" wirklich gelöscht werden?`)
-  ) {
-    return;
-  }
   fetch(`/api/scenarios/${scenarioName}`, { method: "DELETE" })
     .then((response) => response.json())
     .then((data) => {
       alert(data.message);
       loadSavedScenarios();
+      document.getElementById("scenario-name").value = "";
       loadDefaultConfig();
     })
     .catch((error) => alert(`Fehler beim Löschen: ${error.message}`));
 }
 
-// simulation.json erstellen
 function createSimulationFile(event) {
   event.preventDefault();
   updateConfigFromUI();
-  const payload = {
-    baseConfig: currentConfig,
-  };
-  // Wir senden nur die Basiskonfiguration. Das 'scenario' wird
-  // später auf der Simulation-Seite definiert und hinzugefügt.
+  localStorage.setItem("simulationConfig", JSON.stringify(currentConfig));
   alert(
-    "Simulation.json wurde erstellt und kann auf der Simulation-Seite verwendet werden."
+    "Konfiguration wurde zwischengespeichert und kann auf der Simulation-Seite verwendet werden."
   );
-  console.log(" simulation.json content:", payload.baseConfig);
+  console.log("Gespeicherte Konfiguration:", currentConfig);
 }

@@ -28,8 +28,23 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('configurator') }}">Konfigurator</a>
+                    <li class="nav-item dropdown">
+                        <button class="nav-link dropdown-toggle" type="button" id="navbarDropdownConfigurator"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            Konfigurator
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdownConfigurator">
+                            <li><a class="dropdown-item" href="{{ url_for('configurator') }}#config-summary">Übersicht
+                                    &amp; Speichern</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('configurator') }}#config-params">Globale
+                                    Parameter</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('configurator') }}#config-phases">Elektrisches
+                                    System</a></li>
+                            <li><a class="dropdown-item"
+                                    href="{{ url_for('configurator') }}#config-assemblies">Baugruppen</a></li>
+                            <li><a class="dropdown-item"
+                                    href="{{ url_for('configurator') }}#config-standalone">Einzelbauteile</a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('simulation') }}">Simulation</a>
@@ -41,10 +56,10 @@
                         <a class="nav-link" href="{{ url_for('settings') }}">Einstellungen</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownTools" role="button"
+                        <button class="nav-link dropdown-toggle" type="button" id="navbarDropdownTools"
                             data-bs-toggle="dropdown" aria-expanded="false">
                             Werkzeuge
-                        </a>
+                        </button>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdownTools">
                             <li><a class="dropdown-item" href="{{ url_for('measurement') }}">Messkonfiguration</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('bauteile') }}">Bauteile</a></li>

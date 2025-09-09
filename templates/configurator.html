@@ -14,28 +14,14 @@
     {{ library|tojson|safe }}
 </script>
 <div class="container">
-    <div class="card-container" id="config-nav">
-        <div class="card active" data-target="config-summary">
-            <h3>Übersicht & Speichern</h3>
-        </div>
-        <div class="card" data-target="config-params">
-            <h3>Globale Parameter</h3>
-        </div>
-        <div class="card" data-target="config-phases">
-            <h3>Elektrisches System</h3>
-        </div>
-        <div class="card" data-target="config-assemblies">
-            <h3>Baugruppen</h3>
-        </div>
-        <div class="card" data-target="config-standalone">
-            <h3>Einzelbauteile</h3>
-        </div>
+    <div class="alert alert-info" role="alert">
+        Navigiere durch die Konfiguration über das <strong>"Konfigurator"-Dropdown</strong> im Hauptmenü oben.
     </div>
     <hr>
     <form id="simulation-form">
         <div id="config-sections">
             <div id="config-summary" class="config-section active">
-                <h2>Übersicht & Speichern</h2>
+                <h2>Übersicht &amp; Speichern</h2>
                 <p>Hier siehst du eine Zusammenfassung deiner aktuellen Konfiguration. Du kannst sie als Szenario
                     speichern, um sie später wiederzuverwenden.</p>
                 <div class="summary-box" id="summary-output"></div>
@@ -49,7 +35,7 @@
                     <div class="button-group">
                         <button type="button" id="save-scenario-btn" class="button add">Szenario speichern</button>
                     </div>
-                    <div class="form-group" style="margin-top: 1.5rem;">
+                    <div class="form-group mt-1-5rem">
                         <label for="saved-scenarios">Gespeicherte Szenarien laden:</label>
                         <select id="saved-scenarios">
                             <option value="">-- Szenario auswählen --</option>
@@ -105,6 +91,5 @@
 {% endblock %}
 
 {% block scripts %}
-{# KORREKTER PFAD ZUR JAVASCRIPT-DATEI #}
 <script src="{{ url_for('static', filename='js/configurator.js') }}"></script>
 {% endblock %}

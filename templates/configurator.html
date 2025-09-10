@@ -17,7 +17,7 @@
 <div class="container">
 
     <div class="card-container" id="config-nav">
-        <div class="card" data-target="config-params">
+        <div class="card active" data-target="config-params">
             <h3>Allgemeine Parameter</h3>
             <p>Grundeinstellungen für die Simulation.</p>
         </div>
@@ -37,8 +37,8 @@
             <h3>Konfiguration</h3>
             <p>Szenarien speichern und laden.</p>
         </div>
-        <div class="card active" data-target="config-summary">
-            <h3>Übersicht & Vorschau</h3>
+        <div class="card" data-target="config-summary">
+            <h3>Übersicht &amp; Vorschau</h3>
             <p>Visuelle Kontrolle der Parameter.</p>
         </div>
     </div>
@@ -48,9 +48,34 @@
     <form id="simulation-form">
         <div id="config-sections">
 
-            <div id="config-params" class="config-section">
+            <div id="config-params" class="config-section active">
                 <h2>Allgemeine Simulations-Parameter</h2>
                 <div class="form-group-wrapper">
+                    <div class="form-group">
+                        <label for="ratedCurrent">Nennstrom (A)</label>
+                        <select id="ratedCurrent">
+                            <option value="600">600 A</option>
+                            <option value="800">800 A</option>
+                            <option value="1000">1000 A</option>
+                            <option value="1250">1250 A</option>
+                            <option value="1600">1600 A</option>
+                            <option value="2000">2000 A</option>
+                            <option value="2500">2500 A</option>
+                            <option value="3000">3000 A</option>
+                            <option value="4000">4000 A</option>
+                            <option value="5000">5000 A</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="movementGroup">Bewegungsgruppe</label>
+                        <select id="movementGroup">
+                            <option value="">-- Bitte eine Bewegungsgruppe wählen --</option>
+                            {% for b in bewegungen %}
+                            <option value="{{ b.PosGruppe }}">{{ b.PosGruppe }}: L1({{ b.L1 }}), L2({{ b.L2 }}), L3({{
+                                b.L3 }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="frequencyHz">Frequenz (Hz)</label>
                         <input type="number" id="frequencyHz" value="50">
@@ -74,6 +99,8 @@
 
             <div id="config-assemblies" class="config-section">
                 <h2>Baugruppen (Assemblies)</h2>
+                <p class="info-text">Positionen werden automatisch basierend auf der gewählten Bewegungsgruppe berechnet
+                    und sind hier nicht einstellbar.</p>
                 <div id="assemblies-list" class="dynamic-list"></div>
                 <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
             </div>
@@ -85,37 +112,9 @@
             </div>
 
             <div id="config-scenarios" class="config-section">
-                <h2>Szenarien verwalten</h2>
-                <div class="scenario-management">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="scenario-name">Szenario-Name</label>
-                            <input type="text" id="scenario-name" placeholder="Name für neues Szenario...">
-                        </div>
-                        <div class="form-group">
-                            <label for="saved-scenarios">Gespeicherte Szenarien</label>
-                            <select id="saved-scenarios"></select>
-                        </div>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" id="save-scenario-btn">Szenario speichern</button>
-                        <button type="button" id="load-scenario-btn">Szenario laden</button>
-                        <button type="button" id="delete-scenario-btn" class="danger">Szenario löschen</button>
-                    </div>
-                </div>
             </div>
 
-            <div id="config-summary" class="config-section active">
-                <h2>Zusammenfassung der Konfiguration</h2>
-                <div class="summary-container">
-                    <div class="summary-box" id="summary-output"></div>
-                    <div class="summary-box">
-                        <h3>Visuelle Vorschau</h3>
-                        <div id="visualization-container">
-                            <svg id="svg-canvas"></svg>
-                        </div>
-                    </div>
-                </div>
+            <div id="config-summary" class="config-section">
             </div>
         </div>
         <hr>

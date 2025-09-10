@@ -1,67 +1,25 @@
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Magnetfeld-Simulation{% endblock %}</title>
-    <link rel="icon" href="{{ url_for('static', filename='img/logo_rolf-janssen_2024.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block head %}{% endblock %}
 </head>
-
 <body>
     <header>
-        <div class="header-left">
-            <img src="{{ url_for('static', filename='img/logo_rolf-janssen_2024.svg') }}" alt="Logo" id="header-logo">
-            <h1>Magnetfeld-Simulation</h1>
-        </div>
+        <h1>Magnetfeld-Simulation</h1>
         <nav>
-            <div class="nav-item">
-                <a href="{{ url_for('index') }}">Home</a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('configurator') }}">Konfigurator</a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('simulation_v2') }}">Interaktiver Konfigurator</a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('simulation') }}">Simulation</a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('analysis') }}">Analyse</a>
-            </div>
-            <div class="nav-item has-dropdown">
-                <a href="#">Werkzeuge</a>
-                <div class="dropdown-menu">
-                    <a href="{{ url_for('bauteile') }}">Bauteile</a>
-                    <a href="{{ url_for('admin') }}">Admin</a>
-                </div>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('settings') }}">Einstellungen</a>
-            </div>
+            <div class="nav-item"><a href="{{ url_for('index') }}">Home</a></div>
+            <div class="nav-item"><a href="{{ url_for('simulation') }}">Simulation</a></div>
+            <div class="nav-item"><a href="{{ url_for('results') }}">Ergebnisse</a></div>
+            <div class="nav-item"><a href="{{ url_for('library') }}">Bibliothek</a></div>
+            <div class="nav-item"><a href="{{ url_for('settings') }}">Einstellungen</a></div>
         </nav>
-        <div class="header-right">
-        </div>
     </header>
-
-    {% block sub_nav %}{% endblock %}
-
     <main>
-        <div class="container">
-            {% block content %}{% endblock %}
-        </div>
+        {% block content %}{% endblock %}
     </main>
-
-    <footer>
-        <p>&copy; 2025 - Magnetfeld-Simulation</p>
-    </footer>
-
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
     {% block scripts %}{% endblock %}
 </body>
-
 </html>

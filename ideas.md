@@ -20,54 +20,66 @@ Basierend auf deinen Punkten habe ich das Ganze in Form einer Anforderungsbeschr
 
 ---
 
-### **Anforderungsbeschreibung: Interaktiver Konfigurator für FEMM-Simulationsdateien**
+Absolut! Gerne, hier ist eine Zusammenfassung der aktuellen Seiten und daran anknüpfend ein paar Vorschläge und Fragen, um die Struktur der Website zu optimieren und aufzuräumen.
 
-#### **1. Ziel des Projekts**
+### Zusammenfassung der bestehenden Seiten
 
-Ziel ist die Erstellung eines interaktiven Skripts oder Programms (Konfigurator), das einen Benutzer schrittweise durch die Konfiguration einer FEMM-Simulation führt. Das Endergebnis dieses Prozesses ist eine einzige, in sich geschlossene Konfigurationsdatei im JSON-Format (`simulation.json`). Diese Datei enthält **alle** für eine spezifische Simulationsreihe notwendigen Parameter, Geometrien und Einstellungen, sodass sie portabel und ohne externe Abhängigkeiten (wie eine separate `library.json`) von einem MATLAB-Skript ausgeführt werden kann.
-
-#### **2. Der Konfigurationsprozess (Ablauf für den Benutzer)**
-
-Der Konfigurator führt den Benutzer durch die folgenden, aufeinander aufbauenden Schritte:
-
-**Schritt 1: Auswahl des Nennstroms**
-
-- Der Benutzer wählt einen primären Nennstrom aus einer vordefinierten Liste aus.
-- **Vordefinierte Werte:** `600 A, 800 A, 1000 A, 1250 A, 1600 A, 2000 A, 2500 A, 3000 A, 4000 A, 5000 A`.
-- Dieser Wert dient als Filterkriterium für den nächsten Schritt.
-
-**Schritt 2: Auswahl des Stromwandlers**
-
-- **Filtern:** Das Programm durchsucht eine zentrale Bauteilbibliothek (z.B. `library.json`) und zeigt dem Benutzer alle Stromwandler an, die für den in Schritt 1 gewählten Nennstrom ausgelegt sind.
-- **Auswahl:** Der Benutzer wählt einen der angezeigten Stromwandler für die Simulation aus.
-- **Datenübernahme:** Die vollständigen geometrischen und materialspezifischen Daten des **ausgewählten** Wandlers werden direkt in die zu erstellende `simulation.json` kopiert.
-
-**Schritt 3: Definition der Leiterposition und Bewegung**
-
-- **Laden der Startgeometrie:** Die initialen (x,y)-Koordinaten der drei Kupferleiter (L1, L2, L3) sowie die Geometrie des Simulationsraums (der "Spielraum") werden aus einer Stammdaten-Datei geladen.
-- **Auswahl der Bewegungsgruppe:** Der Benutzer wählt eine vordefinierte Bewegungsgruppe aus der Datei `bewegung.csv`. Jede Gruppe definiert eine Bewegungsrichtung oder -muster (z.B. "Pos11: ← Westen, , → Osten").
-- **Berechnung der Positionsschritte:** Anhand der gewählten Bewegungsgruppe und der dazugehörigen Schrittweiten aus `schrittweite.csv` berechnet das Programm alle diskreten Positionen der Leiter für den gesamten Simulationsverlauf. Diese berechneten Koordinatenreihen werden in der `simulation.json` gespeichert.
-
-**Schritt 4: Festlegung der Simulationsparameter**
-
-- **Eingabe der Simulationsströme:** Der Benutzer gibt drei konkrete Stromstärken an (z.B. `2000 A, 2500 A, 3000 A`), die im Rahmen der Simulation untersucht werden sollen. Dies sind die tatsächlichen Werte für die drei separaten Simulationsläufe.
-- **Definition des Phasenwinkels:** Für jede der drei Stromstärken wird ein Phasenwinkel-Sweep durchgeführt. Diese Parameter sind fest definiert:
-  - Startwinkel (`varphi_start`): $0°$
-  - Endwinkel (`varphi_end`): $180°$
-  - Schrittweite (`varphi_step`): $5°$
-
-#### **3. Das Ergebnis: Die `simulation.json` Datei**
-
-Die erzeugte `simulation.json` ist eine vollständige und unabhängige "Blaupause" für die Simulation. Sie enthält:
-
-- **Bauteildaten:** Die vollständigen Geometrie- und Materialdaten des ausgewählten Stromwandlers.
-- **Geometriedaten:** Die Startpositionen und alle berechneten Positionsschritte der Leiter L1, L2 und L3.
-- **Simulationsparameter:** Die drei zu simulierenden Stromstärken und die Parameter für den Phasenwinkel-Sweep.
-- **Simulationsraum:** Die Abmessungen des umgebenden Raumes.
-
-#### **4. Begründung des Konzepts (Das "Warum")**
-
-- **Stabilität und Reproduzierbarkeit:** Jede `simulation.json` ist eine exakte, unveränderliche Aufzeichnung einer Konfiguration. Sie kann archiviert und zu einem späteren Zeitpunkt erneut ausgeführt werden, um exakt die gleichen Ergebnisse zu erzielen. Das Versenden an Kollegen wird trivial – eine Datei genügt.
-- **Entkopplung und Einfachheit:** Das MATLAB-Simulationsskript (z.B. `main.m`) wird stark vereinfacht. Seine einzige Aufgabe ist das Parsen **einer einzigen** `simulation.json` und das Ausführen der darin definierten Berechnungen. Es benötigt keine Logik, um externe Bibliotheken zu durchsuchen oder Referenzen aufzulösen. Dies reduziert die Komplexität und Fehleranfälligkeit des MATLAB-Codes erheblich.
+- **`index.html` (Home):** Deine Startseite. Momentan dient sie als Willkommens- oder Übersichtsseite.
+- **`configurator.html` (Konfigurator):** Das Herzstück deiner Anwendung. Hier stellst du eine Simulation detailliert zusammen, definierst Baugruppen und Parameter und erstellst die `simulation.json`.
+- **`simulation.html` (Simulation):** Diese Seite scheint dafür gedacht zu sein, eine bereits erstellte `simulation.json` auszuführen und den Fortschritt der FEMM-Berechnungen zu verfolgen.
+- **`analysis.html` (Analyse):** Dient zur Visualisierung und Auswertung der Ergebnisse (`.ans`-Dateien) einer abgeschlossenen Simulation.
+- **`bauteile.html` (Bauteile):** Ein Editor, um die Haupt-Bauteilbibliothek (`library.json`) zu verwalten, also neue Transformatoren, Schienen etc. hinzuzufügen oder zu bearbeiten.
+- **`admin.html` (Admin):** Ein Editor speziell für die CSV-Stammdaten (`startpositionen.csv`, `bewegungen.csv` etc.).
+- **`settings.html` (Einstellungen):** Eine Platzhalter-Seite für zukünftige Anwendungseinstellungen.
+- **`measurement.html` (Measurement):** Eine Seite, die aussieht, als sei sie für die Steuerung eines Messprozesses gedacht, eventuell zur Erfassung von realen Daten.
+- **`simulation_v2.html` (Interaktiver Konfigurator):** Die Prototyp-Seite, deren Funktionalität wir in den Haupt-Konfigurator (`configurator.html`) integriert haben.
 
 ---
+
+### Vorschläge & Fragen zur Vereinfachung
+
+Basierend auf der Zusammenfassung habe ich ein paar Ideen, wie wir die Struktur klarer und logischer gestalten können. Bitte gib mir Feedback, welche dieser Vorschläge dir zusagen.
+
+**1. Konfigurieren und Simulieren zusammenführen?**
+
+Aktuell hast du eine Seite zum **Erstellen** der `simulation.json` (`configurator.html`) und eine separate Seite zum **Ausführen** (`simulation.html`).
+
+- **Vorschlag:** Man könnte diese beiden Schritte auf einer einzigen Seite zusammenführen. Nachdem du auf "simulation.json erstellen" klickst, könnte auf derselben Seite ein neuer Bereich erscheinen mit einem "Simulation starten"-Button. Das würde den Workflow direkter machen.
+
+**➡️ Frage:** Möchtest du die Seiten `configurator.html` und `simulation.html` zu einer einzigen, geführten "Simulations-Seite" zusammenlegen oder die Trennung beibehalten?
+
+- [x] Ja, zusammenführen
+- [ ] Nein
+
+**2. Datenverwaltung bündeln?**
+
+Du hast zwei Seiten zur Datenpflege: `bauteile.html` für die JSON-Bibliothek und `admin.html` für die CSV-Stammdaten. Thematisch gehören beide zur Vorbereitung der Simulationsgrundlagen.
+
+- **Vorschlag:** Wir könnten `bauteile.html` und `admin.html` zu einer einzigen Seite namens "Datenverwaltung" oder "Bibliothek" zusammenfassen. Auf dieser Seite könnte man über Tabs oder Buttons zwischen dem "Bauteil-Editor (JSON)" und dem "Stammdaten-Editor (CSV)" wechseln. Das würde die Navigation unter "Werkzeuge" aufräumen.
+
+**➡️ Frage:** Sollen wir die `admin`- und `bauteile`-Seite zu einer zentralen "Datenverwaltungs"-Seite zusammenlegen?
+
+- [x] Ja, zu Bibliothek zusammenlegen
+- [ ] Nein
+
+**3. Die Rolle der "Measurement"-Seite**
+
+Die Seite `measurement.html` wirkt im Vergleich zu den anderen etwas eigenständig.
+
+**➡️ Frage:** Ist diese Seite Teil des Kern-Simulationsprozesses oder eher ein separates Werkzeug? Je nach Antwort könnten wir sie prominenter platzieren oder als spezialisiertes Werkzeug belassen.
+
+- [ ] Ja
+- [ ] Nein
+- [x] Hier sollen die Messwerte aus der Simulation dargestellt werden in einem Plot.
+
+**4. Überflüssige Seiten entfernen?**
+
+- **`simulation_v2.html`:** Da die Funktionalität jetzt im Haupt-Konfigurator lebt, ist diese Seite überflüssig geworden.
+- **`settings.html`:** Diese Seite hat aktuell keinen Inhalt.
+
+**➡️ Frage:** Bist du einverstanden, dass wir `simulation_v2.html` (und die zugehörigen JS/CSS-Dateien) löschen? Können wir die `settings.html` vorerst auch entfernen, bis es konkrete Anwendungsfälle dafür gibt? Der Link in der Navigation würde dann ebenfalls verschwinden.
+
+- [x] Ja, lösche simulation_v2.html und zugehörige Dateien
+- [x] Nein, settings sollen nicht gelöscht werden
+
+

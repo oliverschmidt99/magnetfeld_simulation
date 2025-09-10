@@ -215,3 +215,4 @@ __marimo__/
 simulation.json
 .gitignore
 python.exe
+.vscode/settings.json

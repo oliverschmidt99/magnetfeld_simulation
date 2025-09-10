@@ -45,12 +45,13 @@ function runFemmAnalysis(params, runIdentifier)
         mi_drawrectangle(-sim_L / 2, -sim_B / 2, sim_L / 2, sim_B / 2);
 
         % PLATZIERT DIE INNERE LUFT an einer sicheren, leeren Position
-        mi_addblocklabel(-sim_L / 4, 0);
-        mi_selectlabel(-sim_L / 4, 0);
+        % (Zwischen linkem und mittlerem Wandler)
+        mi_addblocklabel(-45, 0);
+        mi_selectlabel(-45, 0);
         mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);
         mi_clearselected();
 
-        % Platziert die Baugruppen
+        % Platziert die Baugruppen (die ihre eigenen Material-Labels korrekt setzen)
         for i = 1:length(params.assemblies)
             assembly = params.assemblies{i};
             circuitName = params.currents{i}.name;
@@ -69,8 +70,8 @@ function runFemmAnalysis(params, runIdentifier)
         % --- 5. Randbedingung und ÄUSSERE LUFT ---
         mi_makeABC(7, max(sim_L, sim_B) * 1.5, 0, 0, 0);
 
-        % PLATZIERT DIE ÄUSSERE LUFT an einer sicheren, leeren Position
-        label_x_outer_air = sim_L / 2 + 10;
+        % PLATZIERT DIE ÄUSSERE LUFT an der von dir gewünschten Stelle
+        label_x_outer_air = sim_L / 2 + 10; % Etwas weiter außen
         mi_addblocklabel(label_x_outer_air, 0);
         mi_selectlabel(label_x_outer_air, 0);
         mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);

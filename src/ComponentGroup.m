@@ -40,7 +40,7 @@ classdef ComponentGroup
             outerAir.groupNum = groupNumOffset + 5;
             gap.groupNum = groupNumOffset + 6;
 
-            % --- Absolute Position des Wandlers/der Baugruppe ---
+            % --- Absolute Position der Baugruppe ---
             assemblyAbsX = obj.xPos;
             assemblyAbsY = obj.yPos;
 
@@ -51,8 +51,8 @@ classdef ComponentGroup
             drawBoundary(gap, assemblyAbsX, assemblyAbsY);
             drawBoundary(rail, assemblyAbsX, assemblyAbsY);
 
-            % --- 2. Alle Material-Labels an korrekten absoluten Positionen platzieren ---
-            % KUPFER (im Zentrum)
+            % --- 2. Alle Material-Labels an korrekten, individuellen Positionen platzieren ---
+            % KUPFER (im Zentrum der Schiene)
             placeLabel(assemblyAbsX, assemblyAbsY, circuitName, rail.material, rail.groupNum);
 
             % LUFT IM SPALT (zwischen Schiene und innerer Wandlerkante)
@@ -72,6 +72,7 @@ classdef ComponentGroup
             placeLabel(label_x_outer, assemblyAbsY, '<None>', outerAir.material, outerAir.groupNum);
         end
 
+        % --- Hilfsfunktionen (unverändert) ---
         function component = findComponentByClass(obj, className)
             component = [];
 

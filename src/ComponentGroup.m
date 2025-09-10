@@ -1,4 +1,4 @@
-% src/ComponentGroup.m - FINALE VERSION
+% src/ComponentGroup.m
 classdef ComponentGroup
 
     properties
@@ -33,7 +33,7 @@ classdef ComponentGroup
             gap = transformer.findComponentByName('AirGap');
             if isempty(outerAir) || isempty(core) || isempty(innerAir) || isempty(gap), error('Subkomponenten des Wandlers nicht gefunden.'); end
 
-            % --- Gruppennummern zuweisen ---
+            % --- Gruppennummern zuweisen (für spätere Analyse) ---
             rail.groupNum = groupNumOffset + 1;
             core.groupNum = groupNumOffset + 3;
             innerAir.groupNum = groupNumOffset + 4;
@@ -44,7 +44,7 @@ classdef ComponentGroup
             assemblyAbsX = obj.xPos;
             assemblyAbsY = obj.yPos;
 
-            % --- 1. Alle Grenzen zeichnen ---
+            % --- 1. Alle geometrischen Grenzen zeichnen ---
             drawBoundary(outerAir, assemblyAbsX, assemblyAbsY);
             drawBoundary(core, assemblyAbsX, assemblyAbsY);
             drawBoundary(innerAir, assemblyAbsX, assemblyAbsY);
@@ -52,7 +52,8 @@ classdef ComponentGroup
             drawBoundary(rail, assemblyAbsX, assemblyAbsY);
 
             % --- 2. Alle Material-Labels an korrekten, individuellen Positionen platzieren ---
-            % KUPFER (im Zentrum der Schiene)
+
+            % KUPFER (im Zentrum der Schiene, mit Strom)
             placeLabel(assemblyAbsX, assemblyAbsY, circuitName, rail.material, rail.groupNum);
 
             % LUFT IM SPALT (zwischen Schiene und innerer Wandlerkante)
@@ -72,7 +73,7 @@ classdef ComponentGroup
             placeLabel(label_x_outer, assemblyAbsY, '<None>', outerAir.material, outerAir.groupNum);
         end
 
-        % --- Hilfsfunktionen (unverändert) ---
+        % --- Hilfsfunktionen ---
         function component = findComponentByClass(obj, className)
             component = [];
 

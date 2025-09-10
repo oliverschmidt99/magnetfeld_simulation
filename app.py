@@ -5,25 +5,33 @@ Diese Flask-Anwendung stellt eine Web-Oberfläche zur Verfügung, um FEMM-Simula
 interaktiv zu konfigurieren und zu verwalten.
 """
 
-# 1. Standard-Bibliotheken
-import copy
-import csv
-import json
 import os
-from typing import Any, Dict, List, Tuple
-
-# 2. Third-Party-Bibliotheken
+import json
+import csv
+from typing import List, Dict, Any, Tuple
+import copy
 from flask import Flask, jsonify, render_template, request
 
-# Annahme: Die app.py liegt im Hauptverzeichnis des Projekts
+# Importiere die Blueprints aus dem 'server'-Paket
+from server.api import api_bp
+from server.analysis import analysis_bp
+from server.simulation import simulation_bp
+
+
+# --- Konfiguration ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SCENARIOS_DIR = os.path.join(BASE_DIR, "conf")
+LIBRARY_FILE = "library.json"
 
 app = Flask(__name__)
 
-# --- Hilfsfunktionen zum Laden von Daten ---
+# --- Blueprints registrieren ---
+app.register_blueprint(api_bp)
+app.register_blueprint(analysis_bp)
+app.register_blueprint(simulation_bp)
 
 
+# --- Hilfsfunktionen ---
 def load_json(filename: str) -> Any:
     """Lädt eine JSON-Datei sicher aus dem Projektverzeichnis."""
     filepath = os.path.join(BASE_DIR, filename)
@@ -35,21 +43,19 @@ def load_json(filename: str) -> Any:
 
 
 def load_csv(filename: str) -> List[Dict]:
-    """Lädt eine CSV-Datei sicher aus dem Projektverzeichnis."""
-    filepath = os.path.join(BASE_DIR, filename)
+    """Lädt eine CSV-Datei sicher aus dem data-Verzeichnis."""
+    filepath = os.path.join(BASE_DIR, "data", filename)
     try:
         with open(filepath, "r", encoding="utf-8") as f:
+            # Annahme: Semikolon als Trennzeichen
             reader = csv.DictReader(f)
             return list(reader)
     except FileNotFoundError:
         return []
 
 
-# --- BERECHNUNGSLOGIK FÜR BEWEGUNG ---
-
-
+# --- Logik für den interaktiven Konfigurator ---
 def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
-    """Wandelt einen Richtungstext (z.B. '← Westen') in einen (x, y) Vektor um."""
     if not isinstance(direction_str, str):
         return (0, 0)
     mapping = {
@@ -71,101 +77,102 @@ def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
 def calculate_position_steps(
     start_pos: Dict, bewegung: Dict, schrittweiten: Dict
 ) -> List[Dict]:
-    """Berechnet die Koordinaten für alle Positionsschritte."""
     all_steps = []
-    for i in range(1, 4):
+    start_pos_vec = {
+        f"L{i}": {
+            "x": float(start_pos.get(f"x_L{i}", 0)),
+            "y": float(start_pos.get(f"y_L{i}", 0)),
+        }
+        for i in range(1, 4)
+    }
+    current_pos = copy.deepcopy(start_pos_vec)
+    all_steps.append(current_pos)
+    for i in range(1, 5):
         pos_key = f"Pos{i}"
-        step_width = schrittweiten.get(pos_key, 0)
-        current_pos = all_steps[-1] if all_steps else start_pos
-        next_pos = copy.deepcopy(current_pos)
+        step_width_str = schrittweiten.get(pos_key)
+        if not step_width_str:
+            continue
+        step_width = float(step_width_str)
+        next_pos = copy.deepcopy(all_steps[-1])
         for leiter in ["L1", "L2", "L3"]:
             direction_str = bewegung.get(leiter, "")
             vector = parse_direction_to_vector(direction_str)
             next_pos[leiter]["x"] += vector[0] * step_width
             next_pos[leiter]["y"] += vector[1] * step_width
         all_steps.append(next_pos)
-    return [start_pos] + all_steps
+    return all_steps
 
 
-# --- FLASK ROUTEN (ALLE SEITEN) ---
-
-
+# --- Routen für die Webseiten ---
 @app.route("/")
 def index():
-    """Zeigt die Hauptseite an."""
     return render_template("index.html")
 
 
 @app.route("/configurator")
 def configurator():
-    """Zeigt die Konfigurator-Seite an."""
-    library = load_json("library.json")
-    bewegungen = load_csv("bewegungen.csv")
+    library = load_json(LIBRARY_FILE)
+    bewegungen = load_csv("3_bewegungen.csv")
     return render_template("configurator.html", library=library, bewegungen=bewegungen)
+
+
+@app.route("/simulation_v2")
+def simulation_v2():
+    return render_template("simulation_v2.html")
 
 
 @app.route("/simulation")
 def simulation():
-    """Zeigt die Simulations-Seite an."""
-    # Hier Logik für die Simulationsseite einfügen
     return render_template("simulation.html")
 
 
 @app.route("/analysis")
 def analysis():
-    """Zeigt die Analyse-Seite an."""
-    # Hier Logik für die Analyse-Seite einfügen
     return render_template("analysis.html")
 
 
 @app.route("/bauteile")
 def bauteile():
-    """Zeigt die Bauteile-Seite an."""
-    library = load_json("library.json")
+    library = load_json(LIBRARY_FILE)
     return render_template("bauteile.html", library=library)
 
 
 @app.route("/admin")
 def admin():
-    """Platzhalter für die Admin-Seite."""
     return "Admin-Seite (noch nicht implementiert)"
 
 
 @app.route("/settings")
 def settings():
-    """Zeigt die Einstellungs-Seite an."""
     return render_template("settings.html")
 
 
-# --- API ENDPUNKTE ---
-
-
-@app.route("/generate", methods=["POST"])
-def generate_simulation():
-    """
-    Nimmt die Konfiguration vom Frontend entgegen, berechnet die Leiterpositionen
-    und erstellt die finale simulation.json.
-    """
+# --- API Endpunkt für den interaktiven Konfigurator ---
+@app.route("/generate_v2", methods=["POST"])
+def generate_simulation_v2():
     data = request.json
+    library = load_json(LIBRARY_FILE)
+    bewegungen_data = load_csv("3_bewegungen.csv")
+    startpos_data = {item["Strom"]: item for item in load_csv("1_startpositionen.csv")}
+    spielraum_data = {item["Strom"]: item for item in load_csv("2_spielraum.csv")}
+    schrittweiten_data = {
+        item["Strom"]: item for item in load_csv("4_schrittweiten.csv")
+    }
 
-    stammdaten = load_json("stammdaten.json")
-    bewegungen_data = load_csv("bewegungen.csv")
-    library = load_json("library.json")
+    nennstrom = data.get("nennstrom")
+    wandler_name = data.get("wandler")
+    bewegung_gruppe_name = data.get("bewegungsgruppe")
 
-    sim_params = data.get("simulationParams", {})
-    nennstrom_str = sim_params.get("ratedCurrent", "600")
-    nennstrom = int(nennstrom_str)
-    bewegung_gruppe_name = sim_params.get("movementGroup")
-
-    strom_key = f"{nennstrom}A"
-    aktuelle_stammdaten = stammdaten.get(strom_key)
-    if not aktuelle_stammdaten:
-        return (
-            jsonify(
-                {"error": f"Keine Stammdaten für Nennstrom {nennstrom}A gefunden."}
-            ),
-            400,
-        )
+    wandler_details = next(
+        (
+            t
+            for t in library.get("components", {}).get("transformers", [])
+            if t.get("templateProductInformation", {}).get("name") == wandler_name
+        ),
+        None,
+    )
+    if not wandler_details:
+        return jsonify({"error": f"Wandler '{wandler_name}' nicht gefunden."}), 400
 
     gewaehlte_bewegung = next(
         (b for b in bewegungen_data if b["PosGruppe"] == bewegung_gruppe_name), None
@@ -178,46 +185,35 @@ def generate_simulation():
             400,
         )
 
-    startpositionen = aktuelle_stammdaten["startpositionen"]
-    schrittweiten = aktuelle_stammdaten["schrittweiten"]
+    startpositionen = startpos_data.get(nennstrom)
+    spielraum = spielraum_data.get(nennstrom)
+    schrittweiten = schrittweiten_data.get(nennstrom)
+
+    if not all([startpositionen, spielraum, schrittweiten]):
+        return jsonify({"error": f"Stammdaten für {nennstrom}A unvollständig."}), 400
+
     leiter_bewegungspfade = calculate_position_steps(
         startpositionen, gewaehlte_bewegung, schrittweiten
     )
 
-    final_assemblies = []
-    for assembly_data in data.get("assemblies", []):
-        phase_name = assembly_data.get("phaseName")
-        if phase_name in startpositionen:
-            transformer_details = next(
-                (
-                    t
-                    for t in library.get("components", {}).get("transformers", [])
-                    if t.get("templateProductInformation", {}).get("name")
-                    == assembly_data["transformerName"]
-                ),
-                None,
-            )
-            assembly_data["calculated_positions"] = [
-                step[phase_name] for step in leiter_bewegungspfade
-            ]
-            assembly_data["transformer_details"] = transformer_details
-            final_assemblies.append(assembly_data)
-
+    phasenwinkel_params = data.get("phasenwinkel", {})
     output = {
-        "description": "Konfiguration erstellt via Web-UI mit automatischer Positionierung",
-        "simulationParams": sim_params,
-        "electricalSystem": data.get("electricalSystem"),
-        "assemblies": final_assemblies,
-        "standAloneComponents": data.get("standAloneComponents"),
-        "simulation_meta": {
-            "nennstrom_A": nennstrom,
-            "bewegungsgruppe": gewaehlte_bewegung,
-            "simulationsraum": aktuelle_stammdaten["spielraum"],
-            "bewegungspfade_alle_leiter": {
-                "beschreibung": f"Bewegungsgruppe: {bewegung_gruppe_name}",
-                "schritte_details": leiter_bewegungspfade,
+        "bauteildaten": wandler_details,
+        "geometriedaten": {
+            "startpositionen": startpositionen,
+            "bewegungspfade": leiter_bewegungspfade,
+        },
+        "simulationsparameter": {
+            "simulationsstroeme_A": [
+                float(s) for s in data.get("simulationsstroeme", [])
+            ],
+            "phasenwinkel_sweep": {
+                "start_deg": int(phasenwinkel_params.get("start", 0)),
+                "end_deg": int(phasenwinkel_params.get("end", 180)),
+                "step_deg": int(phasenwinkel_params.get("step", 5)),
             },
         },
+        "simulationsraum": spielraum,
     }
 
     output_path = os.path.join(BASE_DIR, "simulation.json")

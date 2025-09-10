@@ -1,5 +1,4 @@
-% runPhaseSweep.m - Finale Version
-
+% src/runPhaseSweep.m - FINALE VERSION (mit Debug-Änderung)
 function resultsTable = runPhaseSweep(simConfig, library, baseParams, phaseAngleVector, scenarioVarName, scenarioVarValue, simRaum)
     [currents, assemblies, standAloneComponents] = initializeComponents(simConfig, library);
     stepParams = baseParams;
@@ -13,13 +12,14 @@ function resultsTable = runPhaseSweep(simConfig, library, baseParams, phaseAngle
     numAngles = length(phaseAngleVector);
     resultsCell = cell(numAngles, 1);
 
-    parfor i = 1:numAngles
+    % WICHTIG: Temporär auf eine normale for-Schleife umgestellt, um Parallelisierungs-Fehler auszuschließen
+    for i = 1:numAngles
         openfemm(1);
         angle = phaseAngleVector(i);
         fprintf('--> Simuliere für Phasenwinkel: %d°\n', angle);
         workerParams = stepParams;
         workerParams.phaseAngleDeg = angle;
-        runIdentifier = sprintf('%s_angle%d', datestr(datetime('now'), 'HHMMSS'), angle);
+        runIdentifier = sprintf('%s_angle%d_pos%d', datestr(datetime('now'), 'HHMMSS'), angle, round(scenarioVarValue(1)));
 
         runFemmAnalysis(workerParams, runIdentifier);
         singleRunResults = calculateResults(workerParams);

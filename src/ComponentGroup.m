@@ -40,37 +40,36 @@ classdef ComponentGroup
             outerAir.groupNum = groupNumOffset + 5;
             gap.groupNum = groupNumOffset + 6;
 
-            % --- Absolute Position des Wandlers berechnen ---
-            transformerAbsX = obj.xPos + transformer.xPos;
-            transformerAbsY = obj.yPos + transformer.yPos;
+            % --- Absolute Position des Wandlers/der Baugruppe ---
+            assemblyAbsX = obj.xPos;
+            assemblyAbsY = obj.yPos;
 
             % --- 1. Alle Grenzen zeichnen ---
-            drawBoundary(outerAir, transformerAbsX, transformerAbsY);
-            drawBoundary(core, transformerAbsX, transformerAbsY);
-            drawBoundary(innerAir, transformerAbsX, transformerAbsY);
-            drawBoundary(gap, transformerAbsX, transformerAbsY);
-            drawBoundary(rail, obj.xPos, obj.yPos);
+            drawBoundary(outerAir, assemblyAbsX, assemblyAbsY);
+            drawBoundary(core, assemblyAbsX, assemblyAbsY);
+            drawBoundary(innerAir, assemblyAbsX, assemblyAbsY);
+            drawBoundary(gap, assemblyAbsX, assemblyAbsY);
+            drawBoundary(rail, assemblyAbsX, assemblyAbsY);
 
             % --- 2. Alle Material-Labels an korrekten absoluten Positionen platzieren ---
-
-            % KUPFER im Zentrum der Baugruppe (xPos, yPos)
-            placeLabel(obj.xPos, obj.yPos, circuitName, rail.material, rail.groupNum);
+            % KUPFER (im Zentrum)
+            placeLabel(assemblyAbsX, assemblyAbsY, circuitName, rail.material, rail.groupNum);
 
             % LUFT IM SPALT (zwischen Schiene und innerer Wandlerkante)
-            labelX_offset_gap = (gap.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
-            placeLabel(transformerAbsX + labelX_offset_gap, transformerAbsY, '<None>', gap.material, gap.groupNum);
+            label_x_gap = assemblyAbsX + (gap.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
+            placeLabel(label_x_gap, assemblyAbsY, '<None>', gap.material, gap.groupNum);
 
             % INNERE LUFTSCHICHT
-            labelX_offset_innerAir = (innerAir.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
-            placeLabel(transformerAbsX + labelX_offset_innerAir, transformerAbsY, '<None>', innerAir.material, innerAir.groupNum);
+            label_x_innerAir = assemblyAbsX + (innerAir.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
+            placeLabel(label_x_innerAir, assemblyAbsY, '<None>', innerAir.material, innerAir.groupNum);
 
             % STAHLKERN
-            labelX_offset_core = (core.geoObject.vertices(2, 1) + innerAir.geoObject.vertices(2, 1)) / 2;
-            placeLabel(transformerAbsX + labelX_offset_core, transformerAbsY, '<None>', core.material, core.groupNum);
+            label_x_core = assemblyAbsX + (core.geoObject.vertices(2, 1) + innerAir.geoObject.vertices(2, 1)) / 2;
+            placeLabel(label_x_core, assemblyAbsY, '<None>', core.material, core.groupNum);
 
             % ÄUSSERE LUFTSCHICHT
-            labelX_offset_outer = (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
-            placeLabel(transformerAbsX + labelX_offset_outer, transformerAbsY, '<None>', outerAir.material, outerAir.groupNum);
+            label_x_outer = assemblyAbsX + (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
+            placeLabel(label_x_outer, assemblyAbsY, '<None>', outerAir.material, outerAir.groupNum);
         end
 
         function component = findComponentByClass(obj, className)
@@ -79,8 +78,7 @@ classdef ComponentGroup
             for i = 1:length(obj.components)
 
                 if isa(obj.components{i}, className)
-                    component = obj.components{i};
-                    return;
+                    component = obj.components{i}; return;
                 end
 
             end

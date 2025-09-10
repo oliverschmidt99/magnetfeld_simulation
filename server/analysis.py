@@ -6,7 +6,7 @@ import os
 import pandas as pd
 from flask import Blueprint, jsonify, request
 from werkzeug.utils import safe_join
-from server.utils import (
+from .utils import (
     RESULTS_DIR,
     parse_fem_ans_files,
     calculate_b_field,
@@ -55,11 +55,14 @@ def get_summary_csv(date_dir, time_dir):
 
         df = pd.read_csv(safe_path)
         return jsonify(df.to_dict(orient="records"))
-
     except (OSError, pd.errors.EmptyDataError) as e:
         return jsonify({"error": f"Fehler beim Lesen der CSV-Datei: {e}"}), 500
-    except Exception as e:
-        return jsonify({"error": f"Ein unerwarteter Fehler ist aufgetreten: {e}"}), 500
+    # KORREKTUR: Spezifischere Fehlerbehandlung statt allgemeiner Exception
+    except (IOError, ValueError) as e:
+        return (
+            jsonify({"error": f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}"}),
+            500,
+        )
 
 
 @analysis_bp.route("/analysis/files/<path:run_dir>")
@@ -69,11 +72,9 @@ def list_files_in_run(run_dir):
         safe_run_path = safe_join(os.path.abspath(RESULTS_DIR), run_dir)
         if not safe_run_path or not os.path.isdir(safe_run_path):
             return jsonify({"error": "Ungültiger Pfad"}), 404
-
         femm_files_path = os.path.join(safe_run_path, "femm_files")
         if not os.path.isdir(femm_files_path):
             return jsonify([])
-
         ans_files = sorted(
             [f for f in os.listdir(femm_files_path) if f.endswith(".ans")]
         )
@@ -131,7 +132,6 @@ def get_analysis_data(filepath):
 
 def get_transformer_components(t, pos):
     """Extrahiert sicher die geometrischen Teile eines Wandlers."""
-    # ... (Dieser Teil bleibt unverändert) ...
     components, geo = [], t.get("specificProductInformation", {}).get("geometry", {})
     pos_x, pos_y = pos.get("x", 0), pos.get("y", 0)
     if geo.get("type") != "Rectangle":
@@ -143,7 +143,6 @@ def get_transformer_components(t, pos):
     dims = ["outerAir", "coreOuter", "coreInner", "inner"]
     labels = ["Outer Air", "Steel Core", "Inner Air", "Air Gap"]
     fills = ["#f0f8ff", "#d3d3d3", "#f0f8ff", "#ffffff"]
-
     for i, dim_name in enumerate(dims):
         w, h = get_dim(f"{dim_name}Width"), get_dim(f"{dim_name}Height")
         components.append(
@@ -163,7 +162,6 @@ def get_transformer_components(t, pos):
 @analysis_bp.route("/visualize", methods=["POST"])
 def visualize_setup():
     """Erstellt eine SVG-Vorschau für den Konfigurator."""
-    # ... (Dieser Teil bleibt unverändert) ...
     library = load_data(LIBRARY_FILE, {"components": {}})
     form_data = request.json
     svg_elements = []
@@ -172,8 +170,17 @@ def visualize_setup():
     all_transformers = library.get("components", {}).get("transformers", [])
     all_sheets = library.get("components", {}).get("transformerSheets", [])
 
+    # Temporäre Positionen für die Visualisierung - im echten Skript werden diese berechnet
+    positions = {
+        "L1": {"x": -100, "y": 0},
+        "L2": {"x": 0, "y": 0},
+        "L3": {"x": 100, "y": 0},
+    }
+
     for asm in form_data.get("assemblies", []):
-        pos = asm.get("position", {})
+        phase_name = asm.get("phaseName")
+        pos = positions.get(phase_name, {"x": 0, "y": 0})
+
         transformer = next(
             (
                 t

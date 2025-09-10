@@ -123,9 +123,10 @@ def configurator():
     return render_template("configurator.html", library=library, bewegungen=bewegungen)
 
 
+# KORREKTUR: Fehlende Route wieder hinzugefügt
 @app.route("/simulation_v2")
 def simulation_v2():
-    """Zeigt die neue interaktive Konfigurator-Seite."""
+    """Zeigt die alte interaktive Konfigurator-Seite."""
     return render_template("simulation_v2.html")
 
 
@@ -160,9 +161,9 @@ def settings():
     return render_template("settings.html")
 
 
-# --- API Endpunkt für den interaktiven Konfigurator ---
-@app.route("/generate_v2", methods=["POST"])
-def generate_simulation_v2():
+# --- API Endpunkt für den Konfigurator ---
+@app.route("/generate", methods=["POST"])
+def generate_simulation():
     """Erstellt die `simulation.json` basierend auf den Benutzereingaben."""
     data = request.json
     library = load_json(LIBRARY_FILE)
@@ -170,25 +171,24 @@ def generate_simulation_v2():
     startpos_data = {
         str(item["Strom"]): item for item in load_csv("startpositionen.csv")
     }
-    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
     schrittweiten_data = {
         str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
     }
+    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
 
-    nennstrom = data.get("nennstrom")
-    wandler_name = data.get("wandler")
-    bewegung_gruppe_name = data.get("bewegungsgruppe")
+    sim_params = data.get("simulationParams", {})
+    nennstrom = sim_params.get("ratedCurrent")
+    bewegung_gruppe_name = sim_params.get("movementGroup")
 
-    wandler_details = next(
-        (
-            t
-            for t in library.get("components", {}).get("transformers", [])
-            if t.get("templateProductInformation", {}).get("name") == wandler_name
-        ),
-        None,
-    )
-    if not wandler_details:
-        return jsonify({"error": f"Wandler '{wandler_name}' nicht gefunden."}), 400
+    startpositionen = startpos_data.get(nennstrom)
+    schrittweiten = schrittweiten_data.get(nennstrom)
+    spielraum = spielraum_data.get(nennstrom)
+
+    if not all([startpositionen, schrittweiten, spielraum]):
+        return (
+            jsonify({"error": f"Stammdaten für Nennstrom {nennstrom}A unvollständig."}),
+            400,
+        )
 
     gewaehlte_bewegung = next(
         (b for b in bewegungen_data if b["PosGruppe"] == bewegung_gruppe_name), None
@@ -201,35 +201,44 @@ def generate_simulation_v2():
             400,
         )
 
-    startpositionen = startpos_data.get(nennstrom)
-    spielraum = spielraum_data.get(nennstrom)
-    schrittweiten = schrittweiten_data.get(nennstrom)
-
-    if not all([startpositionen, spielraum, schrittweiten]):
-        return jsonify({"error": f"Stammdaten für {nennstrom}A unvollständig."}), 400
-
     leiter_bewegungspfade = calculate_position_steps(
         startpositionen, gewaehlte_bewegung, schrittweiten
     )
 
-    phasenwinkel_params = data.get("phasenwinkel", {})
+    final_assemblies = []
+    for assembly_data in data.get("assemblies", []):
+        phase_name = assembly_data.get("phaseName")
+        if startpositionen and phase_name in startpositionen:
+            transformer_details = next(
+                (
+                    t
+                    for t in library.get("components", {}).get("transformers", [])
+                    if t.get("templateProductInformation", {}).get("name")
+                    == assembly_data["transformerName"]
+                ),
+                None,
+            )
+            assembly_data["calculated_positions"] = [
+                step[phase_name] for step in leiter_bewegungspfade
+            ]
+            assembly_data["transformer_details"] = transformer_details
+            final_assemblies.append(assembly_data)
+
     output = {
-        "bauteildaten": wandler_details,
-        "geometriedaten": {
-            "startpositionen": startpositionen,
-            "bewegungspfade": leiter_bewegungspfade,
-        },
-        "simulationsparameter": {
-            "simulationsstroeme_A": [
-                float(s) for s in data.get("simulationsstroeme", [])
-            ],
-            "phasenwinkel_sweep": {
-                "start_deg": int(phasenwinkel_params.get("start", 0)),
-                "end_deg": int(phasenwinkel_params.get("end", 180)),
-                "step_deg": int(phasenwinkel_params.get("step", 5)),
+        "description": "Konfiguration erstellt via Web-UI mit automatischer Positionierung",
+        "simulationParams": sim_params,
+        "electricalSystem": data.get("electricalSystem"),
+        "assemblies": final_assemblies,
+        "standAloneComponents": data.get("standAloneComponents"),
+        "simulation_meta": {
+            "nennstrom_A": nennstrom,
+            "bewegungsgruppe": gewaehlte_bewegung,
+            "simulationsraum": spielraum,
+            "bewegungspfade_alle_leiter": {
+                "beschreibung": f"Bewegungsgruppe: {bewegung_gruppe_name}",
+                "schritte_details": leiter_bewegungspfade,
             },
         },
-        "simulationsraum": spielraum,
     }
 
     output_path = os.path.join(BASE_DIR, "simulation.json")

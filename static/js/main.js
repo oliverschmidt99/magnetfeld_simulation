@@ -37,9 +37,11 @@ function initializeCardNavigation(navId, sectionContainerId) {
       }
       card.classList.add("active");
 
-      if (navId === "config-nav" && targetId === "config-summary") {
-        updateSummary();
-      }
+      // KORREKTUR: Fehlerhafter Aufruf entfernt.
+      // Die updateSummary-Logik gehört in configurator.js
+      // if (navId === "config-nav" && targetId === "config-summary") {
+      //   updateSummary();
+      // }
     });
   });
 }

@@ -33,10 +33,6 @@
             <h3>Eigenständige Bauteile</h3>
             <p>Abschirmbleche etc. hinzufügen.</p>
         </div>
-        <div class="card" data-target="config-scenarios">
-            <h3>Konfiguration</h3>
-            <p>Szenarien speichern und laden.</p>
-        </div>
         <div class="card" data-target="config-summary">
             <h3>Übersicht &amp; Vorschau</h3>
             <p>Visuelle Kontrolle der Parameter.</p>
@@ -52,7 +48,7 @@
                 <h2>Allgemeine Simulations-Parameter</h2>
                 <div class="form-group-wrapper">
                     <div class="form-group">
-                        <label for="ratedCurrent">Nennstrom (A)</label>
+                        <label for="ratedCurrent">Nennstrom (A) - Filtert Wandler &amp; setzt Phasenstrom</label>
                         <select id="ratedCurrent">
                             <option value="600">600 A</option>
                             <option value="800">800 A</option>
@@ -67,7 +63,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="movementGroup">Bewegungsgruppe</label>
+                        <label for="movementGroup">Bewegungsgruppe (für automatische Positionierung)</label>
                         <select id="movementGroup">
                             <option value="">-- Bitte eine Bewegungsgruppe wählen --</option>
                             {% for b in bewegungen %}
@@ -77,30 +73,39 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="frequencyHz">Frequenz (Hz)</label>
-                        <input type="number" id="frequencyHz" value="50">
-                    </div>
-                    <div class="form-group">
                         <label for="problemDepthM">Problem-Tiefe (mm)</label>
                         <input type="number" step="1" id="problemDepthM" value="10">
                     </div>
-                    <div class="form-group">
-                        <label for="coreRelPermeability">Relative Permeabilität (Kern)</label>
-                        <input type="number" id="coreRelPermeability" value="2500">
+                    <h4>Phasenwinkel-Sweep</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="phaseStart">Startwinkel (°)</label>
+                            <input type="number" id="phaseStart" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="phaseEnd">Endwinkel (°)</label>
+                            <input type="number" id="phaseEnd" value="180">
+                        </div>
+                        <div class="form-group">
+                            <label for="phaseStep">Schrittweite (°)</label>
+                            <input type="number" id="phaseStep" value="5">
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div id="config-phases" class="config-section">
                 <h2>Elektrisches System (Phasen)</h2>
+                <p class="info-text">Effektiv- und Spitzenstrom werden vom Nennstrom in den "Allgemeinen Parametern"
+                    übernommen.</p>
                 <div id="electrical-system-list" class="dynamic-list"></div>
                 <button type="button" onclick="addPhase()">+ Phase hinzufügen</button>
             </div>
 
             <div id="config-assemblies" class="config-section">
                 <h2>Baugruppen (Assemblies)</h2>
-                <p class="info-text">Positionen werden automatisch basierend auf der gewählten Bewegungsgruppe berechnet
-                    und sind hier nicht einstellbar.</p>
+                <p class="info-text">Positionen werden automatisch basierend auf der gewählten Bewegungsgruppe
+                    berechnet.</p>
                 <div id="assemblies-list" class="dynamic-list"></div>
                 <button type="button" onclick="addAssembly()">+ Baugruppe hinzufügen</button>
             </div>
@@ -111,10 +116,11 @@
                 <button type="button" onclick="addStandalone()">+ Bauteil hinzufügen</button>
             </div>
 
-            <div id="config-scenarios" class="config-section">
-            </div>
-
             <div id="config-summary" class="config-section">
+                <h3>Visuelle Vorschau</h3>
+                <div class="component-preview">
+                    <svg id="config-preview-svg" width="100%" height="400"></svg>
+                </div>
             </div>
         </div>
         <hr>

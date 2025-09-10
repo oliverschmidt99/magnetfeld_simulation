@@ -5,10 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initializeConfigurator() {
-  // Ruft die globale Funktion aus main.js auf (falls vorhanden)
-  if (typeof initializeCardNavigation === "function") {
-    initializeCardNavigation("config-nav", "config-sections");
-  }
+  initializeCardNavigation("config-nav", "config-sections");
   loadState();
 
   const form = document.getElementById("simulation-form");
@@ -19,29 +16,23 @@ function initializeConfigurator() {
     }
   });
 
-  // NEU: Event-Listener für Nennstrom, um Wandlerlisten bei Änderung neu zu filtern
   document.getElementById("ratedCurrent").addEventListener("change", () => {
-    // Speichere den aktuellen Zustand, bevor die Baugruppen neu aufgebaut werden
+    // Wandlerlisten neu filtern
     const data = gatherFormData();
-
     const asmList = document.getElementById("assemblies-list");
     asmList.innerHTML = "";
-    assemblyCounter = 0; // Zähler zurücksetzen
-
-    // Baugruppen mit den alten Daten, aber neuen gefilterten Wandlerlisten neu erstellen
+    assemblyCounter = 0; // Zähler zurücksetzen, um IDs neu zu erstellen
     data.assemblies.forEach((asm) => addAssembly(asm));
-    updateAssemblyPhaseDropdowns(); // Wichtig, um die Phasen wieder korrekt zuzuordnen
-  });
+    updateAssemblyPhaseDropdowns();
 
-  // Dein bestehender Code für Szenarien-Buttons...
-  // document.getElementById("save-scenario-btn").addEventListener("click", saveScenario);
-  // ...
+    // NEU: Stromwerte in allen Phasen aktualisieren
+    updatePhaseCurrents();
+  });
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     const data = gatherFormData();
 
-    // Einfache Validierung
     if (!data.simulationParams.movementGroup) {
       alert(
         "Bitte wähle eine Bewegungsgruppe unter 'Allgemeine Parameter' aus."
@@ -60,12 +51,14 @@ function initializeConfigurator() {
           alert(`Fehler: ${result.error}`);
         } else {
           alert(result.message);
-          // Optional: Zeige das Ergebnis in der Zusammenfassung an
-          const output = document.getElementById("summary-output");
-          if (output) output.textContent = JSON.stringify(result.data, null, 2);
         }
       });
   });
+
+  const summaryCard = document.querySelector('[data-target="config-summary"]');
+  if (summaryCard) {
+    summaryCard.addEventListener("click", updateVisualization);
+  }
 }
 
 const libraryDataElement = document.getElementById("library-data");
@@ -77,8 +70,48 @@ let phaseCounter = 0;
 let assemblyCounter = 0;
 let standaloneCounter = 0;
 
-// Deine bestehenden Funktionen (updatePeak, updateRms, etc.)
-// ...
+async function updateVisualization() {
+  const data = gatherFormData();
+  try {
+    const response = await fetch("/visualize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const svgElements = await response.json();
+
+    const svg = document.getElementById("config-preview-svg");
+    svg.innerHTML = ""; // Alte Vorschau löschen
+
+    // Placeholder - die eigentliche Zeichenlogik würde hier folgen
+    const textElement = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "text"
+    );
+    textElement.setAttribute("x", "10");
+    textElement.setAttribute("y", "20");
+    textElement.textContent = `${
+      svgElements.length || 0
+    } Bauteile konfiguriert. (Visuelle Logik hier implementieren)`;
+    svg.appendChild(textElement);
+  } catch (error) {
+    console.error("Fehler bei der Visualisierung:", error);
+  }
+}
+
+function updatePhaseCurrents() {
+  const ratedCurrent = parseFloat(
+    document.getElementById("ratedCurrent").value
+  );
+  const peakCurrent = (ratedCurrent * SQRT2).toFixed(2);
+
+  document
+    .querySelectorAll("#electrical-system-list .list-item")
+    .forEach((item) => {
+      item.querySelector(".phase-peak").value = peakCurrent;
+      item.querySelector(".phase-rms").value = ratedCurrent.toFixed(2);
+    });
+}
 
 function updateAssemblyPhaseDropdowns() {
   const phaseItems = document.querySelectorAll(
@@ -95,9 +128,7 @@ function updateAssemblyPhaseDropdowns() {
       const option = document.createElement("option");
       option.value = p;
       option.textContent = p;
-      if (p === selectedValue) {
-        option.selected = true;
-      }
+      if (p === selectedValue) option.selected = true;
       select.appendChild(option);
     });
   });
@@ -109,14 +140,25 @@ function addPhase(data = {}) {
   const item = document.createElement("div");
   item.className = "list-item";
   item.id = `phase-${phaseCounter}`;
-  const defaultRms = 4000;
-  const peak = data.peakCurrentA || (defaultRms * SQRT2).toFixed(2);
-  const rms = (peak / SQRT2).toFixed(2);
-  item.innerHTML = `<h4>Phase ${phaseCounter}</h4><label>Name:</label><input type="text" class="phase-name" value="${
-    data.name || `L${phaseCounter}`
-  }" onkeyup="updateAssemblyPhaseDropdowns()"><label>Phasenverschiebung (°):</label><input type="number" class="phase-shift" value="${
-    data.phaseShiftDeg ?? 0
-  }"><div class="form-row"><div><label>Spitzenstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-peak" class="phase-peak" value="${peak}" oninput="updateRms(${phaseCounter}, 'phase')"></div><div><label>Effektivstrom (A):</label><input type="number" step="any" id="phase-${phaseCounter}-rms" class="phase-rms" value="${rms}" oninput="updatePeak(${phaseCounter}, 'phase')"></div></div><button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
+
+  const ratedCurrent = parseFloat(
+    document.getElementById("ratedCurrent").value
+  );
+  const peakCurrent = (data.peakCurrentA || ratedCurrent * SQRT2).toFixed(2);
+  const rmsCurrent = (peakCurrent / SQRT2).toFixed(2);
+
+  item.innerHTML = `<h4>Phase ${phaseCounter}</h4>
+        <label>Name:</label><input type="text" class="phase-name" value="${
+          data.name || `L${phaseCounter}`
+        }" onkeyup="updateAssemblyPhaseDropdowns()">
+        <label>Phasenverschiebung (°):</label><input type="number" class="phase-shift" value="${
+          data.phaseShiftDeg ?? 0
+        }">
+        <div class="form-row">
+            <div><label>Spitzenstrom (A):</label><input type="number" step="any" class="phase-peak" value="${peakCurrent}" readonly></div>
+            <div><label>Effektivstrom (A):</label><input type="number" step="any" class="phase-rms" value="${rmsCurrent}" readonly></div>
+        </div>
+        <button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
   list.appendChild(item);
 }
 
@@ -127,7 +169,6 @@ function addAssembly(data = {}) {
   item.className = "list-item";
   item.id = `assembly-${assemblyCounter}`;
 
-  // NEU: Filtere die Wandler basierend auf dem aktuell ausgewählten Nennstrom
   const nennstrom = document.getElementById("ratedCurrent").value;
   const searchTag = `${nennstrom} A`;
 
@@ -158,18 +199,17 @@ function addAssembly(data = {}) {
     )
     .join("");
 
-  // GEÄNDERT: X- und Y-Inputs wurden entfernt.
   item.innerHTML = `
-    <h4>Baugruppe ${assemblyCounter}</h4>
-    <label>Name:</label><input type="text" class="assembly-name" value="${
-      data.name || `Assembly_${assemblyCounter}`
-    }">
-    <label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
-      data.phaseName || ""
-    }</select>
-    <label>Kupferschiene:</label><select class="copper-rail">${railOptions}</select>
-    <label>Wandler (gefiltert für ${nennstrom}A):</label><select class="transformer">${transformerOptions}</select>
-    <button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>`;
+        <h4>Baugruppe ${assemblyCounter}</h4>
+        <label>Name:</label><input type="text" class="assembly-name" value="${
+          data.name || `Assembly_${assemblyCounter}`
+        }">
+        <label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
+          data.phaseName || ""
+        }</select>
+        <label>Kupferschiene:</label><select class="copper-rail">${railOptions}</select>
+        <label>Wandler (gefiltert für ${nennstrom}A):</label><select class="transformer">${transformerOptions}</select>
+        <button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>`;
   list.appendChild(item);
 }
 
@@ -204,12 +244,14 @@ function gatherFormData() {
   const form = document.getElementById("simulation-form");
   const data = {
     simulationParams: {
-      // NEU: Nennstrom und Bewegungsgruppe werden mitgesammelt
       ratedCurrent: form.querySelector("#ratedCurrent").value,
       movementGroup: form.querySelector("#movementGroup").value,
-      frequencyHz: form.querySelector("#frequencyHz").value,
       problemDepthM: form.querySelector("#problemDepthM").value,
-      coreRelPermeability: form.querySelector("#coreRelPermeability").value,
+      phaseSweep: {
+        start: form.querySelector("#phaseStart").value,
+        end: form.querySelector("#phaseEnd").value,
+        step: form.querySelector("#phaseStep").value,
+      },
     },
     electricalSystem: [],
     assemblies: [],
@@ -247,28 +289,21 @@ function gatherFormData() {
   return data;
 }
 
-// Deine restlichen Funktionen (updateSummary, saveState, loadState, etc.)
-// sollten weitgehend ohne Änderungen funktionieren. `loadState` muss
-// die neuen Felder in `simulationParams` berücksichtigen.
-
 function saveState() {
   if (!document.getElementById("simulation-form")) return;
   const data = gatherFormData();
   localStorage.setItem("latestSimConfig", JSON.stringify(data));
-  // updateSummary(); // updateSummary aufrufen, um die Vorschau live zu aktualisieren
 }
 
 function loadState(data = null) {
   const configData =
     data || JSON.parse(localStorage.getItem("latestSimConfig"));
-
   const elsList = document.getElementById("electrical-system-list");
   const asmList = document.getElementById("assemblies-list");
   const stdList = document.getElementById("standalone-list");
 
   if (!elsList || !asmList || !stdList) return;
 
-  // Listen leeren
   elsList.innerHTML = "";
   asmList.innerHTML = "";
   stdList.innerHTML = "";
@@ -276,19 +311,18 @@ function loadState(data = null) {
   assemblyCounter = 0;
   standaloneCounter = 0;
 
-  if (!configData) {
-    // initializeDefaultSetup(); // Optional: Standard-Setup laden
-    return;
-  }
+  if (!configData) return;
 
   const params = configData.simulationParams;
-  // NEU: Lade auch die neuen Parameter
   document.getElementById("ratedCurrent").value = params.ratedCurrent || "600";
   document.getElementById("movementGroup").value = params.movementGroup || "";
-  document.getElementById("frequencyHz").value = params.frequencyHz;
   document.getElementById("problemDepthM").value = params.problemDepthM;
-  document.getElementById("coreRelPermeability").value =
-    params.coreRelPermeability;
+  if (params.phaseSweep) {
+    document.getElementById("phaseStart").value =
+      params.phaseSweep.start || "0";
+    document.getElementById("phaseEnd").value = params.phaseSweep.end || "180";
+    document.getElementById("phaseStep").value = params.phaseSweep.step || "5";
+  }
 
   configData.electricalSystem.forEach((phase) => addPhase(phase));
   configData.assemblies.forEach((assembly) => addAssembly(assembly));
@@ -301,7 +335,4 @@ function loadState(data = null) {
     );
     if (select) select.value = assembly.phaseName;
   });
-
-  // updateScenarioList();
-  // updateSummary();
 }

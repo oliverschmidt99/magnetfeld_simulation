@@ -891,3 +891,7 @@ button.danger:hover,
     font-weight: normal;
     margin-bottom: 0;
 }
+/* Ergänzung für die Vorschau im Konfigurator */
+#config-preview-svg {
+    border: 1px solid #ccc;
+}

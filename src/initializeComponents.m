@@ -26,12 +26,11 @@ function [currents, assemblies, standAloneComponents] = initializeComponents(sim
         railCfg = rails{strcmp(cellfun(@(x) x.templateProductInformation.name, rails, 'UniformOutput', false), asmCfg.copperRailName)};
         transformerCfg = asmCfg.transformer_details;
 
-        % Die Position wird jetzt aus dem ersten Schritt der 'calculated_positions' entnommen
-        % Dies ist eine Annahme, die für den initialen Aufbau gilt.
-        % Die Bewegung wird später in der Schleife der Hauptsimulation behandelt.
-        initialPosition = asmCfg.calculated_positions(1);
+        % Die Position wird jetzt aus dem dynamisch gesetzten 'position'-Feld gelesen,
+        % das von der Hauptschleife in main.m für jeden Schritt aktualisiert wird.
+        currentPosition = asmCfg.position;
 
-        assemblyGroup = ComponentGroup(asmCfg.name, initialPosition.x, initialPosition.y);
+        assemblyGroup = ComponentGroup(asmCfg.name, currentPosition.x, currentPosition.y);
         assemblyGroup = assemblyGroup.addComponent(CopperRail(railCfg));
         assemblyGroup = assemblyGroup.addComponent(Transformer(transformerCfg));
         assemblyGroup.assignedCurrent = currentsMap(asmCfg.phaseName);

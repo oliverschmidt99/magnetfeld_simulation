@@ -212,3 +212,5 @@ __marimo__/
 *.ans
 *.femm
 *simulation_run.json
+simulation.json
+.gitignore

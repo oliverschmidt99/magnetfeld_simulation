@@ -30,22 +30,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loadBewegungen() {
     try {
-      const response = await fetch("/api/csv-data/3_bewegungen.csv");
+      // KORREKTUR: Dateiname ohne Nummer
+      const response = await fetch("/api/csv-data/bewegungen.csv");
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      bewegungenData = data.rows; // KORREKTUR: Sicherstellen, dass wir auf .rows zugreifen
+      bewegungenData = data.rows;
     } catch (error) {
       console.error("Fehler beim Laden der Bewegungsdaten:", error);
       alert(
-        "Fehler: Die Bewegungsdaten (3_bewegungen.csv) konnten nicht geladen werden."
+        "Fehler: Die Bewegungsdaten (bewegungen.csv) konnten nicht geladen werden."
       );
     }
   }
 
   function populateBewegungen() {
     bewegungSelect.innerHTML = "";
-    // KORREKTUR: Prüfen, ob bewegungenData definiert ist
     if (bewegungenData && bewegungenData.length > 0) {
       bewegungenData.forEach((b) => {
         const option = document.createElement("option");
@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const option = document.createElement("option");
       option.textContent = "Keine Bewegungsdaten gefunden";
       bewegungSelect.appendChild(option);
+      bewegungSelect.disabled = true;
     }
   }
 

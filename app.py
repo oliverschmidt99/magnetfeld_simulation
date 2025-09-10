@@ -5,18 +5,20 @@ Diese Flask-Anwendung stellt eine Web-Oberfläche zur Verfügung, um FEMM-Simula
 interaktiv zu konfigurieren und zu verwalten.
 """
 
-import os
-import json
-import csv
-from typing import List, Dict, Any, Tuple
+# 1. Standard-Bibliotheken
 import copy
+import json
+import os
+from typing import Any, Dict, List, Tuple
+
+# 2. Third-Party-Bibliotheken
+import pandas as pd
 from flask import Flask, jsonify, render_template, request
 
-# Importiere die Blueprints aus dem 'server'-Paket
+# 3. Lokale Anwendungsimporte
 from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
-
 
 # --- Konfiguration ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,19 +45,21 @@ def load_json(filename: str) -> Any:
 
 
 def load_csv(filename: str) -> List[Dict]:
-    """Lädt eine CSV-Datei sicher aus dem data-Verzeichnis."""
+    """Lädt eine CSV-Datei sicher aus dem data-Verzeichnis und bereinigt die Header."""
     filepath = os.path.join(BASE_DIR, "data", filename)
+    if not os.path.exists(filepath):
+        return []
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            # Annahme: Semikolon als Trennzeichen
-            reader = csv.DictReader(f)
-            return list(reader)
-    except FileNotFoundError:
+        df = pd.read_csv(filepath, sep=None, engine="python", encoding="utf-8")
+        df.columns = [col.strip() for col in df.columns]
+        return df.where(pd.notna(df), None).to_dict("records")
+    except (IOError, pd.errors.ParserError):
         return []
 
 
 # --- Logik für den interaktiven Konfigurator ---
 def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
+    """Wandelt einen Richtungstext (z.B. '← Westen') in einen (x, y) Vektor um."""
     if not isinstance(direction_str, str):
         return (0, 0)
     mapping = {
@@ -77,6 +81,7 @@ def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
 def calculate_position_steps(
     start_pos: Dict, bewegung: Dict, schrittweiten: Dict
 ) -> List[Dict]:
+    """Berechnet die Koordinaten für alle Positionsschritte basierend auf den Stammdaten."""
     all_steps = []
     start_pos_vec = {
         f"L{i}": {
@@ -106,57 +111,68 @@ def calculate_position_steps(
 # --- Routen für die Webseiten ---
 @app.route("/")
 def index():
+    """Zeigt die Hauptseite an."""
     return render_template("index.html")
 
 
 @app.route("/configurator")
 def configurator():
+    """Zeigt die Konfigurator-Seite an."""
     library = load_json(LIBRARY_FILE)
-    bewegungen = load_csv("3_bewegungen.csv")
+    bewegungen = load_csv("bewegungen.csv")
     return render_template("configurator.html", library=library, bewegungen=bewegungen)
 
 
 @app.route("/simulation_v2")
 def simulation_v2():
+    """Zeigt die neue interaktive Konfigurator-Seite."""
     return render_template("simulation_v2.html")
 
 
 @app.route("/simulation")
 def simulation():
+    """Zeigt die Simulations-Seite an."""
     return render_template("simulation.html")
 
 
 @app.route("/analysis")
 def analysis():
+    """Zeigt die Analyse-Seite an."""
     return render_template("analysis.html")
 
 
 @app.route("/bauteile")
 def bauteile():
+    """Zeigt die Bauteile-Seite an."""
     library = load_json(LIBRARY_FILE)
     return render_template("bauteile.html", library=library)
 
 
 @app.route("/admin")
 def admin():
-    return "Admin-Seite (noch nicht implementiert)"
+    """Zeigt die Admin-Seite an."""
+    return render_template("admin.html")
 
 
 @app.route("/settings")
 def settings():
+    """Zeigt die Einstellungs-Seite an."""
     return render_template("settings.html")
 
 
 # --- API Endpunkt für den interaktiven Konfigurator ---
 @app.route("/generate_v2", methods=["POST"])
 def generate_simulation_v2():
+    """Erstellt die `simulation.json` basierend auf den Benutzereingaben."""
     data = request.json
     library = load_json(LIBRARY_FILE)
-    bewegungen_data = load_csv("3_bewegungen.csv")
-    startpos_data = {item["Strom"]: item for item in load_csv("1_startpositionen.csv")}
-    spielraum_data = {item["Strom"]: item for item in load_csv("2_spielraum.csv")}
+    bewegungen_data = load_csv("bewegungen.csv")
+    startpos_data = {
+        str(item["Strom"]): item for item in load_csv("startpositionen.csv")
+    }
+    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
     schrittweiten_data = {
-        item["Strom"]: item for item in load_csv("4_schrittweiten.csv")
+        str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
     }
 
     nennstrom = data.get("nennstrom")

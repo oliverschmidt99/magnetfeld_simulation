@@ -1,7 +1,7 @@
-# server/analysis.py
 """
 Blueprint für die Analyse- und Visualisierungs-Endpunkte.
 """
+
 import os
 import pandas as pd
 from flask import Blueprint, jsonify, request
@@ -36,13 +36,12 @@ def list_runs():
                         runs.append(f"{date_dir}/{run_dir}")
     except OSError as e:
         print(f"Fehler beim Auflisten der Läufe: {e}")
-        return jsonify([])
     return jsonify(runs)
 
 
 @analysis_bp.route("/analysis/summary_csv/<date_dir>/<time_dir>")
 def get_summary_csv(date_dir, time_dir):
-    """Liest die summary.csv-Datei mit Pandas und gibt sie als JSON zurück."""
+    """Liest eine summary.csv-Datei und gibt sie als JSON zurück."""
     try:
         run_dir_name = f"{time_dir}"
         csv_filename = f"{run_dir_name}_summary.csv"
@@ -55,14 +54,9 @@ def get_summary_csv(date_dir, time_dir):
 
         df = pd.read_csv(safe_path)
         return jsonify(df.to_dict(orient="records"))
-    except (OSError, pd.errors.EmptyDataError) as e:
+    # KORREKTUR: Doppelte Exception entfernt
+    except (pd.errors.EmptyDataError, ValueError, IOError) as e:
         return jsonify({"error": f"Fehler beim Lesen der CSV-Datei: {e}"}), 500
-    # KORREKTUR: Spezifischere Fehlerbehandlung statt allgemeiner Exception
-    except (IOError, ValueError) as e:
-        return (
-            jsonify({"error": f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}"}),
-            500,
-        )
 
 
 @analysis_bp.route("/analysis/files/<path:run_dir>")
@@ -85,7 +79,7 @@ def list_files_in_run(run_dir):
 
 @analysis_bp.route("/analysis/data/<path:filepath>")
 def get_analysis_data(filepath):
-    """Parst eine .ans- und .fem-Datei und gibt die Plot-Daten als JSON zurück."""
+    """Parst .ans- und .fem-Dateien und gibt die Plot-Daten als JSON zurück."""
     try:
         ans_path = safe_join(os.path.abspath(RESULTS_DIR), filepath)
         fem_path = ans_path.replace(".ans", ".fem")
@@ -130,9 +124,11 @@ def get_analysis_data(filepath):
         return jsonify({"error": f"Fehler bei Dateiverarbeitung: {e}"}), 500
 
 
-def get_transformer_components(t, pos):
+def get_transformer_components(transformer, pos):
     """Extrahiert sicher die geometrischen Teile eines Wandlers."""
-    components, geo = [], t.get("specificProductInformation", {}).get("geometry", {})
+    components, geo = [], transformer.get("specificProductInformation", {}).get(
+        "geometry", {}
+    )
     pos_x, pos_y = pos.get("x", 0), pos.get("y", 0)
     if geo.get("type") != "Rectangle":
         return []
@@ -144,14 +140,14 @@ def get_transformer_components(t, pos):
     labels = ["Outer Air", "Steel Core", "Inner Air", "Air Gap"]
     fills = ["#f0f8ff", "#d3d3d3", "#f0f8ff", "#ffffff"]
     for i, dim_name in enumerate(dims):
-        w, h = get_dim(f"{dim_name}Width"), get_dim(f"{dim_name}Height")
+        width, height = get_dim(f"{dim_name}Width"), get_dim(f"{dim_name}Height")
         components.append(
             {
                 "type": "rect",
-                "x": pos_x - w / 2,
-                "y": pos_y - h / 2,
-                "width": w,
-                "height": h,
+                "x": pos_x - width / 2,
+                "y": pos_y - height / 2,
+                "width": width,
+                "height": height,
                 "fill": fills[i],
                 "label": labels[i],
             }
@@ -169,8 +165,6 @@ def visualize_setup():
     all_rails = library.get("components", {}).get("copperRails", [])
     all_transformers = library.get("components", {}).get("transformers", [])
     all_sheets = library.get("components", {}).get("transformerSheets", [])
-
-    # Temporäre Positionen für die Visualisierung - im echten Skript werden diese berechnet
     positions = {
         "L1": {"x": -100, "y": 0},
         "L2": {"x": 0, "y": 0},
@@ -202,14 +196,14 @@ def visualize_setup():
         )
         if rail:
             geo = rail.get("specificProductInformation", {}).get("geometry", {})
-            w, h = geo.get("width", 0) or 0, geo.get("height", 0) or 0
+            width, height = geo.get("width", 0) or 0, geo.get("height", 0) or 0
             svg_elements.append(
                 {
                     "type": "rect",
-                    "x": pos.get("x", 0) - w / 2,
-                    "y": pos.get("y", 0) - h / 2,
-                    "width": w,
-                    "height": h,
+                    "x": pos.get("x", 0) - width / 2,
+                    "y": pos.get("y", 0) - height / 2,
+                    "width": width,
+                    "height": height,
                     "fill": "#b87333",
                     "label": asm.get("copperRailName"),
                 }
@@ -227,14 +221,14 @@ def visualize_setup():
         )
         if sheet:
             geo = sheet.get("specificProductInformation", {}).get("geometry", {})
-            w, h = geo.get("width", 0) or 0, geo.get("height", 0) or 0
+            width, height = geo.get("width", 0) or 0, geo.get("height", 0) or 0
             svg_elements.append(
                 {
                     "type": "rect",
-                    "x": pos.get("x", 0) - w / 2,
-                    "y": pos.get("y", 0) - h / 2,
-                    "width": w,
-                    "height": h,
+                    "x": pos.get("x", 0) - width / 2,
+                    "y": pos.get("y", 0) - height / 2,
+                    "width": width,
+                    "height": height,
                     "fill": "#a9a9a9",
                     "label": comp.get("name"),
                 }

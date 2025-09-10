@@ -45,16 +45,44 @@ function initializeConfigurator() {
         } else {
           alert(result.message);
           const runner = document.getElementById("simulation-runner");
-          runner.classList.remove("initially-hidden");
           runner.style.display = "block";
         }
       });
   });
 
+  // NEU: Event-Listener für den "Simulation starten"-Button
+  const startBtn = document.getElementById("start-simulation-btn");
+  if (startBtn) {
+    startBtn.addEventListener("click", startSimulation);
+  }
+
   const summaryCard = document.querySelector('[data-target="config-summary"]');
   if (summaryCard) {
     summaryCard.addEventListener("click", updateVisualization);
   }
+}
+
+// NEU: Funktion zum Starten der Simulation
+function startSimulation() {
+  const outputElement = document.getElementById("simulation-output");
+  outputElement.textContent = "Starte Simulation... Bitte warten.";
+
+  fetch("/start_simulation", {
+    method: "POST",
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status === "success") {
+        outputElement.textContent = `Simulation erfolgreich gestartet!\nNachricht vom Server: ${data.message}`;
+      } else {
+        outputElement.textContent = `Fehler beim Starten der Simulation:\n${data.error}`;
+      }
+    })
+    .catch((error) => {
+      console.error("Fehler beim Senden der Anfrage:", error);
+      outputElement.textContent =
+        "Ein schwerwiegender Fehler ist aufgetreten. Überprüfe die Browser-Konsole.";
+    });
 }
 
 const libraryDataElement = document.getElementById("library-data");
@@ -107,7 +135,8 @@ function updatePhaseCurrents() {
   document
     .querySelectorAll("#electrical-system-list .list-item")
     .forEach((item) => {
-      item.querySelector(".phase-peak").value = peakCurrent;
+      // Das Input-Feld für den Spitzenstrom existiert nicht mehr, aber wir behalten den Wert intern
+      item.dataset.peakCurrent = peakCurrent; // Speichern des Werts im Dataset
       item.querySelector(".phase-rms").value = ratedCurrent.toFixed(2);
     });
 }
@@ -140,6 +169,10 @@ function addPhase(data = {}) {
   const peakCurrent = (data.peakCurrentA || ratedCurrent * SQRT2).toFixed(2);
   const rmsCurrent = (data.rmsCurrent || ratedCurrent).toFixed(2);
 
+  // Den Spitzenstrom im Dataset speichern, damit er für gatherFormData verfügbar ist
+  item.dataset.peakCurrent = peakCurrent;
+
+  // KORREKTUR: Zeile für Spitzenstrom entfernt
   item.innerHTML = `<h4>Phase ${phaseCounter}</h4>
         <label>Name:</label><input type="text" class="phase-name" value="${
           data.name || `L${phaseCounter}`
@@ -148,7 +181,6 @@ function addPhase(data = {}) {
           data.phaseShiftDeg ?? 0
         }">
         <div class="form-row">
-            <div><label>Spitzenstrom (A):</label><input type="number" class="phase-peak" value="${peakCurrent}" readonly></div>
             <div><label>Effektivstrom (A):</label><input type="number" class="phase-rms" value="${rmsCurrent}" readonly></div>
         </div>
         <button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
@@ -252,7 +284,8 @@ function gatherFormData() {
       data.electricalSystem.push({
         name: item.querySelector(".phase-name").value,
         phaseShiftDeg: parseInt(item.querySelector(".phase-shift").value),
-        peakCurrentA: parseFloat(item.querySelector(".phase-peak").value),
+        // Der Spitzenstrom wird jetzt aus dem Dataset gelesen
+        peakCurrentA: parseFloat(item.dataset.peakCurrent),
       });
     });
 

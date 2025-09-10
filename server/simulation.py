@@ -1,94 +1,89 @@
 """
-Blueprint für die neue 5-Schritt-Simulation und den Simulationsstart.
+Blueprint für die Steuerung von Simulationsläufen.
 """
 
 import os
 import subprocess
 import threading
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 
-# Umbenannt: Der Blueprint heißt jetzt wieder simulation_bp
 simulation_bp = Blueprint("simulation_bp", __name__)
 
-# --- Status-Objekt statt globaler Variablen ---
-simulation_status = {
-    "running": False,
-    "progress": 0,
-    "status_text": "Nicht gestartet",
-}
 
-# --- Konfiguration ---
-MATLAB_EXECUTABLE = "matlab"
-# --------------------
+def run_matlab_script(app):
+    """
+    Führt das MATLAB-Skript in einem separaten Prozess aus, um die Webanwendung
+    nicht zu blockieren.
+    """
+    with app.app_context():
+        script_path = os.path.join(current_app.root_path, "main.m")
+        command = ["matlab", "-batch", f"run('{script_path}')"]
+
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            stdout, stderr = process.communicate()
+
+            if process.returncode == 0:
+                print("MATLAB-Skript erfolgreich ausgeführt.")
+                print("Ausgabe:", stdout)
+            else:
+                print(
+                    f"Fehler bei der Ausführung des MATLAB-Skripts "
+                    f"(Exit Code: {process.returncode})."
+                )
+                print("Fehlermeldung:", stderr)
+
+        except FileNotFoundError:
+            print(
+                "Fehler: 'matlab'-Befehl nicht gefunden. "
+                "Stelle sicher, dass MATLAB im System-PATH ist."
+            )
+        except (subprocess.SubprocessError, OSError) as e:
+            print(f"Ein Fehler im Subprozess ist aufgetreten: {e}")
 
 
-def run_matlab_simulation(status_obj):
-    """Führt das MATLAB-Skript aus und aktualisiert das Status-Objekt."""
-    status_obj.update(
+@simulation_bp.route("/start_simulation", methods=["POST"])
+def start_simulation():
+    """
+    Startet die MATLAB-Simulation in einem Hintergrund-Thread.
+    """
+    # KORREKTUR: Zustand wird über den App-Kontext verwaltet, nicht über 'global'
+    simulation_thread = current_app.config.get("SIMULATION_THREAD")
+
+    if simulation_thread and simulation_thread.is_alive():
+        return (
+            jsonify({"status": "error", "error": "Eine Simulation läuft bereits."}),
+            409,
+        )
+
+    # pylint: disable=protected-access
+    app_context = current_app._get_current_object()
+    new_thread = threading.Thread(target=run_matlab_script, args=(app_context,))
+    new_thread.start()
+
+    # Speichere den neuen Thread im App-Kontext
+    current_app.config["SIMULATION_THREAD"] = new_thread
+
+    return jsonify(
         {
-            "running": True,
-            "progress": 10,
-            "status_text": "MATLAB wird gestartet...",
+            "status": "success",
+            "message": "Simulationsprozess wurde im Hintergrund gestartet.",
         }
     )
 
-    try:
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        matlab_command = "run('main.m'); exit;"
-
-        status_obj.update(
-            {
-                "progress": 30,
-                "status_text": "Simulation läuft...",
-            }
-        )
-
-        process = subprocess.Popen(
-            [MATLAB_EXECUTABLE, "-batch", matlab_command],
-            cwd=project_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-        )
-
-        process.wait()
-
-        if process.returncode == 0:
-            status_obj.update(
-                {
-                    "progress": 100,
-                    "status_text": "Simulation erfolgreich abgeschlossen.",
-                }
-            )
-        else:
-            error_output = process.stderr.read()
-            status_obj.update(
-                {
-                    "progress": 0,
-                    "status_text": f"Simulationsfehler: {error_output}",
-                }
-            )
-
-    except (IOError, OSError, subprocess.SubprocessError) as e:
-        status_obj["status_text"] = f"Ein kritischer Fehler ist aufgetreten: {str(e)}"
-    finally:
-        status_obj["running"] = False
-
-
-@simulation_bp.route("/start_new_simulation", methods=["POST"])
-def start_new_simulation():
-    """Startet die 5-Schritt-Simulation in einem Hintergrund-Thread."""
-    if simulation_status["running"]:
-        return jsonify({"error": "Eine Simulation läuft bereits."}), 409
-
-    thread = threading.Thread(target=run_matlab_simulation, args=(simulation_status,))
-    thread.start()
-
-    return jsonify({"message": "Simulation gestartet."})
-
 
 @simulation_bp.route("/simulation_status")
-def get_simulation_status():
-    """Gibt den aktuellen Status der Simulation zurück."""
-    return jsonify(simulation_status)
+def simulation_status():
+    """
+    Gibt den aktuellen Status des Simulations-Threads zurück.
+    """
+    simulation_thread = current_app.config.get("SIMULATION_THREAD")
+    if simulation_thread and simulation_thread.is_alive():
+        return jsonify({"status": "running"})
+    return jsonify({"status": "idle"})

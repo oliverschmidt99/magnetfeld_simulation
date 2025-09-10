@@ -24,6 +24,7 @@ from server.simulation import simulation_bp
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SCENARIOS_DIR = os.path.join(BASE_DIR, "conf")
 LIBRARY_FILE = "library.json"
+SIMULATION_RUN_FILE = "simulation_run.json"
 
 app = Flask(__name__)
 
@@ -59,7 +60,7 @@ def load_csv(filename: str) -> List[Dict]:
 
 # --- Logik für den Konfigurator ---
 def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
-    """Wandelt einen Richtungstext (z.B. '← Westen') in einen (x, y) Vektor um."""
+    """Wandelt einen Richtungstext in einen (x, y) Vektor um."""
     if not isinstance(direction_str, str):
         return (0, 0)
     mapping = {
@@ -81,7 +82,7 @@ def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
 def calculate_position_steps(
     start_pos: Dict, bewegung: Dict, schrittweiten: Dict
 ) -> List[Dict]:
-    """Berechnet die Koordinaten für alle Positionsschritte basierend auf den Stammdaten."""
+    """Berechnet alle Positionsschritte."""
     all_steps = []
     start_pos_vec = {
         f"L{i}": {
@@ -147,7 +148,7 @@ def settings():
 # --- API Endpunkt für den Konfigurator ---
 @app.route("/generate", methods=["POST"])
 def generate_simulation():
-    """Erstellt die `simulation.json` basierend auf den Benutzereingaben."""
+    """Erstellt die `simulation_run.json` basierend auf den Benutzereingaben."""
     data = request.json
     library_data = load_json(LIBRARY_FILE)
 
@@ -209,8 +210,9 @@ def generate_simulation():
             final_assemblies.append(assembly_data)
 
     output = {
-        "description": "Konfiguration erstellt via Web-UI mit automatischer Positionierung",
-        "simulationParams": sim_params,
+        "description": "Konfiguration erstellt via Web-UI",
+        # KORREKTUR: Schlüssel an MATLAB angepasst
+        "scenarioParams": sim_params,
         "electricalSystem": data.get("electricalSystem"),
         "assemblies": final_assemblies,
         "standAloneComponents": data.get("standAloneComponents"),
@@ -225,11 +227,13 @@ def generate_simulation():
         },
     }
 
-    output_path = os.path.join(BASE_DIR, "simulation.json")
+    output_path = os.path.join(BASE_DIR, SIMULATION_RUN_FILE)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    return jsonify({"message": "simulation.json erfolgreich erstellt!", "data": output})
+    return jsonify(
+        {"message": f"{SIMULATION_RUN_FILE} erfolgreich erstellt!", "data": output}
+    )
 
 
 if __name__ == "__main__":

@@ -1,216 +1,193 @@
+// static/js/simulation.js
+// JavaScript für die neue 5-Schritt-Simulationsseite.
+
 document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("run-simulation-form")) {
-    initializeSimulationPage();
+  const wizard = document.getElementById("simulation-wizard");
+  const steps = wizard.querySelectorAll(".step-content");
+  const stepIndicators = wizard.querySelectorAll(".step-item");
+  const navButtons = wizard.querySelectorAll(".nav-btn");
+  const startSimBtn = document.getElementById("start-simulation-btn");
+
+  // KORRIGIERT: Dateinamen ohne numerische Präfixe
+  const csvFiles = [
+    "startpositionen.csv",
+    "spielraum.csv",
+    "bewegungen.csv",
+    "schrittweiten.csv",
+    "wandler_abmessungen.csv",
+  ];
+
+  let currentStep = 1;
+
+  // --- Wizard Navigation ---
+  function showStep(stepNumber) {
+    steps.forEach((step) => step.classList.remove("active"));
+    stepIndicators.forEach((indicator) => indicator.classList.remove("active"));
+
+    wizard
+      .querySelector(`.step-content[data-step="${stepNumber}"]`)
+      .classList.add("active");
+    wizard
+      .querySelector(`.step-item[data-step="${stepNumber}"]`)
+      .classList.add("active");
+    currentStep = stepNumber;
   }
+
+  navButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetStep = button.classList.contains("next-btn")
+        ? parseInt(button.dataset.next)
+        : parseInt(button.dataset.prev);
+      showStep(targetStep);
+    });
+  });
+
+  // --- CSV Table Logic ---
+  async function loadCsvData(step) {
+    const file = csvFiles[step - 1];
+    const tableContainer = document.getElementById(`csv-table-${step}`);
+    if (!file || !tableContainer) return;
+
+    try {
+      const response = await fetch(`/api/csv-data/${file}`);
+      if (!response.ok) throw new Error(`Fehler beim Laden von ${file}`);
+      const data = await response.json();
+      renderTable(tableContainer, data.headers, data.rows, file);
+    } catch (error) {
+      tableContainer.innerHTML = `<p class="error">${error.message}</p>`;
+    }
+  }
+
+  function renderTable(container, headers, rows, filename) {
+    if (!rows || rows.length === 0) {
+      container.innerHTML = "<p>Keine Daten gefunden.</p>";
+      return;
+    }
+
+    const table = document.createElement("table");
+    table.className = "csv-table"; // Eigene Klasse für Styling
+
+    // Header
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    headers.forEach((h) => {
+      const th = document.createElement("th");
+      th.textContent = h;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Body
+    const tbody = document.createElement("tbody");
+    rows.forEach((rowData) => {
+      const tr = document.createElement("tr");
+      headers.forEach((header) => {
+        const td = document.createElement("td");
+        td.textContent = rowData[header];
+        td.setAttribute("contenteditable", "true");
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.innerHTML = "";
+    container.appendChild(table);
+
+    // Make table draggable
+    new Sortable(tbody, {
+      animation: 150,
+      ghostClass: "sortable-ghost",
+    });
+
+    // Add save button
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Änderungen speichern";
+    saveBtn.className = "btn-save"; // Eigene Klasse
+    saveBtn.style.marginTop = "1rem";
+    saveBtn.addEventListener("click", () => saveTableData(container, filename));
+    container.appendChild(saveBtn);
+  }
+
+  async function saveTableData(container, filename) {
+    const table = container.querySelector("table");
+    const headers = Array.from(table.querySelectorAll("th")).map(
+      (th) => th.textContent
+    );
+    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    const dataToSave = rows.map((row) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      const rowData = {};
+      headers.forEach((header, index) => {
+        rowData[header] = cells[index].textContent;
+      });
+      return rowData;
+    });
+
+    try {
+      const response = await fetch(`/api/csv-data/${filename}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSave),
+      });
+      const result = await response.json();
+      alert(result.message);
+    } catch (error) {
+      alert(`Fehler beim Speichern: ${error.message}`);
+    }
+  }
+
+  // --- Simulation Logic ---
+  function updateSimulationProgress() {
+    const progressBar = document.getElementById("progress-bar");
+    const statusText = document.getElementById("simulation-status-text");
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch("/simulation_status");
+        const data = await response.json();
+
+        progressBar.style.width = `${data.progress}%`;
+        progressBar.textContent = `${data.progress}%`;
+        statusText.textContent = data.status_text;
+
+        if (!data.running) {
+          clearInterval(interval);
+          startSimBtn.disabled = false;
+        }
+      } catch (error) {
+        statusText.textContent = "Fehler beim Abrufen des Status.";
+        clearInterval(interval);
+        startSimBtn.disabled = false;
+      }
+    }, 1000);
+  }
+
+  startSimBtn.addEventListener("click", async () => {
+    const progressDiv = document.getElementById("simulation-progress");
+    const statusText = document.getElementById("simulation-status-text");
+
+    progressDiv.style.display = "block";
+    statusText.textContent = "Simulation wird gestartet...";
+    startSimBtn.disabled = true;
+
+    try {
+      await fetch("/start_new_simulation", { method: "POST" });
+      updateSimulationProgress();
+    } catch (error) {
+      statusText.textContent = `Fehler beim Starten der Simulation: ${error.message}`;
+      startSimBtn.disabled = false;
+    }
+  });
+
+  // --- Initialisierung ---
+  function initialize() {
+    // Load data for all tables on startup
+    for (let i = 1; i <= csvFiles.length; i++) {
+      loadCsvData(i);
+    }
+    showStep(1); // Show the first step
+  }
+
+  initialize();
 });
-
-let currentConfigData = null;
-let libraryData = null;
-
-async function initializeSimulationPage() {
-  await fetch("/library")
-    .then((res) => res.json())
-    .then((data) => {
-      libraryData = data.library;
-      populateSheetDropdown();
-    });
-
-  await updateScenarioList();
-
-  document
-    .getElementById("analysis-type")
-    .addEventListener("change", handleScenarioChange);
-  document
-    .getElementById("load-base-scenario-btn")
-    .addEventListener("click", loadAndPreviewScenario);
-  document
-    .getElementById("run-simulation-form")
-    .addEventListener("submit", runSimulation);
-}
-
-async function updateScenarioList() {
-  const select = document.getElementById("base-scenario-select");
-  if (!select) return;
-  try {
-    const response = await fetch("/scenarios");
-    const scenarios = await response.json();
-    select.innerHTML =
-      '<option value="">-- Bitte eine Konfiguration laden --</option>';
-    scenarios.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      select.appendChild(option);
-    });
-  } catch (e) {
-    console.error("Szenarien konnten nicht geladen werden:", e);
-  }
-}
-
-async function loadAndPreviewScenario() {
-  const select = document.getElementById("base-scenario-select");
-  const name = select.value;
-  if (!name) {
-    alert("Bitte wähle ein Szenario zum Laden aus.");
-    return;
-  }
-
-  const response = await fetch(`/scenarios/${name}`);
-  const data = await response.json();
-
-  if (response.ok) {
-    currentConfigData = data;
-    const previewContainer = document.getElementById("config-preview");
-    const jsonPreview = document.getElementById("config-json-preview");
-
-    jsonPreview.textContent = JSON.stringify(data, null, 2);
-    previewContainer.style.display = "block";
-
-    populateAssemblyDropdown(data.assemblies);
-
-    document.getElementById("run-simulation-btn").disabled = false;
-    alert(`Szenario '${name}' geladen und bereit zur Simulation.`);
-  } else {
-    alert(`Fehler beim Laden: ${data.error}`);
-    document.getElementById("run-simulation-btn").disabled = true;
-  }
-}
-
-function handleScenarioChange() {
-  document
-    .querySelectorAll(".scenario-details")
-    .forEach((el) => (el.style.display = "none"));
-  const selectedValue = document.getElementById("analysis-type").value;
-  if (selectedValue !== "none") {
-    const targetElement = document.getElementById(`${selectedValue}-scenario`);
-    if (targetElement) {
-      targetElement.style.display = "block";
-    }
-  }
-}
-
-function populateAssemblyDropdown(assemblies = []) {
-  const select = document.getElementById("distance-assembly");
-  if (!select) return;
-  select.innerHTML = "";
-
-  assemblies.forEach((asm, index) => {
-    const option = document.createElement("option");
-    option.value = index;
-    option.textContent = asm.name || `Baugruppe ${index + 1}`;
-    select.appendChild(option);
-
-    if (index === 0) {
-      document.getElementById("distance-x-start").value = asm.position.x;
-      document.getElementById("distance-y-start").value = asm.position.y;
-      document.getElementById("distance-x-end").value = asm.position.x + 200;
-      document.getElementById("distance-y-end").value = asm.position.y;
-    }
-  });
-}
-
-function populateSheetDropdown() {
-  const select = document.getElementById("shielding-sheet");
-  if (!select || !libraryData) return;
-  select.innerHTML = "";
-
-  libraryData.components.transformerSheets.forEach((sheet) => {
-    const option = document.createElement("option");
-    option.value = sheet.templateProductInformation.name;
-    option.textContent = sheet.templateProductInformation.name;
-    select.appendChild(option);
-  });
-}
-
-async function runSimulation(event) {
-  event.preventDefault();
-  if (!currentConfigData) {
-    alert("Bitte lade zuerst eine Basiskonfiguration.");
-    return;
-  }
-
-  const statusDiv = document.getElementById("simulation-status");
-  statusDiv.textContent = "Simulation wird vorbereitet...";
-
-  const analysisType = document.getElementById("analysis-type").value;
-  let scenarioParams = { type: analysisType };
-
-  scenarioParams.phaseStart = parseFloat(
-    document.getElementById("phase-start").value
-  );
-  scenarioParams.phaseEnd = parseFloat(
-    document.getElementById("phase-end").value
-  );
-  scenarioParams.phaseStepSize = parseFloat(
-    document.getElementById("phase-step-size").value
-  );
-
-  if (analysisType === "current") {
-    scenarioParams.start = parseFloat(
-      document.getElementById("current-start").value
-    );
-    scenarioParams.end = parseFloat(
-      document.getElementById("current-end").value
-    );
-    scenarioParams.stepSize = parseFloat(
-      document.getElementById("current-step-size").value
-    );
-  } else if (analysisType === "distance") {
-    scenarioParams.assemblyIndex = parseInt(
-      document.getElementById("distance-assembly").value
-    );
-    scenarioParams.x_start = parseFloat(
-      document.getElementById("distance-x-start").value
-    );
-    scenarioParams.x_end = parseFloat(
-      document.getElementById("distance-x-end").value
-    );
-    scenarioParams.y_start = parseFloat(
-      document.getElementById("distance-y-start").value
-    );
-    scenarioParams.y_end = parseFloat(
-      document.getElementById("distance-y-end").value
-    );
-    scenarioParams.stepSize = parseFloat(
-      document.getElementById("distance-step-size").value
-    );
-  } else if (analysisType === "shielding") {
-    scenarioParams.sheetName = document.getElementById("shielding-sheet").value;
-    scenarioParams.x_start = parseFloat(
-      document.getElementById("shielding-x-start").value
-    );
-    scenarioParams.x_end = parseFloat(
-      document.getElementById("shielding-x-end").value
-    );
-    scenarioParams.y_start = parseFloat(
-      document.getElementById("shielding-y-start").value
-    );
-    scenarioParams.y_end = parseFloat(
-      document.getElementById("shielding-y-end").value
-    );
-    scenarioParams.stepSize = parseFloat(
-      document.getElementById("shielding-step-size").value
-    );
-  }
-
-  const payload = {
-    baseConfig: currentConfigData,
-    scenario: scenarioParams,
-  };
-
-  try {
-    const response = await fetch("/run_simulation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    if (response.ok) {
-      statusDiv.textContent = `Erfolg: ${result.message}. Starte nun MATLAB, um die Berechnung auszuführen.`;
-    } else {
-      statusDiv.textContent = `Fehler: ${result.error}`;
-    }
-  } catch (error) {
-    statusDiv.textContent = `Ein Netzwerkfehler ist aufgetreten: ${error}`;
-  }
-}

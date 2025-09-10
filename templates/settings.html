@@ -3,65 +3,56 @@
 
 {% block title %}Einstellungen{% endblock %}
 
-{% block sub_nav %}
-<div class="sub-nav-bar">
-    <h2>Einstellungen</h2>
-</div>
-{% endblock %}
-
 {% block content %}
-<div class="container">
-    <div class="settings-container">
-        <aside class="settings-nav">
-            <ul>
-                <li><a href="#" class="active" data-target="tags-settings">Tag-Verwaltung</a></li>
-            </ul>
-        </aside>
-        <main class="settings-content">
-            <div id="tags-settings" class="settings-section active">
-                <h2>Tag-Verwaltung</h2>
-                <p>Verwalte hier die Kategorien und die zugehörigen Tags, die in der gesamten Anwendung verwendet
-                    werden.</p>
+<section>
+    <h2>Einstellungen</h2>
+    <p>Hier können allgemeine Einstellungen für die Anwendung vorgenommen werden.</p>
+</section>
 
-                <div class="add-category-section">
-                    <h4>Neue Kategorie hinzufügen</h4>
-                    <form id="add-category-form" class="form-inline">
-                        <input type="text" id="new-category-name" placeholder="Name der Kategorie" required>
-                        <button type="submit">Kategorie erstellen</button>
-                    </form>
-                </div>
+<section>
+    <h3>Konfiguration zurücksetzen</h3>
+    <p>
+        Achtung: Diese Aktionen setzen Teile der Konfiguration auf den Werkszustand zurück.
+        Bestehende Daten in den entsprechenden Dateien werden überschrieben.
+    </p>
 
-                <hr>
-
-                <div id="categories-container">
-                </div>
-            </div>
-        </main>
-    </div>
-</div>
-
-<div id="edit-tag-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-        <h3>Tag bearbeiten</h3>
-        <form id="edit-tag-form">
-            <input type="hidden" id="edit-tag-original-name">
-            <input type="hidden" id="edit-tag-category-name">
+    <form id="settings-form">
+        <fieldset>
+            <legend>Datenbanken zurücksetzen</legend>
             <div class="form-group">
-                <label for="edit-tag-name">Tag-Name</label>
-                <input type="text" id="edit-tag-name" required>
+                <input type="checkbox" id="reset-library" name="reset_library">
+                <label for="reset-library">Bauteil-Bibliothek (library.json) zurücksetzen</label>
+                <p class="description">
+                    Setzt alle benutzerdefinierten Bauteile zurück und stellt die Standard-Bauteile aus der Vorlage
+                    wieder her.
+                </p>
             </div>
             <div class="form-group">
-                <label>Tag-Farbe</label>
-                <div id="edit-tag-color-palette" class="color-palette">
-                </div>
+                <input type="checkbox" id="reset-tags" name="reset_tags">
+                <label for="reset-tags">Tags (tags.json) zurücksetzen</label>
+                <p class="description">
+                    Löscht alle benutzerdefinierten Tags und stellt die Standard-Tags wieder her.
+                </p>
             </div>
-            <div class="button-group">
-                <button type="submit">Speichern</button>
-                <button type="button" id="edit-tag-modal-cancel" class="secondary">Abbrechen</button>
+        </fieldset>
+
+        <fieldset>
+            <legend>Messdaten zurücksetzen</legend>
+            <div class="form-group">
+                <input type="checkbox" id="reset-messdaten" name="reset_messdaten">
+                <label for="reset-messdaten">Messdaten (alle .csv Dateien im 'data'-Ordner) zurücksetzen</label>
+                <p class="description">
+                    Überschreibt alle CSV-Dateien mit den ursprünglichen Werten. Nützlich, wenn die Messdaten beschädigt
+                    sind.
+                </p>
             </div>
-        </form>
-    </div>
-</div>
+        </fieldset>
+
+        <div class="form-buttons">
+            <button type="submit" class="button-danger">Ausgewählte Konfigurationen zurücksetzen</button>
+        </div>
+    </form>
+</section>
 {% endblock %}
 
 {% block scripts %}

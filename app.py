@@ -5,16 +5,17 @@ Initialisiert die Flask-App und registriert die Blueprints.
 
 from flask import Flask, render_template, send_from_directory
 from server.api import api_bp
-from server.simulation import simulation_bp
 from server.measurement import measurement_bp
 
-# Hinzugefügt: Import der Hilfsfunktionen zum Laden von Daten
+# Korrigiert: Importiert den aktualisierten simulation_bp
+from server.simulation import simulation_bp
 from server.utils import load_data, LIBRARY_FILE
 
 app = Flask(__name__)
 app.register_blueprint(api_bp)
-app.register_blueprint(simulation_bp)
 app.register_blueprint(measurement_bp)
+# Korrigiert: Registriert den aktualisierten simulation_bp
+app.register_blueprint(simulation_bp)
 
 
 # Routen für die Hauptseiten
@@ -24,10 +25,15 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/admin")
+def admin():
+    """Admin-Seite."""
+    return render_template("admin.html")
+
+
 @app.route("/bauteile")
 def bauteile():
     """Seite zur Verwaltung der Bauteil-Bibliothek."""
-    # Hinzugefügt: Lade die Bibliotheksdaten für die Bauteil-Seite
     library_data = load_data(LIBRARY_FILE, {"components": {}})
     return render_template("bauteile.html", library=library_data)
 
@@ -35,20 +41,13 @@ def bauteile():
 @app.route("/configurator")
 def configurator():
     """Konfigurator-Seite zum Erstellen von Szenarien."""
-    # Hinzugefügt: Lade die Bibliotheksdaten und übergebe sie an das Template
     library_data = load_data(LIBRARY_FILE, {"components": {}})
     return render_template("configurator.html", library=library_data)
 
 
-@app.route("/measurement")
-def measurement():
-    """Seite für die Mess-Konfiguration und den CSV-Editor."""
-    return render_template("measurement.html")
-
-
 @app.route("/simulation")
 def simulation():
-    """Simulations-Seite."""
+    """Simulations-Seite mit dem neuen 5-Schritte-Assistenten."""
     return render_template("simulation.html")
 
 

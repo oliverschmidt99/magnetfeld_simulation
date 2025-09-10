@@ -3,145 +3,89 @@
 
 {% block title %}Simulation{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/simulation.css') }}">
+{% endblock %}
+
 {% block sub_nav %}
 <div class="sub-nav-bar">
-    <h2>Simulation durchführen</h2>
+    <h2>Neue Simulation durchführen (5 Schritte)</h2>
 </div>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <form id="run-simulation-form">
-        <div class="form-section">
-            <h3>1. Basiskonfiguration auswählen</h3>
-            <div class="form-group">
-                <label for="base-scenario-select">Gespeicherte Konfiguration</label>
-                <select id="base-scenario-select" required>
-                    <option value="">-- Bitte eine Konfiguration laden --</option>
-                </select>
-            </div>
+<section>
+    <div id="simulation-wizard">
+        <div class="step-indicator">
+            <div class="step-item active" data-step="1">1. Startpositionen</div>
+            <div class="step-item" data-step="2">2. Spielraum</div>
+            <div class="step-item" data-step="3">3. Bewegungen</div>
+            <div class="step-item" data-step="4">4. Schrittweiten</div>
+            <div class="step-item" data-step="5">5. Wandler</div>
+        </div>
+
+        <div class="step-content active" data-step="1">
+            <h3>Schritt 1: Startpositionen</h3>
+            <p>Konfigurieren Sie die Startpositionen für die Simulation. Die Daten können per Drag und Drop sortiert
+                werden.</p>
+            <div id="csv-table-1" class="editable-csv-table"></div>
             <div class="button-group">
-                <button type="button" id="load-base-scenario-btn">Konfiguration laden & anzeigen</button>
-            </div>
-            <div id="config-preview"
-                style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px; display: none;">
-                <h4>Geladene Konfiguration:</h4>
-                <pre id="config-json-preview" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+                <button type="button" class="nav-btn next-btn btn-primary" data-next="2">Weiter &raquo;</button>
             </div>
         </div>
 
-        <hr>
-
-        <div class="form-section">
-            <h3>2. Parametrische Analyse definieren</h3>
-
-            <div class="form-section"
-                style="background-color: #f0f8ff; border: 1px solid #a7d7ff; margin-bottom: 1.5rem; padding: 1rem;">
-                <h4>Phasendurchlauf (Für alle Szenarien)</h4>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="phase-start">Start-Winkel (°)</label>
-                        <input type="number" id="phase-start" value="0" step="1">
-                    </div>
-                    <div class="form-group">
-                        <label for="phase-end">End-Winkel (°)</label>
-                        <input type="number" id="phase-end" value="90" step="1">
-                    </div>
-                    <div class="form-group">
-                        <label for="phase-step-size">Schrittweite (°)</label>
-                        <input type="number" id="phase-step-size" value="15" min="1">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="analysis-type">Szenario-Typ (Zusätzliche Variation)</label>
-                <select id="analysis-type">
-                    <option value="none" selected>Keine - Nur Phasendurchlauf</option>
-                    <option value="current">Stromstärke variieren</option>
-                    <option value="distance">Abstand anpassen</option>
-                    <option value="shielding">Abschirmblech hinzufügen/verschieben</option>
-                </select>
-            </div>
-
-            <div id="current-scenario" class="scenario-details" style="display: none;">
-                <h4>Stromstärke ansteigen lassen</h4>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="current-start">Start-Strom (A, Peak)</label>
-                        <input type="number" id="current-start" value="1000">
-                    </div>
-                    <div class="form-group">
-                        <label for="current-end">End-Strom (A, Peak)</label>
-                        <input type="number" id="current-end" value="5000">
-                    </div>
-                    <div class="form-group">
-                        <label for="current-step-size">Schrittweite (Δstrom)</label>
-                        <input type="number" id="current-step-size" value="1000">
-                    </div>
-                </div>
-            </div>
-
-            <div id="distance-scenario" class="scenario-details" style="display: none;">
-                <h4>Abstand anpassen</h4>
-                <div class="form-group">
-                    <label for="distance-assembly">Welche Baugruppe soll verschoben werden?</label>
-                    <select id="distance-assembly"></select>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label for="distance-x-start">Start X (mm)</label><input type="number"
-                            id="distance-x-start"></div>
-                    <div class="form-group"><label for="distance-x-end">Ende X (mm)</label><input type="number"
-                            id="distance-x-end"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label for="distance-y-start">Start Y (mm)</label><input type="number"
-                            id="distance-y-start"></div>
-                    <div class="form-group"><label for="distance-y-end">Ende Y (mm)</label><input type="number"
-                            id="distance-y-end"></div>
-                </div>
-                <div class="form-group">
-                    <label for="distance-step-size">Schrittweite (Δabstand in mm)</label>
-                    <input type="number" id="distance-step-size" value="50">
-                </div>
-            </div>
-
-            <div id="shielding-scenario" class="scenario-details" style="display: none;">
-                <h4>Abschirmblech hinzufügen/verschieben</h4>
-                <p>Das ausgewählte Blech wird zur Konfiguration hinzugefügt und seine Position variiert.</p>
-                <div class="form-group">
-                    <label for="shielding-sheet">Welches Trafoblech?</label>
-                    <select id="shielding-sheet"></select>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label for="shielding-x-start">Start X (mm)</label><input type="number"
-                            id="shielding-x-start" value="0"></div>
-                    <div class="form-group"><label for="shielding-x-end">Ende X (mm)</label><input type="number"
-                            id="shielding-x-end" value="200"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label for="shielding-y-start">Start Y (mm)</label><input type="number"
-                            id="shielding-y-start" value="100"></div>
-                    <div class="form-group"><label for="shielding-y-end">Ende Y (mm)</label><input type="number"
-                            id="shielding-y-end" value="100"></div>
-                </div>
-                <div class="form-group">
-                    <label for="shielding-step-size">Schrittweite (Δabstand in mm)</label>
-                    <input type="number" id="shielding-step-size" value="50">
-                </div>
+        <div class="step-content" data-step="2">
+            <h3>Schritt 2: Spielraum</h3>
+            <p>Definieren Sie den Spielraum für die verschiedenen Stromstärken.</p>
+            <div id="csv-table-2" class="editable-csv-table"></div>
+            <div class="button-group">
+                <button type="button" class="nav-btn prev-btn btn-secondary" data-prev="1">&laquo; Zurück</button>
+                <button type="button" class="nav-btn next-btn btn-primary" data-next="3">Weiter &raquo;</button>
             </div>
         </div>
 
-        <hr>
-        <div class="button-group">
-            <button type="submit" id="run-simulation-btn" disabled>Simulation starten</button>
+        <div class="step-content" data-step="3">
+            <h3>Schritt 3: Bewegungen</h3>
+            <p>Legen Sie die Bewegungsabläufe für die Simulation fest.</p>
+            <div id="csv-table-3" class="editable-csv-table"></div>
+            <div class="button-group">
+                <button type="button" class="nav-btn prev-btn btn-secondary" data-prev="2">&laquo; Zurück</button>
+                <button type="button" class="nav-btn next-btn btn-primary" data-next="4">Weiter &raquo;</button>
+            </div>
         </div>
-        <div id="simulation-status" style="margin-top: 1rem;"></div>
 
-    </form>
-</div>
+        <div class="step-content" data-step="4">
+            <h3>Schritt 4: Schrittweiten</h3>
+            <p>Bestimmen Sie die Schrittweiten für die Bewegungen.</p>
+            <div id="csv-table-4" class="editable-csv-table"></div>
+            <div class="button-group">
+                <button type="button" class="nav-btn prev-btn btn-secondary" data-prev="3">&laquo; Zurück</button>
+                <button type="button" class="nav-btn next-btn btn-primary" data-next="5">Weiter &raquo;</button>
+            </div>
+        </div>
+
+        <div class="step-content" data-step="5">
+            <h3>Schritt 5: Wandler-Abmessungen &amp; Simulation starten</h3>
+            <p>Überprüfen Sie die Abmessungen des Wandlers und starten Sie die Simulation.</p>
+            <div id="csv-table-5" class="editable-csv-table"></div>
+            <div class="button-group">
+                <button type="button" class="nav-btn prev-btn btn-secondary" data-prev="4">&laquo; Zurück</button>
+                <button type="button" id="start-simulation-btn" class="btn-primary">Simulation starten</button>
+            </div>
+
+            <div id="simulation-progress" class="simulation-progress-container">
+                <h4>Simulationsfortschritt:</h4>
+                <div class="progress">
+                    <div id="progress-bar" class="progress-bar">0%</div>
+                </div>
+                <div id="simulation-status-text" class="status-text"></div>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script src="{{ url_for('static', filename='js/simulation.js') }}"></script>
 {% endblock %}

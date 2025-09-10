@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+
+{% block title %}Admin-Bereich{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Admin-Bereich: Tag-Verwaltung</h2>
+    <p>Hier kannst du die global verfügbaren Tags für die Bauteil-Bibliothek verwalten.</p>
+</section>
+
+<section id="tag-manager">
+    <h3>Alle Tags</h3>
+    <div id="tag-list" class="tag-list">
+    </div>
+
+    <h3>Neuen Tag hinzufügen</h3>
+    <div class="add-tag-form">
+        <input type="text" id="new-tag-name" placeholder="Name des neuen Tags">
+        <button type="button" id="add-tag-btn">Tag hinzufügen</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

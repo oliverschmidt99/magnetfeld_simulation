@@ -211,7 +211,6 @@ label {
     font-weight: bold;
 }
 
-/* KORRIGIERT: CSS-Regeln für Eingabefelder spezifischer gemacht, damit Checkboxen nicht betroffen sind */
 input[type="text"],
 input[type="number"],
 input[type="color"],
@@ -224,7 +223,6 @@ textarea {
     box-sizing: border-box;
     font-size: 1rem;
 }
-
 
 button {
     background-color: #0d6efd;
@@ -247,7 +245,6 @@ hr {
     margin: 2rem 0;
 }
 
-/* Kachel-Navigation Styles */
 .card-container .card {
     cursor: pointer;
     transition: all 0.2s ease;
@@ -290,7 +287,7 @@ hr {
 
 .component-preview svg {
     width: 100%;
-    height: 350px; /* Höhe vergrößert */
+    height: 350px;
 }
 
 .filter-bar {
@@ -502,7 +499,6 @@ button.secondary:hover {
     background-color: #5a6268;
 }
 
-/* Neue Stile für kompaktes Layout */
 .component-editor {
     display: flex;
     flex-direction: column;
@@ -510,20 +506,19 @@ button.secondary:hover {
 }
 
 .component-preview {
-    background: #f8f9fa; /* Hellerer Hintergrund für besseren Kontrast zum Gitter */
+    background: #f8f9fa;
     border: 1px solid #ddd;
     padding: 1rem;
     text-align: center;
     max-height: 400px;
     overflow: auto;
     position: relative;
-    /* NEU: Übergang für die Hintergrundfarbe */
     transition: background-color 0.3s ease;
 }
 
 .preview-header {
     display: flex;
-    justify-content: space-between; /* Geändert für bessere Anordnung */
+    justify-content: space-between;
     align-items: center;
     gap: 1rem;
     margin-bottom: 0.5rem;
@@ -533,7 +528,6 @@ button.secondary:hover {
     margin: 0;
 }
 
-/* NEU: Stile für die Vorschau-Steuerung */
 .preview-controls {
     display: flex;
     align-items: center;
@@ -568,7 +562,6 @@ input[type="color"].preview-bg-input::-webkit-color-swatch {
     border-radius: 4px;
 }
 
-
 #zoom-preview-btn {
     background: none;
     border: none;
@@ -581,7 +574,7 @@ input[type="color"].preview-bg-input::-webkit-color-swatch {
 
 .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Zwei Spalten */
+    grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
 
@@ -609,7 +602,7 @@ input[type="color"].preview-bg-input::-webkit-color-swatch {
     padding: 0.25rem;
     font-size: 0.85rem;
 }
-/* Neue Stile für die Bemaßung in der Vorschau */
+
 .dimension {
     stroke: #333;
     stroke-width: 0.5;
@@ -617,15 +610,14 @@ input[type="color"].preview-bg-input::-webkit-color-swatch {
 }
 
 .dimension text {
-    font-family: Arial, sans-serif; /* Saubere, serifenlose Schriftart */
-    font-size: 4px; /* Kleinere Schrift für die Maße */
+    font-family: Arial, sans-serif;
+    font-size: 4px;
     stroke: none;
 }
 
 .dimension #arrow path {
     fill: #333;
 }
-
 
 .settings-container {
     display: flex;
@@ -738,7 +730,6 @@ button.danger:hover,
     background-color: #c82333;
 }
 
-/* Farbpalette im Modal */
 .color-palette {
     display: flex;
     gap: 0.5rem;
@@ -758,9 +749,6 @@ button.danger:hover,
     transform: scale(1.1);
 }
 
-/* ... (vorheriger CSS-Code) ... */
-
-/* Neue Stile für kompaktes Layout */
 .component-editor {
     display: flex;
     flex-direction: column;
@@ -768,7 +756,7 @@ button.danger:hover,
 }
 
 .component-preview {
-    background: #f8f9fa; /* Hellerer Hintergrund für besseren Kontrast zum Gitter */
+    background: #f8f9fa;
     border: 1px solid #ddd;
     padding: 1rem;
     text-align: center;
@@ -800,12 +788,10 @@ button.danger:hover,
 
 .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Zwei Spalten */
+    grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
-/* ... (alter Code bleibt) ... */
 
-/* Neue Stile für die Bemaßung in der Vorschau */
 .dimension {
     stroke: #333;
     stroke-width: 0.5;
@@ -822,7 +808,6 @@ button.danger:hover,
     fill: #333;
 }
 
-/* Gitter-Stile */
 .grid-line {
     stroke: #ddd;
     stroke-width: 0.5;
@@ -837,7 +822,6 @@ button.danger:hover,
     fill: #aaa;
 }
 
-/* Stile für das Zoom-Modal */
 .preview-modal-content {
     background-color: #f8f9fa;
     width: 90vw;
@@ -869,7 +853,6 @@ button.danger:hover,
     cursor: grabbing;
 }
 
-/* NEU: Verbesserte Stile für die Analyse-Seite */
 .analysis-controls {
     display: flex;
     gap: 2rem;
@@ -883,7 +866,7 @@ button.danger:hover,
 
 .checkbox-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive Spalten */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 0.75rem;
     max-height: 150px;
     overflow-y: auto;
@@ -896,13 +879,12 @@ button.danger:hover,
 .checkbox-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem; /* Abstand zwischen Checkbox und Label */
+    gap: 0.5rem;
 }
 
 .checkbox-item input[type="checkbox"] {
-    width: auto; /* Hebt die 100%-Breite auf */
+    width: auto;
     height: 1rem;
-    width: 1rem;
 }
 
 .checkbox-item label {

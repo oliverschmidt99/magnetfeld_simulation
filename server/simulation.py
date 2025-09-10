@@ -1,35 +1,94 @@
-# server/simulation.py
 """
-Blueprint für den Start der MATLAB-Simulation.
+Blueprint für die neue 5-Schritt-Simulation und den Simulationsstart.
 """
+
 import os
 import subprocess
-from flask import Blueprint, jsonify, request
-from server.utils import save_data
+import threading
+from flask import Blueprint, jsonify
 
-simulation_bp = Blueprint("simulation", __name__)
+# Umbenannt: Der Blueprint heißt jetzt wieder simulation_bp
+simulation_bp = Blueprint("simulation_bp", __name__)
+
+# --- Status-Objekt statt globaler Variablen ---
+simulation_status = {
+    "running": False,
+    "progress": 0,
+    "status_text": "Nicht gestartet",
+}
 
 # --- Konfiguration ---
 MATLAB_EXECUTABLE = "matlab"
 # --------------------
 
 
-@simulation_bp.route("/run_simulation", methods=["POST"])
-def run_simulation():
-    """Bereitet die Konfiguration vor und startet die MATLAB-Simulation im Hintergrund."""
+def run_matlab_simulation(status_obj):
+    """Führt das MATLAB-Skript aus und aktualisiert das Status-Objekt."""
+    status_obj.update(
+        {
+            "running": True,
+            "progress": 10,
+            "status_text": "MATLAB wird gestartet...",
+        }
+    )
+
     try:
-        data = request.json
-        config = data.get("baseConfig")
-        config["scenarioParams"] = data.get("scenario")
-
-        save_data("simulation_run.json", config)
-
-        matlab_command = "run('main.m'); exit;"
-        # KORRIGIERT: os.path.dirname zweimal anwenden, um zum Projekt-Root zu gelangen.
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        matlab_command = "run('main.m'); exit;"
 
-        subprocess.Popen([MATLAB_EXECUTABLE, "-batch", matlab_command], cwd=project_dir)
+        status_obj.update(
+            {
+                "progress": 30,
+                "status_text": "Simulation läuft...",
+            }
+        )
 
-        return jsonify({"message": "Simulation im Hintergrund gestartet."})
-    except (IOError, TypeError, subprocess.SubprocessError, KeyError) as e:
-        return jsonify({"error": str(e)}), 500
+        process = subprocess.Popen(
+            [MATLAB_EXECUTABLE, "-batch", matlab_command],
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+        )
+
+        process.wait()
+
+        if process.returncode == 0:
+            status_obj.update(
+                {
+                    "progress": 100,
+                    "status_text": "Simulation erfolgreich abgeschlossen.",
+                }
+            )
+        else:
+            error_output = process.stderr.read()
+            status_obj.update(
+                {
+                    "progress": 0,
+                    "status_text": f"Simulationsfehler: {error_output}",
+                }
+            )
+
+    except (IOError, OSError, subprocess.SubprocessError) as e:
+        status_obj["status_text"] = f"Ein kritischer Fehler ist aufgetreten: {str(e)}"
+    finally:
+        status_obj["running"] = False
+
+
+@simulation_bp.route("/start_new_simulation", methods=["POST"])
+def start_new_simulation():
+    """Startet die 5-Schritt-Simulation in einem Hintergrund-Thread."""
+    if simulation_status["running"]:
+        return jsonify({"error": "Eine Simulation läuft bereits."}), 409
+
+    thread = threading.Thread(target=run_matlab_simulation, args=(simulation_status,))
+    thread.start()
+
+    return jsonify({"message": "Simulation gestartet."})
+
+
+@simulation_bp.route("/simulation_status")
+def get_simulation_status():
+    """Gibt den aktuellen Status der Simulation zurück."""
+    return jsonify(simulation_status)

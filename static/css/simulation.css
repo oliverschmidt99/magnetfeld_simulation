@@ -1,0 +1,124 @@
+/* static/css/pages/simulation.css */
+
+#simulation-wizard {
+    /* border: 1px solid #ddd;  Entfernt, da section selbst einen Rahmen hat */
+    /* border-radius: 5px; */
+    padding: 0; /* Padding wird von der Section übernommen */
+}
+
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0; /* Leichterer Trenner */
+    padding-bottom: 10px;
+    background-color: #f9f9f9; /* Leichter Hintergrund für den Indikator */
+    border-radius: 5px 5px 0 0; /* Obere Ecken abrunden */
+    margin-top: -20px; /* An den oberen Rand der Section ziehen */
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.step-item {
+    padding: 10px 15px;
+    color: #888;
+    cursor: default;
+    flex-grow: 1;
+    text-align: center;
+    font-size: 0.95rem;
+    white-space: nowrap; /* Verhindert Umbruch bei kleinen Bildschirmen */
+}
+
+.step-item.active {
+    color: #007bff;
+    font-weight: bold;
+    border-bottom: 3px solid #007bff; /* Deutlicherer Aktiv-Indikator */
+    margin-bottom: -10px; /* Überlappt mit dem unteren Rand des Indikators */
+}
+
+.step-content {
+    display: none;
+    padding-top: 10px; /* Abstand zum Step-Indicator */
+}
+
+.step-content.active {
+    display: block;
+}
+
+.button-group {
+    margin-top: 25px; /* Etwas mehr Abstand zu den Tabellen */
+    display: flex;
+    justify-content: space-between;
+    gap: 10px; /* Abstand zwischen Buttons */
+}
+
+.button-group .nav-btn {
+    flex-grow: 1; /* Buttons füllen den verfügbaren Platz */
+    max-width: 150px; /* Maximale Breite für Nav-Buttons */
+}
+
+/* Tabellen-Container */
+.editable-csv-table {
+    margin-top: 20px;
+    /* Box-shadow und border werden vom allgemeinen .csv-table oder .table Stil übernommen */
+}
+
+
+.sortable-ghost {
+    background-color: #e6f7ff; /* Hellblauer Hintergrund beim Ziehen */
+    opacity: 0.8;
+}
+
+/* Fortschrittsbalken & Status */
+.simulation-progress-container {
+    display: none; 
+    margin-top: 2rem; /* Mehr Abstand zum Start-Button */
+    padding: 15px;
+    background-color: #e9f7ef; /* Leichter grüner Hintergrund */
+    border: 1px solid #cce5d4;
+    border-radius: 5px;
+}
+
+.simulation-progress-container h4 {
+    color: #28a745; /* Grüner für Fortschritt */
+    margin-bottom: 10px;
+}
+
+.progress {
+    height: 25px; /* Höherer Fortschrittsbalken */
+    background-color: #e9ecef;
+    border-radius: .25rem;
+    overflow: hidden; /* Sicherstellen, dass der Balken nicht überläuft */
+}
+
+.progress-bar {
+    background-color: #28a745; /* Grüner Fortschrittsbalken */
+    color: white;
+    text-align: center;
+    line-height: 25px; /* Vertikale Zentrierung des Textes */
+    transition: width .6s ease;
+    width: 0%; /* Start bei 0% */
+}
+
+.status-text {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Spezifische Button-Anpassungen */
+.btn-save {
+    background-color: #28a745; /* Grüner Speichern-Button */
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-top: 15px; /* Abstand zur Tabelle */
+    display: block; /* Nimmt ganze Breite ein */
+    width: fit-content; /* Passt sich dem Inhalt an */
+}
+
+.btn-save:hover {
+    background-color: #218838;
+}

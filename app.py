@@ -9,6 +9,7 @@ interaktiv zu konfigurieren und zu verwalten.
 import copy
 import json
 import os
+import math  # Import für die Wurzel-Berechnung
 from typing import Any, Dict, List, Tuple
 
 # 2. Third-Party-Bibliotheken
@@ -162,16 +163,26 @@ def generate_simulation():
     spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
 
     sim_params = data.get("simulationParams", {})
-    nennstrom = sim_params.get("ratedCurrent")
-    bewegung_gruppe_name = sim_params.get("movementGroup")
+    nennstrom_str = sim_params.get("ratedCurrent")
 
-    startpositionen = startpos_data.get(nennstrom)
-    schrittweiten = schrittweiten_data.get(nennstrom)
-    spielraum = spielraum_data.get(nennstrom)
+    # KORREKTUR: Fehlendes Feld 'type' für das MATLAB-Skript hinzufügen
+    sim_params["type"] = "none"
+
+    try:
+        nennstrom_float = float(nennstrom_str)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Ungültiger Nennstrom-Wert."}), 400
+
+    startpositionen = startpos_data.get(nennstrom_str)
+    schrittweiten = schrittweiten_data.get(nennstrom_str)
+    spielraum = spielraum_data.get(nennstrom_str)
+    bewegung_gruppe_name = sim_params.get("movementGroup")
 
     if not all([startpositionen, schrittweiten, spielraum]):
         return (
-            jsonify({"error": f"Stammdaten für Nennstrom {nennstrom}A unvollständig."}),
+            jsonify(
+                {"error": f"Stammdaten für Nennstrom {nennstrom_str}A unvollständig."}
+            ),
             400,
         )
 
@@ -190,34 +201,43 @@ def generate_simulation():
         startpositionen, gewaehlte_bewegung, schrittweiten
     )
 
+    peak_current = nennstrom_float * math.sqrt(2)
+    electrical_system = data.get("electricalSystem", [])
+    for phase in electrical_system:
+        phase["peakCurrentA"] = peak_current
+
     final_assemblies = []
     for assembly_data in data.get("assemblies", []):
         phase_name = assembly_data.get("phaseName")
-        if startpositionen and phase_name in startpositionen:
+
+        if startpositionen and f"x_{phase_name}" in startpositionen:
+
             transformer_details = next(
                 (
                     t
                     for t in library_data.get("components", {}).get("transformers", [])
                     if t.get("templateProductInformation", {}).get("name")
-                    == assembly_data["transformerName"]
+                    == assembly_data.get("transformerName")
                 ),
                 None,
             )
+
+            if transformer_details:
+                assembly_data["transformer_details"] = transformer_details
+
             assembly_data["calculated_positions"] = [
                 step[phase_name] for step in leiter_bewegungspfade
             ]
-            assembly_data["transformer_details"] = transformer_details
             final_assemblies.append(assembly_data)
 
     output = {
         "description": "Konfiguration erstellt via Web-UI",
-        # KORREKTUR: Schlüssel an MATLAB angepasst
         "scenarioParams": sim_params,
-        "electricalSystem": data.get("electricalSystem"),
+        "electricalSystem": electrical_system,
         "assemblies": final_assemblies,
         "standAloneComponents": data.get("standAloneComponents"),
         "simulation_meta": {
-            "nennstrom_A": nennstrom,
+            "nennstrom_A": nennstrom_str,
             "bewegungsgruppe": gewaehlte_bewegung,
             "simulationsraum": spielraum,
             "bewegungspfade_alle_leiter": {

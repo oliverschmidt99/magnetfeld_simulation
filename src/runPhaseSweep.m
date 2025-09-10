@@ -3,24 +3,26 @@ function resultsTable = runPhaseSweep(simConfig, library, baseParams, phaseAngle
 
     [currents, assemblies, standAloneComponents] = initializeComponents(simConfig, library);
 
+    % Prepare a clean parameter struct for FEMM analysis
     stepParams = baseParams;
+
+    % KORREKTUR: Werte als Zahlen (nicht als Text) definieren
+    stepParams.frequencyHz = 50;
+    stepParams.coreRelPermeability = 2500;
+
     stepParams.currents = currents;
     stepParams.assemblies = assemblies;
     stepParams.standAloneComponents = standAloneComponents;
 
-    % Create a cell array to hold the results from each parallel iteration
     numAngles = length(phaseAngleVector);
     resultsCell = cell(numAngles, 1);
 
-    % KORRIGIERT: parfor für parallele Ausführung
     parfor i = 1:numAngles
-        % Jede Iteration muss eine eigene FEMM-Instanz öffnen
-        openfemm(1); % (1) für unsichtbar
+        openfemm(1);
 
         angle = phaseAngleVector(i);
         fprintf('--> Simulating for phase angle: %d°\n', angle);
 
-        % Eine Kopie der Parameter für diesen Worker erstellen
         workerParams = stepParams;
         workerParams.phaseAngleDeg = angle;
 
@@ -43,10 +45,8 @@ function resultsTable = runPhaseSweep(simConfig, library, baseParams, phaseAngle
 
         resultsCell{i} = singleRunResults;
 
-        % FEMM-Instanz für diesen Worker schließen
         closefemm;
     end
 
-    % Ergebnisse aus allen Workern zu einer Tabelle zusammenfügen
     resultsTable = vertcat(resultsCell{:});
 end

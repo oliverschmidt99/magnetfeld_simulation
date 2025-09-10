@@ -6,7 +6,7 @@ classdef ComponentGroup
         xPos
         yPos
         components = {}
-        assignedCurrent % KORRIGIERT: Fehlende Eigenschaft hinzugefügt
+        assignedCurrent
     end
 
     methods
@@ -30,40 +30,57 @@ classdef ComponentGroup
                 error('Assembly "%s" fehlt die Kupferschiene oder der Wandler.', obj.name);
             end
 
-            % --- Wandler-Subkomponenten abrufen ---
+            % --- Alle 4 Wandler-Subkomponenten abrufen ---
             outerAir = transformer.findComponentByName('OuterAir');
             core = transformer.findComponentByName('SteelCore');
             innerAir = transformer.findComponentByName('InnerAir');
-            gap = transformer.findComponentByName('AirGap'); %#ok<NASGU>
+            gap = transformer.findComponentByName('AirGap'); % Das innerste Loch
+
+            if isempty(outerAir) || isempty(core) || isempty(innerAir) || isempty(gap)
+                error('Eine oder mehrere Subkomponenten des Wandlers wurden nicht gefunden.');
+            end
 
             % --- Gruppennummern zuweisen ---
             rail.groupNum = groupNumOffset + 1;
             core.groupNum = groupNumOffset + 3;
             innerAir.groupNum = groupNumOffset + 4;
             outerAir.groupNum = groupNumOffset + 5;
+            % Auch die Luft im Spalt um den Leiter braucht eine Materialeigenschaft
+            gap.groupNum = groupNumOffset + 6;
 
-            % --- 1. Alle Grenzen zeichnen ---
+            % --- 1. Alle Grenzen zeichnen (von außen nach innen) ---
+            % Die Position des Transformers (transformer.xPos/yPos) ist relativ zur Baugruppe,
+            % normalerweise (0,0), aber wir addieren sie für die Korrektheit.
+            transformerAbsX = obj.xPos + transformer.xPos;
+            transformerAbsY = obj.yPos + transformer.yPos;
+
+            drawBoundary(outerAir, transformerAbsX, transformerAbsY);
+            drawBoundary(core, transformerAbsX, transformerAbsY);
+            drawBoundary(innerAir, transformerAbsX, transformerAbsY);
+            drawBoundary(gap, transformerAbsX, transformerAbsY); % KORREKTUR: Fehlende Grenze hinzugefügt
             drawBoundary(rail, obj.xPos, obj.yPos);
-            drawBoundary(outerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
-            drawBoundary(core, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
-            drawBoundary(innerAir, obj.xPos + transformer.xPos, obj.yPos + transformer.yPos);
 
             % --- 2. Alle Material-Labels gezielt platzieren ---
 
-            % KUPFER in der Mitte (deine Region "2")
+            % KUPFER im Zentrum der Baugruppe
             placeLabel(rail, obj.xPos, obj.yPos, 0, 0, circuitName, rail.material, rail.groupNum);
 
-            % Äußere Luftschicht
-            labelX_outer = (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
-            placeLabel(outerAir, obj.xPos, obj.yPos, labelX_outer, 0, '<None>', outerAir.material, outerAir.groupNum);
+            % LUFT IM SPALT (zwischen der 'gap'-Grenze und der Schiene)
+            % Wir platzieren das Label auf halbem Weg zwischen der Schienenkante und der 'gap'-Kante.
+            labelX_gap_air = (gap.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
+            placeLabel(gap, obj.xPos, obj.yPos, labelX_gap_air, 0, '<None>', gap.material, gap.groupNum);
 
-            % Stahlkern
+            % INNERE LUFTSCHICHT (zwischen 'innerAir'-Grenze und 'gap'-Grenze)
+            labelX_innerAir = (innerAir.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
+            placeLabel(innerAir, transformerAbsX, transformerAbsY, labelX_innerAir, 0, '<None>', innerAir.material, innerAir.groupNum);
+
+            % STAHLKERN (zwischen 'core'-Grenze und 'innerAir'-Grenze)
             labelX_core = (core.geoObject.vertices(2, 1) + innerAir.geoObject.vertices(2, 1)) / 2;
-            placeLabel(core, obj.xPos, obj.yPos, labelX_core, 0, '<None>', core.material, core.groupNum);
+            placeLabel(core, transformerAbsX, transformerAbsY, labelX_core, 0, '<None>', core.material, core.groupNum);
 
-            % Innere Luftschicht (deine Region "1")
-            labelX_inner = (innerAir.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
-            placeLabel(innerAir, obj.xPos, obj.yPos, labelX_inner, 0, '<None>', innerAir.material, innerAir.groupNum);
+            % ÄUSSERE LUFTSCHICHT (zwischen 'outerAir'-Grenze und 'core'-Grenze)
+            labelX_outer = (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
+            placeLabel(outerAir, transformerAbsX, transformerAbsY, labelX_outer, 0, '<None>', outerAir.material, outerAir.groupNum);
         end
 
         function component = findComponentByClass(obj, className)

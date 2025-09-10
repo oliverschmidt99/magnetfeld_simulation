@@ -6,19 +6,25 @@ library = jsondecode(fileread('library.json'));
 runData = jsondecode(fileread('simulation_run.json'));
 simConfig = runData;
 scenarioParams = runData.scenarioParams;
-params = simConfig.simulationParams;
+params = simConfig.scenarioParams;
 
-% --- 2. Setup Results Directory (using modern datetime) ---
+% --- 2. Setup Results Directory ---
 currentTime = datetime('now');
 dateStr = datestr(currentTime, 'yyyymmdd');
 timeStr = datestr(currentTime, 'HHMMSS');
-resultsPath = fullfile('res', dateStr, [timeStr, '_', scenarioParams.type]);
+simulationType = scenarioParams.type;
+
+if strcmp(simulationType, 'none') && isfield(simConfig, 'assemblies') && ~isempty(simConfig.assemblies)
+    simulationType = 'position_sweep';
+end
+
+resultsPath = fullfile('res', dateStr, [timeStr, '_', simulationType]);
 femmFilesPath = fullfile(resultsPath, 'femm_files');
 if ~exist(femmFilesPath, 'dir'), mkdir(femmFilesPath); end
 copyfile('simulation_run.json', fullfile(resultsPath, 'simulation_run.json'));
 params.femmFilesPath = femmFilesPath;
 
-fprintf('--- Starting Simulation: %s ---\n', scenarioParams.type);
+fprintf('--- Starting Simulation: %s ---\n', simulationType);
 fprintf('Results will be saved to: %s\n', resultsPath);
 
 % --- 3. Master Result Table & Parallel Pool ---
@@ -31,90 +37,50 @@ end
 
 try
     % --- 5. Main Simulation Logic ---
-    phaseAngleVector = scenarioParams.phaseStart:scenarioParams.phaseStepSize:scenarioParams.phaseEnd;
+    phaseStartNum = str2double(scenarioParams.phaseSweep.start);
+    phaseEndNum = str2double(scenarioParams.phaseSweep.end);
+    phaseStepNum = str2double(scenarioParams.phaseSweep.step);
+    phaseAngleVector = phaseStartNum:phaseStepNum:phaseEndNum;
 
     switch scenarioParams.type
         case 'none'
-            fprintf('Running simple phase sweep...\n');
-            masterResultsTable = runPhaseSweep(simConfig, library, params, phaseAngleVector, '', []);
+            fprintf('Running position sweep based on calculated positions...\n');
 
-        case 'current'
-            fprintf('Running current variation...\n');
-            currentVector = scenarioParams.start:scenarioParams.stepSize:scenarioParams.end;
-
-            for i = 1:length(currentVector)
-                current = currentVector(i);
-                fprintf('\n>> Current Step %d/%d: %.2f A\n', i, length(currentVector), current);
-
-                stepConfig = simConfig;
-
-                for j = 1:length(stepConfig.electricalSystem)
-                    stepConfig.electricalSystem(j).peakCurrentA = current;
-                end
-
-                stepResults = runPhaseSweep(stepConfig, library, params, phaseAngleVector, {'current_A'}, current);
-                masterResultsTable = [masterResultsTable; stepResults]; %#ok<AGROW>
+            if ~isfield(simConfig, 'assemblies') || isempty(simConfig.assemblies)
+                error('No assemblies found in simulation_run.json for position sweep.');
             end
 
-        case {'distance', 'shielding'}
+            numPositionSteps = length(simConfig.assemblies(1).calculated_positions);
 
-            if strcmp(scenarioParams.type, 'distance')
-                fprintf('Running distance variation...\n');
-            else
-                fprintf('Running shielding variation...\n');
-            end
+            for i = 1:numPositionSteps
+                fprintf('\n>> Position Step %d/%d:\n', i, numPositionSteps);
 
-            startX = scenarioParams.x_start;
-            startY = scenarioParams.y_start;
-            endX = scenarioParams.x_end;
-            endY = scenarioParams.y_end;
-            totalDist = sqrt((endX - startX) ^ 2 + (endY - startY) ^ 2);
-            numSteps = floor(totalDist / scenarioParams.stepSize) + 1;
+                stepConfig = simConfig; % Start with the base config for each step
 
-            xVector = linspace(startX, endX, numSteps);
-            yVector = linspace(startY, endY, numSteps);
-
-            for i = 1:numSteps
-                posX = xVector(i);
-                posY = yVector(i);
-                fprintf('\n>> Position Step %d/%d: (%.2f, %.2f) mm\n', i, numSteps, posX, posY);
-
-                stepConfig = simConfig;
-
-                if strcmp(scenarioParams.type, 'distance')
-                    idx = scenarioParams.assemblyIndex + 1;
-                    stepConfig.assemblies(idx).position.x = posX;
-                    stepConfig.assemblies(idx).position.y = posY;
-                else % shielding
-                    sheetName = scenarioParams.sheetName;
-
-                    compNames = {};
-
-                    if isfield(stepConfig, 'standAloneComponents') && ~isempty(stepConfig.standAloneComponents)
-                        compNames = cellfun(@(x) x.name, stepConfig.standAloneComponents, 'UniformOutput', false);
-                    end
-
-                    sheetIdx = find(strcmp(compNames, sheetName));
-
-                    if isempty(sheetIdx)
-                        newSheet = struct('name', sheetName, 'position', struct('x', posX, 'y', posY));
-
-                        if isempty(stepConfig.standAloneComponents)
-                            stepConfig.standAloneComponents = newSheet;
-                        else
-                            stepConfig.standAloneComponents(end + 1) = newSheet;
-                        end
-
-                    else
-                        stepConfig.standAloneComponents(sheetIdx).position.x = posX;
-                        stepConfig.standAloneComponents(sheetIdx).position.y = posY;
-                    end
-
+                % Update the position of each assembly for the current step
+                for j = 1:length(stepConfig.assemblies)
+                    currentPos = stepConfig.assemblies(j).calculated_positions(i);
+                    % This 'position' field will now be read by initializeComponents
+                    stepConfig.assemblies(j).position = currentPos;
+                    fprintf('   Assembly "%s" at (%.2f, %.2f) mm\n', stepConfig.assemblies(j).name, currentPos.x, currentPos.y);
                 end
 
+                % Define the variables that change in this step for logging
+                % We can take the position of the first assembly as representative for the step
+                posX = stepConfig.assemblies(1).position.x;
+                posY = stepConfig.assemblies(1).position.y;
+
+                % Run the full phase sweep for the current configuration
                 stepResults = runPhaseSweep(stepConfig, library, params, phaseAngleVector, {'position_x_mm', 'position_y_mm'}, [posX, posY]);
                 masterResultsTable = [masterResultsTable; stepResults]; %#ok<AGROW>
             end
+
+            % Other cases can be re-enabled here when needed
+        case 'current'
+            fprintf('Error: "current" scenario not yet adapted for this script version.\n');
+
+        case {'distance', 'shielding'}
+            fprintf('Error: "distance/shielding" scenario not yet adapted for this script version.\n');
 
     end
 
@@ -128,10 +94,10 @@ end
 
 % --- 7. Save and Visualize Results ---
 if ~isempty(masterResultsTable)
-    resultsCsvFile = fullfile(resultsPath, [timeStr, '_', scenarioParams.type, '_summary.csv']);
+    resultsCsvFile = fullfile(resultsPath, [timeStr, '_', simulationType, '_summary.csv']);
     writetable(masterResultsTable, resultsCsvFile);
     fprintf('All results saved to "%s".\n', resultsCsvFile);
-    plotResults(resultsCsvFile, resultsPath, [timeStr, '_', scenarioParams.type]);
+    plotResults(resultsCsvFile, resultsPath, [timeStr, '_', simulationType]);
 else
     fprintf('Warning: No results were generated. Plotting skipped.\n');
 end
@@ -154,11 +120,9 @@ if ~isempty(masterResultsTable) && width(masterResultsTable) > 1
         if ismember(metric, allVars)
             tempTable = groupsummary(masterResultsTable, groupingVars, @(x) sqrt(mean(x .^ 2)), metric);
 
-            % KORRIGIERT: Dynamische und sichere Umbenennung der Spalte
             oldVarName = ['fun1_', metric];
             newVarName = [metric, '_RMS'];
 
-            % Prüfen, ob die Spalte existiert, bevor sie umbenannt wird
             if ismember(oldVarName, tempTable.Properties.VariableNames)
                 tempTable = renamevars(tempTable, oldVarName, newVarName);
             end
@@ -174,7 +138,7 @@ if ~isempty(masterResultsTable) && width(masterResultsTable) > 1
     end
 
     if ~isempty(rmsResults)
-        rmsCsvFile = fullfile(resultsPath, [timeStr, '_', scenarioParams.type, '_summary_rms.csv']);
+        rmsCsvFile = fullfile(resultsPath, [timeStr, '_', simulationType, '_summary_rms.csv']);
         writetable(rmsResults, rmsCsvFile);
         fprintf('RMS results saved to "%s".\n', rmsCsvFile);
     end

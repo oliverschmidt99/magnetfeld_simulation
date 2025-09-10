@@ -22,16 +22,16 @@ function [currents, assemblies, standAloneComponents] = initializeComponents(sim
             rails = num2cell(rails);
         end
 
-        transformers = library.components.transformers;
-
-        if isstruct(transformers)
-            transformers = num2cell(transformers);
-        end
-
+        % KORRIGIERT: Nimmt die Wandler-Details direkt aus der run.json statt aus der Bibliothek
         railCfg = rails{strcmp(cellfun(@(x) x.templateProductInformation.name, rails, 'UniformOutput', false), asmCfg.copperRailName)};
-        transformerCfg = transformers{strcmp(cellfun(@(x) x.templateProductInformation.name, transformers, 'UniformOutput', false), asmCfg.transformerName)};
+        transformerCfg = asmCfg.transformer_details;
 
-        assemblyGroup = ComponentGroup(asmCfg.name, asmCfg.position.x, asmCfg.position.y);
+        % Die Position wird jetzt aus dem ersten Schritt der 'calculated_positions' entnommen
+        % Dies ist eine Annahme, die für den initialen Aufbau gilt.
+        % Die Bewegung wird später in der Schleife der Hauptsimulation behandelt.
+        initialPosition = asmCfg.calculated_positions(1);
+
+        assemblyGroup = ComponentGroup(asmCfg.name, initialPosition.x, initialPosition.y);
         assemblyGroup = assemblyGroup.addComponent(CopperRail(railCfg));
         assemblyGroup = assemblyGroup.addComponent(Transformer(transformerCfg));
         assemblyGroup.assignedCurrent = currentsMap(asmCfg.phaseName);

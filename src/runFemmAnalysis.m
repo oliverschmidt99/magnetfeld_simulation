@@ -1,6 +1,11 @@
 function runFemmAnalysis(params, runIdentifier)
+    % KORREKTUR: Alle String-Parameter, die Zahlen sein sollten, explizit umwandeln.
+    freq = params.frequencyHz; % kommt jetzt als Zahl von runPhaseSweep
+    depth = str2double(params.problemDepthM); % kommt als String von JSON
+    core_perm = params.coreRelPermeability; % kommt jetzt als Zahl von runPhaseSweep
+
     newdocument(0);
-    mi_probdef(params.frequencyHz, 'millimeters', 'planar', 1e-8, params.problemDepthM * 1000, 30);
+    mi_probdef(freq, 'millimeters', 'planar', 1e-8, depth, 30);
 
     % Materialien dynamisch finden und definieren
     mats = {'Air', 'Copper'};
@@ -35,7 +40,8 @@ function runFemmAnalysis(params, runIdentifier)
         matName = mats{i};
 
         if contains(matName, 'Steel')
-            mi_addmaterial(matName, params.coreRelPermeability, params.coreRelPermeability);
+            % Stellt sicher, dass das Material mit numerischen Werten hinzugefügt wird
+            mi_addmaterial(matName, core_perm, core_perm, 0);
         else
             mi_getmaterial(matName);
         end
@@ -58,7 +64,7 @@ function runFemmAnalysis(params, runIdentifier)
     % Eigenständige Komponenten zeichnen
     for i = 1:length(params.standAloneComponents)
         comp = params.standAloneComponents{i};
-        comp.groupNum = 100 + i; % Eigene Gruppennummern
+        comp.groupNum = 100 + i;
         drawBoundary(comp, 0, 0);
         placeLabel(comp, 0, 0, 0, 0, '<None>', comp.material, comp.groupNum);
     end

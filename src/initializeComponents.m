@@ -1,5 +1,5 @@
 function [currents, assemblies, standAloneComponents] = initializeComponents(simConfig, library)
-    % This helper function initializes all component objects from the config.
+    % Initialisiert alle Komponenten-Objekte aus der Konfiguration für einen einzelnen Simulationsschritt.
 
     currentsMap = containers.Map;
 
@@ -15,21 +15,27 @@ function [currents, assemblies, standAloneComponents] = initializeComponents(sim
     for i = 1:length(simConfig.assemblies)
         asmCfg = simConfig.assemblies(i);
 
-        % FIX: Ensure component lists are always cell arrays
+        % Stelle sicher, dass die Komponentenlisten immer Zell-Arrays sind
         rails = library.components.copperRails;
 
         if isstruct(rails)
             rails = num2cell(rails);
         end
 
-        % KORRIGIERT: Nimmt die Wandler-Details direkt aus der run.json statt aus der Bibliothek
+        % Finde die passende Kupferschiene in der Bibliothek
         railCfg = rails{strcmp(cellfun(@(x) x.templateProductInformation.name, rails, 'UniformOutput', false), asmCfg.copperRailName)};
+
+        % Lese die Wandler-Details direkt aus der übergebenen Konfiguration
         transformerCfg = asmCfg.transformer_details;
 
-        % Die Position wird jetzt aus dem dynamisch gesetzten 'position'-Feld gelesen,
-        % das von der Hauptschleife in main.m für jeden Schritt aktualisiert wird.
+        % Lese die Position aus dem dynamisch gesetzten '.position'-Feld.
+        if ~isfield(asmCfg, 'position')
+            error('Fehler in Schritt-Konfiguration: Das ".position"-Feld fehlt für Baugruppe "%s".', asmCfg.name);
+        end
+
         currentPosition = asmCfg.position;
 
+        % Erstelle die Baugruppen-Objekte an der korrekten Position
         assemblyGroup = ComponentGroup(asmCfg.name, currentPosition.x, currentPosition.y);
         assemblyGroup = assemblyGroup.addComponent(CopperRail(railCfg));
         assemblyGroup = assemblyGroup.addComponent(Transformer(transformerCfg));
@@ -40,7 +46,6 @@ function [currents, assemblies, standAloneComponents] = initializeComponents(sim
     standAloneComponents = {};
 
     if isfield(simConfig, 'standAloneComponents') && ~isempty(simConfig.standAloneComponents)
-
         sheets = library.components.transformerSheets;
 
         if isstruct(sheets)

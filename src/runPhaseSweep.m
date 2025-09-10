@@ -1,36 +1,25 @@
-function resultsTable = runPhaseSweep(simConfig, library, baseParams, phaseAngleVector, scenarioVarName, scenarioVarValue)
-    % This helper function runs a phase sweep for a given configuration.
+% runPhaseSweep.m - Finale Version
 
+function resultsTable = runPhaseSweep(simConfig, library, baseParams, phaseAngleVector, scenarioVarName, scenarioVarValue, simRaum)
     [currents, assemblies, standAloneComponents] = initializeComponents(simConfig, library);
-
-    % Prepare a clean parameter struct for FEMM analysis
     stepParams = baseParams;
-
-    % KORREKTUR: Werte als Zahlen (nicht als Text) definieren
     stepParams.frequencyHz = 50;
     stepParams.coreRelPermeability = 2500;
-
     stepParams.currents = currents;
     stepParams.assemblies = assemblies;
     stepParams.standAloneComponents = standAloneComponents;
+    stepParams.simulationsraum = simRaum;
 
     numAngles = length(phaseAngleVector);
     resultsCell = cell(numAngles, 1);
 
     parfor i = 1:numAngles
         openfemm(1);
-
         angle = phaseAngleVector(i);
-        fprintf('--> Simulating for phase angle: %d°\n', angle);
-
+        fprintf('--> Simuliere für Phasenwinkel: %d°\n', angle);
         workerParams = stepParams;
         workerParams.phaseAngleDeg = angle;
-
         runIdentifier = sprintf('%s_angle%d', datestr(datetime('now'), 'HHMMSS'), angle);
-
-        if ~isempty(scenarioVarValue) && ~isempty(scenarioVarName)
-            runIdentifier = [runIdentifier, sprintf('_%s%.2f', scenarioVarName{1}, scenarioVarValue(1))];
-        end
 
         runFemmAnalysis(workerParams, runIdentifier);
         singleRunResults = calculateResults(workerParams);
@@ -44,7 +33,6 @@ function resultsTable = runPhaseSweep(simConfig, library, baseParams, phaseAngle
         end
 
         resultsCell{i} = singleRunResults;
-
         closefemm;
     end
 

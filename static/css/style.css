@@ -895,3 +895,6 @@ button.danger:hover,
 #config-preview-svg {
     border: 1px solid #ccc;
 }
+.initially-hidden {
+    display: none;
+}

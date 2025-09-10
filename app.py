@@ -57,7 +57,7 @@ def load_csv(filename: str) -> List[Dict]:
         return []
 
 
-# --- Logik für den interaktiven Konfigurator ---
+# --- Logik für den Konfigurator ---
 def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
     """Wandelt einen Richtungstext (z.B. '← Westen') in einen (x, y) Vektor um."""
     if not isinstance(direction_str, str):
@@ -115,44 +115,27 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/configurator")
-def configurator():
-    """Zeigt die Konfigurator-Seite an."""
-    library = load_json(LIBRARY_FILE)
-    bewegungen = load_csv("bewegungen.csv")
-    return render_template("configurator.html", library=library, bewegungen=bewegungen)
-
-
-# KORREKTUR: Fehlende Route wieder hinzugefügt
-@app.route("/simulation_v2")
-def simulation_v2():
-    """Zeigt die alte interaktive Konfigurator-Seite."""
-    return render_template("simulation_v2.html")
-
-
 @app.route("/simulation")
 def simulation():
-    """Zeigt die Simulations-Seite an."""
-    return render_template("simulation.html")
+    """Zeigt die kombinierte Konfigurations- und Simulations-Seite."""
+    library_data = load_json(LIBRARY_FILE)
+    bewegungen = load_csv("bewegungen.csv")
+    return render_template(
+        "simulation.html", library=library_data, bewegungen=bewegungen
+    )
 
 
-@app.route("/analysis")
-def analysis():
-    """Zeigt die Analyse-Seite an."""
-    return render_template("analysis.html")
+@app.route("/results")
+def results():
+    """Zeigt die Ergebnisseite."""
+    return render_template("ergebnisse.html")
 
 
-@app.route("/bauteile")
-def bauteile():
-    """Zeigt die Bauteile-Seite an."""
-    library = load_json(LIBRARY_FILE)
-    return render_template("bauteile.html", library=library)
-
-
-@app.route("/admin")
-def admin():
-    """Zeigt die Admin-Seite an."""
-    return render_template("admin.html")
+@app.route("/library")
+def library():
+    """Zeigt die kombinierte Bibliotheks- und Stammdaten-Verwaltung."""
+    library_data = load_json(LIBRARY_FILE)
+    return render_template("library.html", library=library_data)
 
 
 @app.route("/settings")
@@ -166,7 +149,8 @@ def settings():
 def generate_simulation():
     """Erstellt die `simulation.json` basierend auf den Benutzereingaben."""
     data = request.json
-    library = load_json(LIBRARY_FILE)
+    library_data = load_json(LIBRARY_FILE)
+
     bewegungen_data = load_csv("bewegungen.csv")
     startpos_data = {
         str(item["Strom"]): item for item in load_csv("startpositionen.csv")
@@ -212,7 +196,7 @@ def generate_simulation():
             transformer_details = next(
                 (
                     t
-                    for t in library.get("components", {}).get("transformers", [])
+                    for t in library_data.get("components", {}).get("transformers", [])
                     if t.get("templateProductInformation", {}).get("name")
                     == assembly_data["transformerName"]
                 ),

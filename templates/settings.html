@@ -1,60 +1,11 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
-
 {% block title %}Einstellungen{% endblock %}
-
 {% block content %}
-<section>
-    <h2>Einstellungen</h2>
-    <p>Hier können allgemeine Einstellungen für die Anwendung vorgenommen werden.</p>
-</section>
-
-<section>
-    <h3>Konfiguration zurücksetzen</h3>
-    <p>
-        Achtung: Diese Aktionen setzen Teile der Konfiguration auf den Werkszustand zurück.
-        Bestehende Daten in den entsprechenden Dateien werden überschrieben.
-    </p>
-
-    <form id="settings-form">
-        <fieldset>
-            <legend>Datenbanken zurücksetzen</legend>
-            <div class="form-group">
-                <input type="checkbox" id="reset-library" name="reset_library">
-                <label for="reset-library">Bauteil-Bibliothek (library.json) zurücksetzen</label>
-                <p class="description">
-                    Setzt alle benutzerdefinierten Bauteile zurück und stellt die Standard-Bauteile aus der Vorlage
-                    wieder her.
-                </p>
-            </div>
-            <div class="form-group">
-                <input type="checkbox" id="reset-tags" name="reset_tags">
-                <label for="reset-tags">Tags (tags.json) zurücksetzen</label>
-                <p class="description">
-                    Löscht alle benutzerdefinierten Tags und stellt die Standard-Tags wieder her.
-                </p>
-            </div>
-        </fieldset>
-
-        <fieldset>
-            <legend>Messdaten zurücksetzen</legend>
-            <div class="form-group">
-                <input type="checkbox" id="reset-messdaten" name="reset_messdaten">
-                <label for="reset-messdaten">Messdaten (alle .csv Dateien im 'data'-Ordner) zurücksetzen</label>
-                <p class="description">
-                    Überschreibt alle CSV-Dateien mit den ursprünglichen Werten. Nützlich, wenn die Messdaten beschädigt
-                    sind.
-                </p>
-            </div>
-        </fieldset>
-
-        <div class="form-buttons">
-            <button type="submit" class="button-danger">Ausgewählte Konfigurationen zurücksetzen</button>
-        </div>
-    </form>
-</section>
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<div class="container">
+    <div class="sub-nav-bar">
+        <h2>Einstellungen</h2>
+    </div>
+    <p>Platzhalter für zukünftige Anwendungseinstellungen.</p>
+</div>
 {% endblock %}

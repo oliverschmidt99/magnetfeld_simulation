@@ -1,30 +1,34 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
 
-{% block title %}Startseite - Magnetfeld Simulation{% endblock %}
+{% block title %}Startseite{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2>Willkommen beim Magnetfeld-Simulations-Konfigurator</h2>
-    <p>
-        Dieses Tool hilft dir bei der Konfiguration und Analyse von Magnetfeld-Simulationen
-        für 3-Phasen-Systeme.
-    </p>
-    <div class="card-container">
-        <div class="card">
-            <h3>Konfigurator</h3>
-            <p>Erstelle und bearbeite hier deine Simulationsszenarien.</p>
-            <a href="{{ url_for('configurator') }}" class="button">Zum Konfigurator</a>
-        </div>
+<div class="container welcome-container">
+    <header class="welcome-header">
+        <h1>Willkommen zur Magnetfeld-Simulation</h1>
+        <p class="subtitle">
+            Ein Werkzeug zur Konfiguration, Durchführung und Analyse von FEMM-Simulationen.
+        </p>
+    </header>
+
+    <div class="card-navigation">
         <div class="card">
             <h3>Simulation</h3>
-            <p>Führe hier deine Simulationen aus.</p>
+            <p>Konfiguriere und starte eine neue Simulation Schritt für Schritt.</p>
             <a href="{{ url_for('simulation') }}" class="button">Zur Simulation</a>
         </div>
+
         <div class="card">
-            <h3>Analyse</h3>
-            <p>Werte die Ergebnisse deiner Simulationen aus (in Kürze verfügbar).</p>
-            <a href="{{ url_for('analysis') }}" class="button disabled">Zur Analyse</a>
+            <h3>Ergebnisse</h3>
+            <p>Analysiere die Daten und visualisiere die Ergebnisse vergangener Läufe.</p>
+            <a href="{{ url_for('results') }}" class="button">Zu den Ergebnissen</a>
+        </div>
+
+        <div class="card">
+            <h3>Bibliothek</h3>
+            <p>Verwalte die Bauteil-Bibliothek und die CSV-Stammdaten.</p>
+            <a href="{{ url_for('library') }}" class="button">Zur Bibliothek</a>
         </div>
     </div>
 </div>

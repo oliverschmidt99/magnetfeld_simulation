@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+{% block title %}Bibliothek & Stammdaten{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/library.css') }}">
+{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="sub-nav-bar">
+        <h2>Datenverwaltung</h2>
+    </div>
+    <div class="tabs">
+        <button type="button" class="tab-link active" onclick="openTab(event, 'components')">Bauteil-Bibliothek
+            (JSON)</button>
+        <button type="button" class="tab-link" onclick="openTab(event, 'master-data')">Stammdaten (CSV)</button>
+    </div>
+
+    <div id="components" class="tab-content active">
+        <h3>Bauteil-Editor (library.json)</h3>
+        <p>Platzhalter: Der Editor für die `library.json` wird hier geladen.</p>
+    </div>
+
+    <div id="master-data" class="tab-content">
+        <h3>Stammdaten-Editor (CSV-Dateien)</h3>
+        <p>Platzhalter: Der Editor für die CSV-Stammdaten wird hier geladen.</p>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/library.js') }}"></script>
+{% endblock %}

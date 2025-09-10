@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+{% block title %}Ergebnisse{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="sub-nav-bar">
+        <h2>Simulationsergebnisse</h2>
+    </div>
+    <p>Platzhalter: Die Visualisierung der Simulationsergebnisse wird hier geladen.</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/results.js') }}"></script>
+{% endblock %}

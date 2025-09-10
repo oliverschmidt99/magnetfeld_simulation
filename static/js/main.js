@@ -6,17 +6,8 @@ function handleNavSlider() {
   const nav = document.getElementById("main-nav");
   if (!nav) return;
 
-  const slider = nav.querySelector(".nav-slider");
-  const activeNavItem = nav.querySelector(
-    ".nav-item > a.active"
-  )?.parentElement;
-
-  if (activeNavItem) {
-    setTimeout(() => {
-      slider.style.width = `${activeNavItem.offsetWidth}px`;
-      slider.style.left = `${activeNavItem.offsetLeft}px`;
-    }, 10);
-  }
+  // Diese Funktion kann später für einen Navigations-Slider verwendet werden.
+  // Momentan ist sie ein Platzhalter.
 }
 
 function initializeCardNavigation(navId, sectionContainerId) {
@@ -36,12 +27,6 @@ function initializeCardNavigation(navId, sectionContainerId) {
         targetElement.classList.add("active");
       }
       card.classList.add("active");
-
-      // KORREKTUR: Fehlerhafter Aufruf entfernt.
-      // Die updateSummary-Logik gehört in configurator.js
-      // if (navId === "config-nav" && targetId === "config-summary") {
-      //   updateSummary();
-      // }
     });
   });
 }

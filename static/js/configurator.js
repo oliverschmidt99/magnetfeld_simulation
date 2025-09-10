@@ -17,29 +17,22 @@ function initializeConfigurator() {
   });
 
   document.getElementById("ratedCurrent").addEventListener("change", () => {
-    // Wandlerlisten neu filtern
     const data = gatherFormData();
     const asmList = document.getElementById("assemblies-list");
     asmList.innerHTML = "";
-    assemblyCounter = 0; // Zähler zurücksetzen, um IDs neu zu erstellen
+    assemblyCounter = 0;
     data.assemblies.forEach((asm) => addAssembly(asm));
     updateAssemblyPhaseDropdowns();
-
-    // NEU: Stromwerte in allen Phasen aktualisieren
     updatePhaseCurrents();
   });
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     const data = gatherFormData();
-
     if (!data.simulationParams.movementGroup) {
-      alert(
-        "Bitte wähle eine Bewegungsgruppe unter 'Allgemeine Parameter' aus."
-      );
+      alert("Bitte eine Bewegungsgruppe wählen.");
       return;
     }
-
     fetch("/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -51,6 +44,9 @@ function initializeConfigurator() {
           alert(`Fehler: ${result.error}`);
         } else {
           alert(result.message);
+          const runner = document.getElementById("simulation-runner");
+          runner.classList.remove("initially-hidden");
+          runner.style.display = "block";
         }
       });
   });
@@ -72,18 +68,21 @@ let standaloneCounter = 0;
 
 async function updateVisualization() {
   const data = gatherFormData();
+  const svg = document.getElementById("config-preview-svg");
+  svg.innerHTML = `<text x="10" y="20">Vorschau wird geladen...</text>`;
+
   try {
     const response = await fetch("/visualize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!response.ok)
+      throw new Error("Visualisierungs-Daten konnten nicht geladen werden.");
     const svgElements = await response.json();
 
-    const svg = document.getElementById("config-preview-svg");
-    svg.innerHTML = ""; // Alte Vorschau löschen
+    svg.innerHTML = "";
 
-    // Placeholder - die eigentliche Zeichenlogik würde hier folgen
     const textElement = document.createElementNS(
       "http://www.w3.org/2000/svg",
       "text"
@@ -96,6 +95,7 @@ async function updateVisualization() {
     svg.appendChild(textElement);
   } catch (error) {
     console.error("Fehler bei der Visualisierung:", error);
+    svg.innerHTML = `<text x="10" y="20" fill="red">Fehler beim Laden der Vorschau.</text>`;
   }
 }
 
@@ -104,7 +104,6 @@ function updatePhaseCurrents() {
     document.getElementById("ratedCurrent").value
   );
   const peakCurrent = (ratedCurrent * SQRT2).toFixed(2);
-
   document
     .querySelectorAll("#electrical-system-list .list-item")
     .forEach((item) => {
@@ -114,23 +113,17 @@ function updatePhaseCurrents() {
 }
 
 function updateAssemblyPhaseDropdowns() {
-  const phaseItems = document.querySelectorAll(
-    "#electrical-system-list .list-item"
-  );
-  const phases = Array.from(phaseItems).map(
-    (item) => item.querySelector(".phase-name").value
-  );
-
+  const phases = Array.from(
+    document.querySelectorAll("#electrical-system-list .phase-name")
+  ).map((input) => input.value);
   document.querySelectorAll(".assembly-phase-select").forEach((select) => {
     const selectedValue = select.value;
     select.innerHTML = "";
     phases.forEach((p) => {
-      const option = document.createElement("option");
-      option.value = p;
-      option.textContent = p;
-      if (p === selectedValue) option.selected = true;
-      select.appendChild(option);
+      const option = new Option(p, p);
+      select.add(option);
     });
+    select.value = selectedValue;
   });
 }
 
@@ -145,7 +138,7 @@ function addPhase(data = {}) {
     document.getElementById("ratedCurrent").value
   );
   const peakCurrent = (data.peakCurrentA || ratedCurrent * SQRT2).toFixed(2);
-  const rmsCurrent = (peakCurrent / SQRT2).toFixed(2);
+  const rmsCurrent = (data.rmsCurrent || ratedCurrent).toFixed(2);
 
   item.innerHTML = `<h4>Phase ${phaseCounter}</h4>
         <label>Name:</label><input type="text" class="phase-name" value="${
@@ -155,8 +148,8 @@ function addPhase(data = {}) {
           data.phaseShiftDeg ?? 0
         }">
         <div class="form-row">
-            <div><label>Spitzenstrom (A):</label><input type="number" step="any" class="phase-peak" value="${peakCurrent}" readonly></div>
-            <div><label>Effektivstrom (A):</label><input type="number" step="any" class="phase-rms" value="${rmsCurrent}" readonly></div>
+            <div><label>Spitzenstrom (A):</label><input type="number" class="phase-peak" value="${peakCurrent}" readonly></div>
+            <div><label>Effektivstrom (A):</label><input type="number" class="phase-rms" value="${rmsCurrent}" readonly></div>
         </div>
         <button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
   list.appendChild(item);
@@ -182,13 +175,8 @@ function addAssembly(data = {}) {
         }>${r.templateProductInformation.name}</option>`
     )
     .join("");
-
   const transformerOptions = (library.components?.transformers || [])
-    .filter(
-      (t) =>
-        t.templateProductInformation.tags &&
-        t.templateProductInformation.tags.includes(searchTag)
-    )
+    .filter((t) => t.templateProductInformation.tags?.includes(searchTag))
     .map(
       (t) =>
         `<option value="${t.templateProductInformation.name}" ${
@@ -199,16 +187,13 @@ function addAssembly(data = {}) {
     )
     .join("");
 
-  item.innerHTML = `
-        <h4>Baugruppe ${assemblyCounter}</h4>
+  item.innerHTML = `<h4>Baugruppe ${assemblyCounter}</h4>
         <label>Name:</label><input type="text" class="assembly-name" value="${
           data.name || `Assembly_${assemblyCounter}`
         }">
-        <label>Zugeordnete Phase:</label><select class="assembly-phase-select">${
-          data.phaseName || ""
-        }</select>
+        <label>Zugeordnete Phase:</label><select class="assembly-phase-select"></select>
         <label>Kupferschiene:</label><select class="copper-rail">${railOptions}</select>
-        <label>Wandler (gefiltert für ${nennstrom}A):</label><select class="transformer">${transformerOptions}</select>
+        <label>Wandler (für ${nennstrom}A):</label><select class="transformer">${transformerOptions}</select>
         <button type="button" onclick="removeItem('assembly-${assemblyCounter}')">Entfernen</button>`;
   list.appendChild(item);
 }
@@ -219,7 +204,7 @@ function addStandalone(data = {}) {
   const item = document.createElement("div");
   item.className = "list-item";
   item.id = `standalone-${standaloneCounter}`;
-  let sheetOptions = (library.components?.transformerSheets || [])
+  const sheetOptions = (library.components?.transformerSheets || [])
     .map(
       (s) =>
         `<option value="${s.templateProductInformation.name}" ${
@@ -227,17 +212,20 @@ function addStandalone(data = {}) {
         }>${s.templateProductInformation.name}</option>`
     )
     .join("");
-  item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4><label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select><label>Position X:</label><input type="number" class="pos-x" value="${
-    data.position?.x || 0
-  }"><label>Position Y:</label><input type="number" class="pos-y" value="${
-    data.position?.y || 0
-  }"><button type="button" onclick="removeItem('standalone-${standaloneCounter}')">Entfernen</button>`;
+  item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4>
+    <label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select>
+    <label>Position X:</label><input type="number" class="pos-x" value="${
+      data.position?.x || 0
+    }">
+    <label>Position Y:</label><input type="number" class="pos-y" value="${
+      data.position?.y || 0
+    }">
+    <button type="button" onclick="removeItem('standalone-${standaloneCounter}')">Entfernen</button>`;
   list.appendChild(item);
 }
 
 function removeItem(id) {
-  const item = document.getElementById(id);
-  if (item) item.remove();
+  document.getElementById(id)?.remove();
 }
 
 function gatherFormData() {
@@ -290,7 +278,6 @@ function gatherFormData() {
 }
 
 function saveState() {
-  if (!document.getElementById("simulation-form")) return;
   const data = gatherFormData();
   localStorage.setItem("latestSimConfig", JSON.stringify(data));
 }
@@ -298,38 +285,42 @@ function saveState() {
 function loadState(data = null) {
   const configData =
     data || JSON.parse(localStorage.getItem("latestSimConfig"));
-  const elsList = document.getElementById("electrical-system-list");
-  const asmList = document.getElementById("assemblies-list");
-  const stdList = document.getElementById("standalone-list");
+  if (!configData) return;
 
-  if (!elsList || !asmList || !stdList) return;
+  const {
+    simulationParams,
+    electricalSystem,
+    assemblies,
+    standAloneComponents,
+  } = configData;
+  document.getElementById("ratedCurrent").value =
+    simulationParams.ratedCurrent || "600";
+  document.getElementById("movementGroup").value =
+    simulationParams.movementGroup || "";
+  document.getElementById("problemDepthM").value =
+    simulationParams.problemDepthM;
+  if (simulationParams.phaseSweep) {
+    document.getElementById("phaseStart").value =
+      simulationParams.phaseSweep.start || "0";
+    document.getElementById("phaseEnd").value =
+      simulationParams.phaseSweep.end || "180";
+    document.getElementById("phaseStep").value =
+      simulationParams.phaseSweep.step || "5";
+  }
 
-  elsList.innerHTML = "";
-  asmList.innerHTML = "";
-  stdList.innerHTML = "";
+  document.getElementById("electrical-system-list").innerHTML = "";
+  document.getElementById("assemblies-list").innerHTML = "";
+  document.getElementById("standalone-list").innerHTML = "";
   phaseCounter = 0;
   assemblyCounter = 0;
   standaloneCounter = 0;
 
-  if (!configData) return;
-
-  const params = configData.simulationParams;
-  document.getElementById("ratedCurrent").value = params.ratedCurrent || "600";
-  document.getElementById("movementGroup").value = params.movementGroup || "";
-  document.getElementById("problemDepthM").value = params.problemDepthM;
-  if (params.phaseSweep) {
-    document.getElementById("phaseStart").value =
-      params.phaseSweep.start || "0";
-    document.getElementById("phaseEnd").value = params.phaseSweep.end || "180";
-    document.getElementById("phaseStep").value = params.phaseSweep.step || "5";
-  }
-
-  configData.electricalSystem.forEach((phase) => addPhase(phase));
-  configData.assemblies.forEach((assembly) => addAssembly(assembly));
-  configData.standAloneComponents.forEach((comp) => addStandalone(comp));
+  electricalSystem.forEach(addPhase);
+  assemblies.forEach(addAssembly);
+  standAloneComponents.forEach(addStandalone);
 
   updateAssemblyPhaseDropdowns();
-  configData.assemblies.forEach((assembly, index) => {
+  assemblies.forEach((assembly, index) => {
     const select = document.querySelector(
       `#assembly-${index + 1} .assembly-phase-select`
     );

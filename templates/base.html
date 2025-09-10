@@ -1,15 +1,22 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Magnetfeld-Simulation{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/logo_rolf-janssen_2024.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block head %}{% endblock %}
 </head>
+
 <body>
     <header>
-        <h1>Magnetfeld-Simulation</h1>
-        <nav>
+        <div class="header-left">
+            <img src="{{ url_for('static', filename='img/logo_rolf-janssen_2024.svg') }}" alt="Logo" id="header-logo">
+            <h1>Magnetfeld-Simulation</h1>
+        </div>
+        <nav id="main-nav">
             <div class="nav-item"><a href="{{ url_for('index') }}">Home</a></div>
             <div class="nav-item"><a href="{{ url_for('simulation') }}">Simulation</a></div>
             <div class="nav-item"><a href="{{ url_for('results') }}">Ergebnisse</a></div>
@@ -17,9 +24,19 @@
             <div class="nav-item"><a href="{{ url_for('settings') }}">Einstellungen</a></div>
         </nav>
     </header>
+
+    {% block sub_nav %}{% endblock %}
+
     <main>
         {% block content %}{% endblock %}
     </main>
+
+    <footer>
+        <p>&copy; 2025 - Magnetfeld-Simulation</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

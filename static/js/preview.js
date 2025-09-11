@@ -45,7 +45,7 @@ function renderComponentPreview(component, svgId, withGrid = false) {
 }
 
 /**
- * Zeichnet eine Vorschau für einen Wandler (Rechteckig oder Rund).
+ * Zeichnet eine vereinfachte Vorschau für einen Wandler.
  * @param {object} component - Das Geometrie-Objekt des Wandlers.
  * @param {string} svgId - Die ID des SVG-Elements.
  * @param {boolean} withGrid - Ob ein Gitter gezeichnet werden soll.
@@ -55,11 +55,8 @@ function renderTransformerPreview(component, svgId, withGrid = false) {
   if (!svg) return;
   svg.innerHTML = "";
 
-  const isRing = component.type === "Ring";
-  // KORRIGIERT: Fallbacks hinzugefügt, um NaN-Werte zu vermeiden
-  const outerDim = isRing
-    ? (parseFloat(component.outerAirRadius) || 50) * 2
-    : parseFloat(component.outerAirWidth) || 100;
+  // ### ANPASSUNG: Die Größe der Ansicht basiert jetzt auf den Außenmaßen des Kerns ###
+  const outerDim = parseFloat(component.coreOuterWidth) || 100;
 
   const padding = 20;
   const viewBoxSize = outerDim + 2 * padding;
@@ -69,56 +66,32 @@ function renderTransformerPreview(component, svgId, withGrid = false) {
   const centerX = viewBoxSize / 2;
   const centerY = viewBoxSize / 2;
 
-  if (isRing) {
-    // Kreisförmigen Wandler zeichnen
-    const layers = [
-      { r: component.outerAirRadius, fill: "#f0f8ff" },
-      { r: component.coreOuterRadius, fill: "#d3d3d3" },
-      { r: component.coreInnerRadius, fill: "#f0f8ff" },
-      { r: component.gapRadius, fill: "#ffffff" },
-    ];
-    layers.forEach((layer) => {
-      if (layer.r) {
-        _drawCircle(svg, centerX, centerY, layer.r, layer.fill);
-      }
-    });
-  } else {
-    // Rechteckigen Wandler zeichnen
-    const layers = [
-      {
-        w: component.outerAirWidth || 0,
-        h: component.outerAirHeight || 0,
-        fill: "#f0f8ff",
-      },
-      {
-        w: component.coreOuterWidth || 0,
-        h: component.coreOuterHeight || 0,
-        fill: "#d3d3d3",
-      },
-      {
-        w: component.coreInnerWidth || 0,
-        h: component.coreInnerHeight || 0,
-        fill: "#f0f8ff",
-      },
-      {
-        w: component.innerWidth || 0,
-        h: component.innerHeight || 0,
-        fill: "#ffffff",
-      },
-    ];
-    layers.forEach((layer) => {
-      if (layer.w && layer.h) {
-        _drawRectangle(
-          svg,
-          centerX - layer.w / 2,
-          centerY - layer.h / 2,
-          layer.w,
-          layer.h,
-          layer.fill
-        );
-      }
-    });
-  }
+  // ### ANPASSUNG: Es werden nur noch zwei Rechtecke gezeichnet ###
+  const layers = [
+    {
+      w: component.coreOuterWidth || 0,
+      h: component.coreOuterHeight || 0,
+      fill: "#808080", // Grau (Stahlkern)
+    },
+    {
+      w: component.coreInnerWidth || 0,
+      h: component.coreInnerHeight || 0,
+      fill: "#a9d1f7", // Hellblau (Innere Luft)
+    },
+  ];
+
+  layers.forEach((layer) => {
+    if (layer.w && layer.h) {
+      _drawRectangle(
+        svg,
+        centerX - layer.w / 2,
+        centerY - layer.h / 2,
+        layer.w,
+        layer.h,
+        layer.fill
+      );
+    }
+  });
 }
 
 /**

@@ -3,7 +3,9 @@ Dieses Modul stellt die API-Endpunkte für die Anwendung bereit.
 """
 
 from flask import Blueprint, jsonify, request
-from .utils import load_data, save_data, TAGS_FILE, LIBRARY_FILE
+
+# KORREKTUR: 'load_data' wurde in 'load_json' umbenannt, um den Fehler zu beheben
+from .utils import load_json, save_data, TAGS_FILE, LIBRARY_FILE
 from .csv_editor import (
     list_csv_files,
     get_csv_data,
@@ -20,7 +22,7 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 @api_bp.route("/tags", methods=["GET"])
 def get_tags():
     """Gibt alle verfügbaren Tags zurück."""
-    tags_data = load_data(TAGS_FILE, {"categories": []})
+    tags_data = load_json(TAGS_FILE, {"categories": []})
     return jsonify(tags_data)
 
 
@@ -36,7 +38,7 @@ def update_tags():
 @api_bp.route("/library", methods=["GET"])
 def get_library():
     """Gibt die gesamte Bauteil-Bibliothek zurück."""
-    library_data = load_data(LIBRARY_FILE, {"components": {}})
+    library_data = load_json(LIBRARY_FILE, {"components": {}})
     return jsonify(library_data)
 
 
@@ -49,7 +51,7 @@ def update_library():
     original_name = data.get("originalName")
     component_data = data.get("component")
 
-    library = load_data(LIBRARY_FILE, {"components": {}})
+    library = load_json(LIBRARY_FILE, {"components": {}})
 
     if action == "save":
         if component_type not in library["components"]:

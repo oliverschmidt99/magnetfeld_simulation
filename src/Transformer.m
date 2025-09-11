@@ -1,3 +1,4 @@
+% src/Transformer.m - VEREINFACHTE VERSION
 classdef Transformer < ComponentGroup
 
     properties
@@ -8,6 +9,7 @@ classdef Transformer < ComponentGroup
     methods
 
         function obj = Transformer(config)
+            % Ruft den Konstruktor der übergeordneten Klasse auf
             obj@ComponentGroup(config.templateProductInformation.name, 0, 0);
             obj.manufacturer = config.templateProductInformation.manufacturer;
             obj.productName = config.templateProductInformation.productName;
@@ -15,24 +17,21 @@ classdef Transformer < ComponentGroup
             spi = config.specificProductInformation;
             geo_cfg = spi.geometry;
 
-            if strcmp(geo_cfg.type, 'Rectangle')
-                geoOuterAir = GeoObject.createRectangle(geo_cfg.outerAirWidth, geo_cfg.outerAirHeight);
-                geoCore = GeoObject.createRectangle(geo_cfg.coreOuterWidth, geo_cfg.coreOuterHeight);
-                geoInnerAir = GeoObject.createRectangle(geo_cfg.coreInnerWidth, geo_cfg.coreInnerHeight);
-                geoGap = GeoObject.createRectangle(geo_cfg.innerWidth, geo_cfg.innerHeight);
+            % Erstellt die Geometrie für den Stahlkern.
+            % Die Außenmaße werden aus coreOuterWidth/Height genommen.
+            geoCoreOuter = GeoObject.createRectangle(geo_cfg.coreOuterWidth, geo_cfg.coreOuterHeight);
 
-                compOuterAir = Component('OuterAir', 0, 0, geoOuterAir, spi.gapMaterial);
-                compCore = Component('SteelCore', 0, 0, geoCore, spi.coreMaterial);
-                compInnerAir = Component('InnerAir', 0, 0, geoInnerAir, spi.gapMaterial);
-                compGap = Component('AirGap', 0, 0, geoGap, spi.gapMaterial);
-            else
-                error('Unbekannter Geometrie-Typ im Wandler: %s', geo_cfg.type);
-            end
+            % Erstellt die Geometrie für das innere "Loch" (Luft).
+            % Die Innenmaße werden aus coreInnerWidth/Height genommen.
+            geoCoreInner = GeoObject.createRectangle(geo_cfg.coreInnerWidth, geo_cfg.coreInnerHeight);
 
-            obj = obj.addComponent(compOuterAir);
+            % Erstellt die beiden finalen Komponenten
+            compCore = Component('SteelCore', 0, 0, geoCoreOuter, spi.coreMaterial);
+            compInnerAir = Component('InnerAir', 0, 0, geoCoreInner, 'Air'); % Das innere Loch ist Luft
+
+            % Fügt dem Transformer nur noch diese beiden Komponenten hinzu
             obj = obj.addComponent(compCore);
             obj = obj.addComponent(compInnerAir);
-            obj = obj.addComponent(compGap);
         end
 
     end

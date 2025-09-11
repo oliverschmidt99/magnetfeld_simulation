@@ -1,44 +1,16 @@
-% src/runFemmAnalysis.m
+% src/runFemmAnalysis.m - ANGEPASSTE LUFT-LABELS
 function runFemmAnalysis(params, runIdentifier)
     % Baut das FEMM-Modell auf, führt die Analyse durch und speichert die Ergebnisse.
 
     % --- 1. Problemdefinition ---
     freq = params.frequencyHz;
     depth = str2double(params.problemDepthM);
-    core_perm = params.coreRelPermeability;
+    core_perm = params.coreRelPermability;
     newdocument(0);
     mi_probdef(freq, 'millimeters', 'planar', 1e-8, depth, 30);
 
     % --- 2. Materialdefinition ---
-    % KORREKTUR: AGROW-Warnung behoben, indem Materialien zuerst gesammelt werden
-    all_mats = {'Air', 'Copper'};
-
-    for i = 1:length(params.assemblies)
-        asm = params.assemblies{i};
-
-        for j = 1:length(asm.components)
-            comp = asm.components{j};
-
-            if isa(comp, 'ComponentGroup')
-
-                for k = 1:length(comp.components)
-                    all_mats{end + 1} = comp.components{k}.material;
-                end
-
-            else
-                all_mats{end + 1} = comp.material;
-            end
-
-        end
-
-    end
-
-    for i = 1:length(params.standAloneComponents)
-        all_mats{end + 1} = params.standAloneComponents{i}.material;
-    end
-
-    mats = unique(all_mats);
-
+    mats = {'Air', 'Copper', 'M-36 Steel'}; % Vereinfachte Materialliste
     % KORREKTUR: ALIGN-Warnung durch korrekte Einrückung behoben
     for i = 1:length(mats)
         matName = mats{i};
@@ -60,16 +32,9 @@ function runFemmAnalysis(params, runIdentifier)
     sim_L = params.simulationsraum.Laenge;
     sim_B = params.simulationsraum.Breite;
 
-    % Zeichnet das äußere Rechteck des Simulationsraums
     mi_drawrectangle(-sim_L / 2, -sim_B / 2, sim_L / 2, sim_B / 2);
 
-    % PLATZIERT DIE INNERE LUFT an einer sicheren, leeren Position im Raum
-    mi_addblocklabel(-sim_L / 4, 0);
-    mi_selectlabel(-sim_L / 4, 0);
-    mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);
-    mi_clearselected();
-
-    % Platziert die Baugruppen (die ihre eigenen Labels intern setzen)
+    % Platziert die Baugruppen
     for i = 1:length(params.assemblies)
         assembly = params.assemblies{i};
         circuitName = params.currents{i}.name;
@@ -85,10 +50,17 @@ function runFemmAnalysis(params, runIdentifier)
         placeLabel(comp.xPos, comp.yPos, '<None>', comp.material, comp.groupNum);
     end
 
+    % Roter Punkt 4 & 5: LUFT im umgebenden Raum
+    % Ein Label innerhalb des Simulationsrechtecks, aber weit weg von den Bauteilen
+    mi_addblocklabel(0, sim_B / 4);
+    mi_selectlabel(0, sim_B / 4);
+    mi_setblockprop('Air', 1, 0, '<None>', 0, 0, 0);
+    mi_clearselected();
+
     % --- 5. Randbedingung und ÄUSSERE LUFT ---
     mi_makeABC(7, max(sim_L, sim_B) * 1.5, 0, 0, 0);
 
-    % PLATZIERT DIE ÄUSSERE LUFT außerhalb des Rechtecks für die Randbedingung
+    % Roter Punkt 6 & 7: LUFT außerhalb des Simulationsrechtecks für die Randbedingung
     label_x_outer_air = sim_L / 2 + 10;
     mi_addblocklabel(label_x_outer_air, 0);
     mi_selectlabel(label_x_outer_air, 0);

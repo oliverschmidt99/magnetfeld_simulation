@@ -1,28 +1,45 @@
 # server/utils.py
 """
 Hilfsfunktionen und Konstanten für die Simulationsanwendung.
-
-Enthält Funktionen zum Laden/Speichern von Daten, zur ID-Generierung
-und zur Verarbeitung von FEMM-Ergebnisdateien.
 """
+import copy
 import json
-import secrets
+import os
 import re
+import secrets
+from typing import Dict, List, Tuple
+
+import pandas as pd
 
 # --- Pfad-Konfiguration ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "..", "data")
 CONFIG_DIR = "conf"
 LIBRARY_FILE = "library.json"
 TAGS_FILE = "tags.json"
 RESULTS_DIR = "res"
 
 
-def load_data(file_path, default_data):
+def load_json(file_path, default_data=None):
     """Lädt JSON-Daten aus einer Datei."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        return default_data
+        return default_data if default_data is not None else {}
+
+
+def load_csv(filename: str):
+    """Lädt eine CSV-Datei sicher aus dem data-Verzeichnis und bereinigt die Header."""
+    filepath = os.path.join(DATA_DIR, filename)
+    if not os.path.exists(filepath):
+        return []
+    try:
+        df = pd.read_csv(filepath, sep=None, engine="python", encoding="utf-8")
+        df.columns = [col.strip() for col in df.columns]
+        return df.where(pd.notna(df), None).to_dict("records")
+    except (IOError, pd.errors.ParserError):
+        return []
 
 
 def save_data(file_path, data):
@@ -36,18 +53,64 @@ def generate_unique_id():
     return secrets.token_hex(3)[:5]
 
 
+def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
+    """Wandelt einen Richtungstext in einen (x, y) Vektor um."""
+    if not isinstance(direction_str, str):
+        return (0, 0)
+    mapping = {
+        "Westen": (-1, 0),
+        "Osten": (1, 0),
+        "Norden": (0, 1),
+        "Süden": (0, -1),
+        "Nordosten": (1, 1),
+        "Nordwesten": (-1, 1),
+        "Südosten": (1, -1),
+        "Südwesten": (-1, -1),
+    }
+    for key, vector in mapping.items():
+        if key in direction_str:
+            return vector
+    return (0, 0)
+
+
+def calculate_position_steps(
+    start_pos: Dict, bewegung: Dict, schrittweiten: Dict
+) -> List[Dict]:
+    """Berechnet alle Positionsschritte."""
+    all_steps = []
+    start_pos_vec = {
+        f"L{i}": {
+            "x": float(start_pos.get(f"x_L{i}", 0)),
+            "y": float(start_pos.get(f"y_L{i}", 0)),
+        }
+        for i in range(1, 4)
+    }
+    current_pos = copy.deepcopy(start_pos_vec)
+    all_steps.append(current_pos)
+    for i in range(1, 5):
+        pos_key = f"Pos{i}"
+        step_width_str = schrittweiten.get(pos_key)
+        if not step_width_str:
+            continue
+        step_width = float(step_width_str)
+        next_pos = copy.deepcopy(all_steps[-1])
+        for leiter in ["L1", "L2", "L3"]:
+            direction_str = bewegung.get(leiter, "")
+            vector = parse_direction_to_vector(direction_str)
+            next_pos[leiter]["x"] += vector[0] * step_width
+            next_pos[leiter]["y"] += vector[1] * step_width
+        all_steps.append(next_pos)
+    return all_steps
+
+
 def parse_fem_ans_files(fem_path, ans_path):
     """
     Liest die Geometrie aus einer .fem-Datei und die Lösung aus einer .ans-Datei.
     """
     nodes, elements, solution = {}, [], {}
-    print(f"\n--- DEBUG: Lese Geometrie aus: {fem_path} ---")
-
-    # 1. Geometrie aus .fem-Datei lesen
     try:
         with open(fem_path, "r", encoding="utf-8") as f:
             content = f.read()
-        # Extrahiert den Block zwischen [Nodes] und [NumElements]
         node_block = re.search(
             r"\[Nodes\](.*?)\[NumElements\]", content, re.DOTALL | re.IGNORECASE
         ).group(1)
@@ -56,20 +119,18 @@ def parse_fem_ans_files(fem_path, ans_path):
             if len(parts) >= 3:
                 nodes[int(parts[0])] = (float(parts[1]), float(parts[2]))
 
-        # Extrahiert den Block zwischen [Elements] und [NumBlockLabels]
         element_block = re.search(
-            r"\[Elements\](.*?)\[NumBlockLabels\]", content, re.DOTALL | re.IGNORECASE
+            r"\[Elements\](.*?)\[NumBlockLabels\]",
+            content,
+            re.DOTALL | re.IGNORECASE,
         ).group(1)
         for line in element_block.strip().split("\n"):
             parts = line.split()
-            if len(parts) >= 7:  # Standard .fem element line has 7 columns
+            if len(parts) >= 7:
                 elements.append(tuple(int(p) for p in parts[3:6]))
-    except (AttributeError, FileNotFoundError) as e:
-        print(f"FEHLER: Konnte Geometrie aus .fem-Datei nicht lesen: {e}")
+    except (AttributeError, FileNotFoundError):
         return {}, [], {}
 
-    print(f"--- DEBUG: Lese Lösung aus: {ans_path} ---")
-    # 2. Lösung aus .ans-Datei lesen
     try:
         with open(ans_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -79,13 +140,9 @@ def parse_fem_ans_files(fem_path, ans_path):
         for i, line in enumerate(solution_block.strip().split("\n")):
             if line.strip():
                 solution[i] = float(line.split()[0])
-    except (AttributeError, FileNotFoundError) as e:
-        print(f"FEHLER: Konnte Lösung aus .ans-Datei nicht lesen: {e}")
+    except (AttributeError, FileNotFoundError):
         return nodes, elements, {}
 
-    print(
-        f"DEBUG: Parsing beendet. Gefunden: {len(nodes)} Knoten, {len(elements)} Elemente, {len(solution)} Lösungspunkte."
-    )
     return nodes, elements, solution
 
 
@@ -94,9 +151,6 @@ def calculate_b_field(p1, p2, p3, a1, a2, a3):
     det = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p3[0] - p1[0]) * (p2[1] - p1[1])
     if abs(det) < 1e-12:
         return (0.0, 0.0)
-
-    # B = (dA/dy, -dA/dx)
-    # This is the correct 2D curl for scalar potential A
     bx = ((p1[1] - p2[1]) * a3 + (p2[1] - p3[1]) * a1 + (p3[1] - p1[1]) * a2) / det
     by = -((p2[0] - p1[0]) * a3 + (p3[0] - p2[0]) * a1 + (p1[0] - p3[0]) * a2) / det
     return (bx, by)
@@ -110,9 +164,7 @@ def get_contour_lines(nodes, elements, solution, num_levels=30):
     min_a, max_a = min(solution.values()), max(solution.values())
     if abs(max_a - min_a) < 1e-9:
         return []
-
     levels = [min_a + (max_a - min_a) * i / num_levels for i in range(1, num_levels)]
-
     for n1, n2, n3 in elements:
         points = [nodes.get(i) for i in (n1, n2, n3)]
         potentials = [solution.get(i) for i in (n1, n2, n3)]
@@ -120,7 +172,6 @@ def get_contour_lines(nodes, elements, solution, num_levels=30):
             p is not None for p in potentials
         ):
             continue
-
         for level in levels:
             sides = []
             for i in range(3):

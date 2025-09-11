@@ -11,8 +11,10 @@ from .utils import (
     parse_fem_ans_files,
     calculate_b_field,
     get_contour_lines,
-    load_data,
+    load_json,
     LIBRARY_FILE,
+    load_csv,
+    calculate_position_steps,
 )
 
 analysis_bp = Blueprint("analysis_bp", __name__)
@@ -39,6 +41,7 @@ def list_runs():
     return jsonify(runs)
 
 
+# ... (andere Routen wie get_summary_csv, list_files_in_run, etc. bleiben unverändert) ...
 @analysis_bp.route("/analysis/summary_csv/<date_dir>/<time_dir>")
 def get_summary_csv(date_dir, time_dir):
     """Liest eine summary.csv-Datei und gibt sie als JSON zurück."""
@@ -54,7 +57,6 @@ def get_summary_csv(date_dir, time_dir):
 
         df = pd.read_csv(safe_path)
         return jsonify(df.to_dict(orient="records"))
-    # KORREKTUR: Doppelte Exception entfernt
     except (pd.errors.EmptyDataError, ValueError, IOError) as e:
         return jsonify({"error": f"Fehler beim Lesen der CSV-Datei: {e}"}), 500
 
@@ -124,114 +126,184 @@ def get_analysis_data(filepath):
         return jsonify({"error": f"Fehler bei Dateiverarbeitung: {e}"}), 500
 
 
-def get_transformer_components(transformer, pos):
-    """Extrahiert sicher die geometrischen Teile eines Wandlers."""
-    components, geo = [], transformer.get("specificProductInformation", {}).get(
-        "geometry", {}
-    )
-    pos_x, pos_y = pos.get("x", 0), pos.get("y", 0)
-    if geo.get("type") != "Rectangle":
-        return []
-
-    def get_dim(key):
-        return geo.get(key, 0) or 0
-
-    dims = ["outerAir", "coreOuter", "coreInner", "inner"]
-    labels = ["Outer Air", "Steel Core", "Inner Air", "Air Gap"]
-    fills = ["#f0f8ff", "#d3d3d3", "#f0f8ff", "#ffffff"]
-    for i, dim_name in enumerate(dims):
-        width, height = get_dim(f"{dim_name}Width"), get_dim(f"{dim_name}Height")
-        components.append(
-            {
-                "type": "rect",
-                "x": pos_x - width / 2,
-                "y": pos_y - height / 2,
-                "width": width,
-                "height": height,
-                "fill": fills[i],
-                "label": labels[i],
-            }
-        )
-    return components
-
-
 @analysis_bp.route("/visualize", methods=["POST"])
 def visualize_setup():
-    """Erstellt eine SVG-Vorschau für den Konfigurator."""
-    library = load_data(LIBRARY_FILE, {"components": {}})
+    """Erstellt eine SVG-Vorschau für alle Positionsschritte."""
+    library_path = os.path.join(os.path.dirname(__file__), "..", LIBRARY_FILE)
+    library = load_json(library_path)
     form_data = request.json
-    svg_elements = []
+
+    nennstrom_str = form_data.get("simulationParams", {}).get("ratedCurrent")
+    bewegung_gruppe_name = form_data.get("simulationParams", {}).get("movementGroup")
+
+    startpos_data = {
+        str(item["Strom"]): item for item in load_csv("startpositionen.csv")
+    }
+    schrittweiten_data = {
+        str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
+    }
+    bewegungen_data = load_csv("bewegungen.csv")
+    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
+
+    startpositionen = startpos_data.get(nennstrom_str)
+    schrittweiten = schrittweiten_data.get(nennstrom_str)
+    gewaehlte_bewegung = next(
+        (b for b in bewegungen_data if b["PosGruppe"] == bewegung_gruppe_name), None
+    )
+    spielraum_raw = spielraum_data.get(nennstrom_str)
+
+    spielraum = {}
+    if spielraum_raw:
+        for key, value in spielraum_raw.items():
+            if key.lower() == "länge":
+                spielraum["Länge"] = value
+            elif key.lower() == "breite":
+                spielraum["Breite"] = value
+    if "Länge" not in spielraum or "Breite" not in spielraum:
+        spielraum = {"Länge": "600", "Breite": "400"}
+
+    if not all([startpositionen, schrittweiten, gewaehlte_bewegung]):
+        position_steps = [
+            {
+                "L1": {"x": -150, "y": 0},
+                "L2": {"x": 0, "y": 0},
+                "L3": {"x": 150, "y": 0},
+            }
+        ]
+    else:
+        position_steps = calculate_position_steps(
+            startpositionen, gewaehlte_bewegung, schrittweiten
+        )
 
     all_rails = library.get("components", {}).get("copperRails", [])
     all_transformers = library.get("components", {}).get("transformers", [])
-    all_sheets = library.get("components", {}).get("transformerSheets", [])
-    positions = {
-        "L1": {"x": -100, "y": 0},
-        "L2": {"x": 0, "y": 0},
-        "L3": {"x": 100, "y": 0},
-    }
 
-    for asm in form_data.get("assemblies", []):
-        phase_name = asm.get("phaseName")
-        pos = positions.get(phase_name, {"x": 0, "y": 0})
+    scenes = []
+    for i, step in enumerate(position_steps):
+        step_name = f"Pos {i}" if i > 0 else "Start"
+        svg_elements = []
+        for asm in form_data.get("assemblies", []):
+            phase_name = asm.get("phaseName")
+            pos = step.get(phase_name)
+            if not pos:
+                continue
 
-        transformer = next(
-            (
-                t
-                for t in all_transformers
-                if t["templateProductInformation"]["name"] == asm.get("transformerName")
-            ),
-            None,
-        )
-        if transformer:
-            svg_elements.extend(get_transformer_components(transformer, pos))
-
-        rail = next(
-            (
-                r
-                for r in all_rails
-                if r["templateProductInformation"]["name"] == asm.get("copperRailName")
-            ),
-            None,
-        )
-        if rail:
-            geo = rail.get("specificProductInformation", {}).get("geometry", {})
-            width, height = geo.get("width", 0) or 0, geo.get("height", 0) or 0
-            svg_elements.append(
-                {
-                    "type": "rect",
-                    "x": pos.get("x", 0) - width / 2,
-                    "y": pos.get("y", 0) - height / 2,
-                    "width": width,
-                    "height": height,
-                    "fill": "#b87333",
-                    "label": asm.get("copperRailName"),
-                }
+            transformer = next(
+                (
+                    t
+                    for t in all_transformers
+                    if t["templateProductInformation"]["name"]
+                    == asm.get("transformerName")
+                ),
+                None,
+            )
+            rail = next(
+                (
+                    r
+                    for r in all_rails
+                    if r["templateProductInformation"]["name"]
+                    == asm.get("copperRailName")
+                ),
+                None,
             )
 
-    for comp in form_data.get("standAloneComponents", []):
-        pos = comp.get("position", {})
-        sheet = next(
-            (
-                s
-                for s in all_sheets
-                if s["templateProductInformation"]["name"] == comp.get("name")
-            ),
-            None,
-        )
-        if sheet:
-            geo = sheet.get("specificProductInformation", {}).get("geometry", {})
-            width, height = geo.get("width", 0) or 0, geo.get("height", 0) or 0
-            svg_elements.append(
-                {
-                    "type": "rect",
-                    "x": pos.get("x", 0) - width / 2,
-                    "y": pos.get("y", 0) - height / 2,
-                    "width": width,
-                    "height": height,
-                    "fill": "#a9a9a9",
-                    "label": comp.get("name"),
-                }
-            )
+            if transformer and rail:
+                t_geo = transformer["specificProductInformation"]["geometry"]
+                r_geo = rail["specificProductInformation"]["geometry"]
 
-    return jsonify(svg_elements)
+                svg_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
+                        "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
+                        "width": t_geo["coreOuterWidth"],
+                        "height": t_geo["coreOuterHeight"],
+                        "fill": "#808080",
+                    }
+                )
+                svg_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
+                        "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
+                        "width": t_geo["coreInnerWidth"],
+                        "height": t_geo["coreInnerHeight"],
+                        "fill": "#FFFFFF",
+                    }
+                )
+                svg_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos["x"] - r_geo["width"] / 2,
+                        "y": pos["y"] - r_geo["height"] / 2,
+                        "width": r_geo["width"],
+                        "height": r_geo["height"],
+                        "fill": "#FFA500",
+                    }
+                )
+
+                label_offset_x = -25
+                label_offset_y = -8
+                svg_elements.append(
+                    {
+                        "type": "circle",
+                        "cx": pos["x"],
+                        "cy": pos["y"],
+                        "r": 3,
+                        "fill": "red",
+                    }
+                )
+                svg_elements.append(
+                    {
+                        "type": "text",
+                        "x": pos["x"] + label_offset_x,
+                        "y": pos["y"] - r_geo["height"] / 2 + label_offset_y,
+                        "text": '"material": "Copper"',
+                    }
+                )
+
+                steel_label_y = (
+                    pos["y"] - (t_geo["coreInnerHeight"] + t_geo["coreOuterHeight"]) / 4
+                )
+                svg_elements.append(
+                    {
+                        "type": "circle",
+                        "cx": pos["x"],
+                        "cy": steel_label_y,
+                        "r": 3,
+                        "fill": "red",
+                    }
+                )
+                svg_elements.append(
+                    {
+                        "type": "text",
+                        "x": pos["x"] + label_offset_x,
+                        "y": steel_label_y + label_offset_y,
+                        "text": '"material": "M-36 Steel"',
+                    }
+                )
+
+                air_label_y = (
+                    pos["y"] + (r_geo["height"] + t_geo["coreInnerHeight"]) / 4
+                )
+                svg_elements.append(
+                    {
+                        "type": "circle",
+                        "cx": pos["x"],
+                        "cy": air_label_y,
+                        "r": 3,
+                        "fill": "red",
+                    }
+                )
+                svg_elements.append(
+                    {
+                        "type": "text",
+                        "x": pos["x"] + label_offset_x,
+                        "y": air_label_y + label_offset_y,
+                        "text": '"material": "Air"',
+                    }
+                )
+
+        scenes.append({"name": step_name, "elements": svg_elements})
+
+    return jsonify({"scenes": scenes, "room": spielraum})

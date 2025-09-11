@@ -1,4 +1,4 @@
-% src/ComponentGroup.m
+% src/ComponentGroup.m - NEUE ZEICHNUNGS-LOGIK
 classdef ComponentGroup
 
     properties
@@ -27,50 +27,36 @@ classdef ComponentGroup
             transformer = obj.findComponentByClass('Transformer');
             if isempty(rail) || isempty(transformer), error('Assembly "%s" fehlt die Kupferschiene oder der Wandler.', obj.name); end
 
-            outerAir = transformer.findComponentByName('OuterAir');
             core = transformer.findComponentByName('SteelCore');
             innerAir = transformer.findComponentByName('InnerAir');
-            gap = transformer.findComponentByName('AirGap');
-            if isempty(outerAir) || isempty(core) || isempty(innerAir) || isempty(gap), error('Subkomponenten des Wandlers nicht gefunden.'); end
+            if isempty(core) || isempty(innerAir), error('Subkomponenten des vereinfachten Wandlers nicht gefunden.'); end
 
-            % --- Gruppennummern zuweisen (für spätere Analyse) ---
+            % --- Gruppennummern zuweisen ---
             rail.groupNum = groupNumOffset + 1;
-            core.groupNum = groupNumOffset + 3;
-            innerAir.groupNum = groupNumOffset + 4;
-            outerAir.groupNum = groupNumOffset + 5;
-            gap.groupNum = groupNumOffset + 6;
+            core.groupNum = groupNumOffset + 2; % Nur noch eine Gruppe für den Kern
 
             % --- Absolute Position der Baugruppe ---
             assemblyAbsX = obj.xPos;
             assemblyAbsY = obj.yPos;
 
             % --- 1. Alle geometrischen Grenzen zeichnen ---
-            drawBoundary(outerAir, assemblyAbsX, assemblyAbsY);
-            drawBoundary(core, assemblyAbsX, assemblyAbsY);
-            drawBoundary(innerAir, assemblyAbsX, assemblyAbsY);
-            drawBoundary(gap, assemblyAbsX, assemblyAbsY);
             drawBoundary(rail, assemblyAbsX, assemblyAbsY);
+            drawBoundary(core, assemblyAbsX, assemblyAbsY);
+            drawBoundary(innerAir, assemblyAbsX, assemblyAbsY); % Zeichnet das "Loch"
 
-            % --- 2. Alle Material-Labels an korrekten, individuellen Positionen platzieren ---
+            % --- 2. Material-Labels genau nach deiner Grafik platzieren ---
 
-            % KUPFER (im Zentrum der Schiene, mit Strom)
+            % Roter Punkt 1: KUPFER (im Zentrum der Schiene, mit Strom)
             placeLabel(assemblyAbsX, assemblyAbsY, circuitName, rail.material, rail.groupNum);
 
-            % LUFT IM SPALT (zwischen Schiene und innerer Wandlerkante)
-            label_x_gap = assemblyAbsX + (gap.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
-            placeLabel(label_x_gap, assemblyAbsY, '<None>', gap.material, gap.groupNum);
-
-            % INNERE LUFTSCHICHT
-            label_x_innerAir = assemblyAbsX + (innerAir.geoObject.vertices(2, 1) + gap.geoObject.vertices(2, 1)) / 2;
-            placeLabel(label_x_innerAir, assemblyAbsY, '<None>', innerAir.material, innerAir.groupNum);
-
-            % STAHLKERN
+            % Roter Punkt 2: STAHL (im Zentrum des Kernmaterials)
+            % Berechnet die Mitte zwischen Innen- und Außenkante des Kerns
             label_x_core = assemblyAbsX + (core.geoObject.vertices(2, 1) + innerAir.geoObject.vertices(2, 1)) / 2;
             placeLabel(label_x_core, assemblyAbsY, '<None>', core.material, core.groupNum);
 
-            % ÄUSSERE LUFTSCHICHT
-            label_x_outer = assemblyAbsX + (outerAir.geoObject.vertices(2, 1) + core.geoObject.vertices(2, 1)) / 2;
-            placeLabel(label_x_outer, assemblyAbsY, '<None>', outerAir.material, outerAir.groupNum);
+            % Roter Punkt 3: LUFT (zwischen Schiene und Innenkante des Kerns)
+            label_x_air_gap = assemblyAbsX + (innerAir.geoObject.vertices(2, 1) + rail.geoObject.vertices(2, 1)) / 2;
+            placeLabel(label_x_air_gap, assemblyAbsY, '<None>', 'Air', 0); % Keine Gruppe nötig
         end
 
         % --- Hilfsfunktionen ---

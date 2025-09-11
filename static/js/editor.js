@@ -168,13 +168,6 @@ function getTransformerFormHtml(data) {
         </div>
         <div class="form-section">
             <h3>Geometrie (Rechteck-Wandler)</h3>
-            <h4>Äußere Luft</h4>
-            <div class="form-group"><label>Breite (outerAirWidth)</label><input type="number" step="0.1" class="geo-input" id="edit-outerAirWidth" value="${
-              geo.outerAirWidth || 0
-            }"></div>
-            <div class="form-group"><label>Höhe (outerAirHeight)</label><input type="number" step="0.1" class="geo-input" id="edit-outerAirHeight" value="${
-              geo.outerAirHeight || 0
-            }"></div>
             <h4>Stahlkern</h4>
             <div class="form-group"><label>Außen-Breite (coreOuterWidth)</label><input type="number" step="0.1" class="geo-input" id="edit-coreOuterWidth" value="${
               geo.coreOuterWidth || 0
@@ -187,13 +180,6 @@ function getTransformerFormHtml(data) {
             }"></div>
             <div class="form-group"><label>Innen-Höhe (coreInnerHeight)</label><input type="number" step="0.1" class="geo-input" id="edit-coreInnerHeight" value="${
               geo.coreInnerHeight || 0
-            }"></div>
-            <h4>Leiter-Spalt</h4>
-            <div class="form-group"><label>Breite (innerWidth)</label><input type="number" step="0.1" class="geo-input" id="edit-innerWidth" value="${
-              geo.innerWidth || 0
-            }"></div>
-            <div class="form-group"><label>Höhe (innerHeight)</label><input type="number" step="0.1" class="geo-input" id="edit-innerHeight" value="${
-              geo.innerHeight || 0
             }"></div>
         </div>
         <button type="submit" style="display: none;" aria-hidden="true"></button>
@@ -239,10 +225,6 @@ function gatherComponentDataFromForm(type) {
   if (type === "transformers") {
     return {
       type: "Rectangle",
-      outerAirWidth:
-        parseFloat(form.querySelector("#edit-outerAirWidth")?.value) || 0,
-      outerAirHeight:
-        parseFloat(form.querySelector("#edit-outerAirHeight")?.value) || 0,
       coreOuterWidth:
         parseFloat(form.querySelector("#edit-coreOuterWidth")?.value) || 0,
       coreOuterHeight:
@@ -251,10 +233,6 @@ function gatherComponentDataFromForm(type) {
         parseFloat(form.querySelector("#edit-coreInnerWidth")?.value) || 0,
       coreInnerHeight:
         parseFloat(form.querySelector("#edit-coreInnerHeight")?.value) || 0,
-      innerWidth:
-        parseFloat(form.querySelector("#edit-innerWidth")?.value) || 0,
-      innerHeight:
-        parseFloat(form.querySelector("#edit-innerHeight")?.value) || 0,
     };
   } else {
     return {
@@ -274,7 +252,20 @@ function updateEditorPreview(type) {
   const componentData = gatherComponentDataFromForm(type);
   if (componentData) {
     if (type === "transformers") {
-      renderTransformerPreview(componentData, "editor-preview-svg", true);
+      // Für die Vorschau benötigen wir die äußeren Maße, auch wenn sie nicht im Formular sind.
+      // Wir können sie aus den Kernmaßen ableiten oder feste Werte annehmen.
+      // Hier nehme ich an, sie sind etwas größer als die Kernmaße.
+      const previewData = {
+        ...componentData,
+        outerAirWidth: componentData.coreOuterWidth + 10,
+        outerAirHeight: componentData.coreOuterHeight + 10,
+        innerWidth: componentData.coreInnerWidth - 10,
+        innerHeight:
+          componentData.coreInnerHeight - 10 > 0
+            ? componentData.coreInnerHeight - 10
+            : 2,
+      };
+      renderTransformerPreview(previewData, "editor-preview-svg", true);
     } else {
       renderComponentPreview(componentData, "editor-preview-svg", true);
     }
@@ -304,8 +295,12 @@ function saveComponent() {
     form.querySelector("#edit-manufacturer")?.value || "";
 
   // Geometrie aktualisieren
-  componentToSave.specificProductInformation.geometry =
-    gatherComponentDataFromForm(currentEditorComponentType);
+  const geometryData = gatherComponentDataFromForm(currentEditorComponentType);
+  // Behalte die entfernten Felder bei, falls sie in der Originalstruktur existieren
+  componentToSave.specificProductInformation.geometry = {
+    ...componentToSave.specificProductInformation.geometry,
+    ...geometryData,
+  };
 
   fetch("/api/library", {
     method: "POST",

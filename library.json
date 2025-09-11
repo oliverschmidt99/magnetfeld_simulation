@@ -93,15 +93,15 @@
                     },
                     "gapMaterial": "Air",
                     "geometry": {
-                        "type": "Rectangle",
-                        "outerAirWidth": 100,
-                        "outerAirHeight": 120,
-                        "coreOuterWidth": 85.5,
-                        "coreOuterHeight": 92,
-                        "coreInnerWidth": 50.2,
                         "coreInnerHeight": 50.2,
+                        "coreInnerWidth": 50.2,
+                        "coreOuterHeight": 92,
+                        "coreOuterWidth": 85.5,
+                        "innerHeight": 10,
                         "innerWidth": 20.2,
-                        "innerHeight": 10
+                        "outerAirHeight": 120,
+                        "outerAirWidth": 100,
+                        "type": "Rectangle"
                     }
                 },
                 "templateProductInformation": {

@@ -23,7 +23,7 @@ function initializeConfigurator() {
     const asmList = document.getElementById("assemblies-list");
     asmList.innerHTML = "";
     assemblyCounter = 0;
-    data.assemblies.forEach((asm) => addAssembly(asm));
+    (data.assemblies || []).forEach((asm) => addAssembly(asm));
     updateAssemblyPhaseDropdowns();
     updatePhaseCurrents();
   });
@@ -47,7 +47,7 @@ function initializeConfigurator() {
         } else {
           alert(result.message);
           const runner = document.getElementById("simulation-runner");
-          runner.style.display = "block";
+          runner.classList.remove("initially-hidden");
         }
       });
   });
@@ -97,7 +97,11 @@ let standaloneCounter = 0;
 async function updateVisualization() {
   const data = gatherFormData();
   const svg = document.getElementById("config-preview-svg");
-  svg.innerHTML = `<text x="10" y="20">Vorschau wird geladen...</text>`;
+  const controls = document.getElementById("preview-controls");
+
+  // KORREKTUR: Beide Container zu Beginn leeren
+  svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
+  controls.innerHTML = "";
 
   try {
     const response = await fetch("/visualize", {
@@ -107,26 +111,114 @@ async function updateVisualization() {
     });
     if (!response.ok)
       throw new Error("Visualisierungs-Daten konnten nicht geladen werden.");
-    const svgElements = await response.json();
 
+    const { scenes, room } = await response.json();
     svg.innerHTML = "";
 
-    const textElement = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "text"
-    );
-    textElement.setAttribute("x", "10");
-    textElement.setAttribute("y", "20");
-    textElement.textContent = `${
-      svgElements.length || 0
-    } Bauteile konfiguriert. (Visuelle Logik hier implementieren)`;
-    svg.appendChild(textElement);
+    if (
+      !room ||
+      isNaN(parseFloat(room.Länge)) ||
+      isNaN(parseFloat(room.Breite))
+    ) {
+      svg.innerHTML = `<text x="50%" y="50%" fill="red" dominant-baseline="middle" text-anchor="middle">Simulationsraum-Daten unvollständig.</text>`;
+      return;
+    }
+
+    const roomWidth = parseFloat(room.Länge);
+    const roomHeight = parseFloat(room.Breite);
+    const padding = 50;
+    const viewBox = `${-roomWidth / 2 - padding} ${-roomHeight / 2 - padding} ${
+      roomWidth + 2 * padding
+    } ${roomHeight + 2 * padding}`;
+    svg.setAttribute("viewBox", viewBox);
+
+    const createSvgElement = (tag, attrs, textContent = null) => {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const key in attrs) el.setAttribute(key, attrs[key]);
+      if (textContent) el.textContent = textContent;
+      return el;
+    };
+
+    const roomRect = createSvgElement("rect", {
+      x: -roomWidth / 2,
+      y: -roomHeight / 2,
+      width: roomWidth,
+      height: roomHeight,
+      fill: "white",
+      stroke: "#343a40",
+      "stroke-width": 2,
+    });
+    svg.appendChild(roomRect);
+
+    scenes.forEach((scene, index) => {
+      const group = createSvgElement("g", {
+        id: `scene-${index}`,
+        style: "visibility: hidden;",
+      });
+      (scene.elements || []).forEach((elData) => {
+        let el;
+        if (elData.type === "rect") {
+          el = createSvgElement("rect", {
+            x: elData.x,
+            y: elData.y,
+            width: elData.width,
+            height: elData.height,
+            fill: elData.fill,
+            stroke: "#343a40",
+            "stroke-width": 0.5,
+          });
+        } else if (elData.type === "circle") {
+          el = createSvgElement("circle", {
+            cx: elData.cx,
+            cy: elData.cy,
+            r: elData.r,
+            fill: elData.fill,
+          });
+        } else if (elData.type === "text") {
+          el = createSvgElement(
+            "text",
+            {
+              x: elData.x,
+              y: elData.y,
+              "font-size": "10px",
+              "font-family": "monospace",
+            },
+            elData.text
+          );
+        }
+        if (el) group.appendChild(el);
+      });
+      svg.appendChild(group);
+    });
+
+    scenes.forEach((scene, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button secondary";
+      button.textContent = scene.name;
+      button.onclick = () => {
+        svg
+          .querySelectorAll("g")
+          .forEach((g) => (g.style.visibility = "hidden"));
+        svg.querySelector(`#scene-${index}`).style.visibility = "visible";
+        controls
+          .querySelectorAll("button")
+          .forEach((b) => b.classList.remove("active"));
+        button.classList.add("active");
+      };
+      controls.appendChild(button);
+    });
+
+    if (controls.firstChild) {
+      controls.firstChild.click();
+    }
   } catch (error) {
     console.error("Fehler bei der Visualisierung:", error);
-    svg.innerHTML = `<text x="10" y="20" fill="red">Fehler beim Laden der Vorschau.</text>`;
+    svg.innerHTML = `<text x="50%" y="50%" fill="red" dominant-baseline="middle" text-anchor="middle">Fehler: ${error.message}</text>`;
   }
 }
 
+// ... (Rest der Datei bleibt unverändert) ...
 function updatePhaseCurrents() {
   const ratedCurrent = parseFloat(
     document.getElementById("ratedCurrent").value
@@ -151,7 +243,9 @@ function updateAssemblyPhaseDropdowns() {
       const option = new Option(p, p);
       select.add(option);
     });
-    select.value = selectedValue;
+    if (phases.includes(selectedValue)) {
+      select.value = selectedValue;
+    }
   });
 }
 
@@ -167,7 +261,6 @@ function addPhase(data = {}) {
   );
   const peakCurrent = (data.peakCurrentA || ratedCurrent * SQRT2).toFixed(2);
   const rmsCurrent = (data.rmsCurrent || ratedCurrent).toFixed(2);
-
   item.dataset.peakCurrent = peakCurrent;
 
   item.innerHTML = `<h4>Phase ${phaseCounter}</h4>
@@ -205,7 +298,9 @@ function addAssembly(data = {}) {
     )
     .join("");
   const transformerOptions = (library.components?.transformers || [])
-    .filter((t) => t.templateProductInformation.tags?.includes(searchTag))
+    .filter((t) =>
+      (t.templateProductInformation.tags || []).includes(searchTag)
+    )
     .map(
       (t) =>
         `<option value="${t.templateProductInformation.name}" ${
@@ -331,7 +426,6 @@ function loadState(data = null) {
     simulationParams.movementGroup || "";
   document.getElementById("problemDepthM").value =
     simulationParams.problemDepthM;
-
   document.getElementById("I_1_mes").value = simulationParams.I_1_mes || "0";
   document.getElementById("I_2_mes").value = simulationParams.I_2_mes || "0";
   document.getElementById("I_3_mes").value = simulationParams.I_3_mes || "0";
@@ -352,12 +446,12 @@ function loadState(data = null) {
   assemblyCounter = 0;
   standaloneCounter = 0;
 
-  electricalSystem.forEach(addPhase);
-  assemblies.forEach(addAssembly);
-  standAloneComponents.forEach(addStandalone);
+  (electricalSystem || []).forEach(addPhase);
+  (assemblies || []).forEach(addAssembly);
+  (standAloneComponents || []).forEach(addStandalone);
 
   updateAssemblyPhaseDropdowns();
-  assemblies.forEach((assembly, index) => {
+  (assemblies || []).forEach((assembly, index) => {
     const select = document.querySelector(
       `#assembly-${index + 1} .assembly-phase-select`
     );

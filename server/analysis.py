@@ -13,7 +13,6 @@ from .utils import (
     get_contour_lines,
     load_json,
     LIBRARY_FILE,
-    load_csv,
     calculate_position_steps,
     calculate_label_positions,
 )
@@ -143,7 +142,6 @@ def visualize_setup():
         "L3": bewegungs_richtungen.get("L3"),
     }
 
-    # KORREKTUR: Parameter direkt aus der Anfrage verwenden, statt aus CSV zu lesen
     startpositionen = sim_params.get("startpositionen")
     schrittweiten = sim_params.get("schrittweiten")
     spielraum = sim_params.get("spielraum")
@@ -166,12 +164,15 @@ def visualize_setup():
     all_sheets = library.get("components", {}).get("transformerSheets", [])
 
     scenes = []
+    all_coords = []
+
     for i, step in enumerate(position_steps):
         step_name = f"Pos {i}" if i > 0 else "Start"
         svg_elements = []
         labels = calculate_label_positions(
             form_data.get("assemblies", []), step, library, spielraum
         )
+        step_coords = []
 
         # Baugruppen zeichnen
         for asm in form_data.get("assemblies", []):
@@ -202,6 +203,23 @@ def visualize_setup():
             if transformer and rail:
                 t_geo = transformer["specificProductInformation"]["geometry"]
                 r_geo = rail["specificProductInformation"]["geometry"]
+
+                # Beschriftung für die Baugruppe
+                svg_elements.append(
+                    {
+                        "type": "text",
+                        "x": pos["x"],
+                        "y": pos["y"] - t_geo["coreOuterHeight"] / 2 - 10,
+                        "class": "assembly-label",
+                        "text": f"{phase_name}: {transformer['templateProductInformation']['name']}",
+                    }
+                )
+                step_coords.append(
+                    f"{phase_name} Label: ({pos['x']:.1f}, "
+                    f"{pos['y'] - t_geo['coreOuterHeight'] / 2 - 10:.1f})"
+                )
+
+                # Körper zeichnen
                 svg_elements.append(
                     {
                         "type": "rect",
@@ -233,6 +251,12 @@ def visualize_setup():
                         "fill": "#FFA500",
                     }
                 )
+                step_coords.append(
+                    f"{asm['name']} Core: Center ({pos['x']:.1f}, {pos['y']:.1f})"
+                )
+                step_coords.append(
+                    f"{asm['name']} Rail: Center ({pos['x']:.1f}, {pos['y']:.1f})"
+                )
 
         # Eigenständige Bauteile zeichnen
         for comp in form_data.get("standAloneComponents", []):
@@ -247,18 +271,36 @@ def visualize_setup():
             if sheet:
                 s_geo = sheet["specificProductInformation"]["geometry"]
                 s_pos = comp.get("position", {"x": 0, "y": 0})
+                rotation = comp.get("rotation", 0)
+                material = s_geo.get("material", "Unknown")
+
+                # Körper des Bauteils
                 svg_elements.append(
                     {
                         "type": "rect",
-                        "x": s_pos["x"] - s_geo["width"] / 2,
-                        "y": s_pos["y"] - s_geo["height"] / 2,
+                        "x": -s_geo["width"] / 2,
+                        "y": -s_geo["height"] / 2,
                         "width": s_geo["width"],
                         "height": s_geo["height"],
                         "fill": "#a9a9a9",
+                        "transform": f"translate({s_pos['x']}, {s_pos['y']}) rotate({rotation})",
+                    }
+                )
+                step_coords.append(
+                    f"{comp.get('name')} Sheet: Center ({s_pos['x']:.1f}, {s_pos['y']:.1f}), "
+                    f"Rotation: {rotation}°"
+                )
+
+                # Label für das Bauteil
+                labels.append(
+                    {
+                        "material": material,
+                        "x": s_pos["x"],
+                        "y": s_pos["y"],
                     }
                 )
 
-        # Labels zeichnen
+        # Alle Labels (von Baugruppen und eigenständigen Bauteilen) zeichnen
         for label in labels:
             svg_elements.append(
                 {
@@ -267,20 +309,21 @@ def visualize_setup():
                     "cy": label["y"],
                     "r": 3,
                     "fill": "red",
+                    "material": label["material"],
                 }
             )
-            svg_elements.append(
-                {
-                    "type": "text",
-                    "x": label["x"] + 8,
-                    "y": label["y"] - 8,
-                    "class": "material-label",
-                    "text": f'"material": "{label["material"]}"',
-                }
+            step_coords.append(
+                f"Material-Label ({label['material']}): ({label['x']:.1f}, {label['y']:.1f})"
             )
 
         scenes.append({"name": step_name, "elements": svg_elements})
+        all_coords.append({"step_name": step_name, "coords": step_coords})
 
     return jsonify(
-        {"scenes": scenes, "room": spielraum, "position_steps": position_steps}
+        {
+            "scenes": scenes,
+            "room": spielraum,
+            "position_steps": position_steps,
+            "coordinate_summary": all_coords,
+        }
     )

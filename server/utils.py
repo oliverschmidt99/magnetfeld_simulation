@@ -81,7 +81,8 @@ def calculate_position_steps(
     """Berechnet alle Positionsschritte."""
     all_steps = []
 
-    # KORREKTUR: Stellt sicher, dass die Leiter (L1, L2, L3) korrekt aus den Startpositionen extrahiert werden
+    # KORREKTUR: Stellt sicher, dass die Leiter (L1, L2, L3) korrekt
+    # aus den Startpositionen extrahiert werden
     conductors = sorted(list(set([key.split("_")[1] for key in start_pos.keys()])))
     if not conductors:
         conductors = ["L1", "L2", "L3"]

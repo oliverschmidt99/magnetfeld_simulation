@@ -129,7 +129,9 @@ def generate_simulation():
         return (
             jsonify(
                 {
-                    "error": f"Keine Startpositionen für Nennstrom {nennstrom_str}A gefunden."
+                    "error": "Keine Startpositionen für Nennstrom {}A gefunden.".format(
+                        nennstrom_str
+                    )
                 }
             ),
             400,
@@ -178,7 +180,7 @@ def generate_simulation():
             "bewegungsgruppe": gewaehlte_bewegung,
             "simulationsraum": spielraum,
             "bewegungspfade_alle_leiter": {
-                "beschreibung": f"Bewegungsgruppe: Manuell",
+                "beschreibung": "Bewegungsgruppe: Manuell",
                 "schritte_details": leiter_bewegungspfade,
             },
             "material_labels": material_labels,
@@ -190,7 +192,10 @@ def generate_simulation():
         json.dump(output, f, indent=2, ensure_ascii=False)
 
     return jsonify(
-        {"message": f"{SIMULATION_RUN_FILE} erfolgreich erstellt!", "data": output}
+        {
+            "message": "{} erfolgreich erstellt!".format(SIMULATION_RUN_FILE),
+            "data": output,
+        }
     )
 
 

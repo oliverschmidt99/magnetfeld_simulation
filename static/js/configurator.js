@@ -81,6 +81,7 @@ function initializeConfigurator() {
   const svg = document.getElementById("config-preview-svg");
   if (svg) {
     enableSvgZoom(svg);
+    setupCoordinateDisplay(svg);
   }
 
   // Initialen Zustand laden und Felder füllen
@@ -163,9 +164,10 @@ async function updateVisualization() {
     if (!response.ok)
       throw new Error("Visualisierungs-Daten konnten nicht geladen werden.");
 
-    const { scenes, room, position_steps } = await response.json();
+    const { scenes, room, position_steps, coordinate_summary } =
+      await response.json();
 
-    updateParameterSummary(data, position_steps);
+    updateParameterSummary(data, position_steps, coordinate_summary);
 
     svg.innerHTML = "";
 
@@ -237,6 +239,7 @@ async function updateVisualization() {
             fill: elData.fill,
             stroke: elData.stroke || "#343a40",
             "stroke-width": 0.5,
+            transform: elData.transform || "",
           });
         } else if (elData.type === "circle") {
           el = createSvgElement("circle", {
@@ -245,13 +248,18 @@ async function updateVisualization() {
             r: elData.r,
             fill: elData.fill,
           });
+          if (elData.material) {
+            const title = createSvgElement("title", {}, elData.material);
+            el.appendChild(title);
+          }
         } else if (elData.type === "text") {
           el = createSvgElement(
             "text",
             {
               x: elData.x,
               y: elData.y,
-              class: elData.class || "material-label",
+              class: elData.class || "assembly-label",
+              "text-anchor": "middle",
             },
             elData.text
           );
@@ -288,7 +296,7 @@ async function updateVisualization() {
   }
 }
 
-function updateParameterSummary(data, positionSteps) {
+function updateParameterSummary(data, positionSteps, coordinateSummary) {
   const container = document.getElementById("parameter-summary-container");
   if (!container) return;
   const { simulationParams } = data;
@@ -301,36 +309,17 @@ function updateParameterSummary(data, positionSteps) {
         <span class="summary-label">Phasenwinkel:</span> <span class="summary-value">${simulationParams.phaseSweep.start}° bis ${simulationParams.phaseSweep.end}° in ${simulationParams.phaseSweep.step}° Schritten</span>
     </div>`;
 
-  html += `<h4>Bewegungspfade & Positionen (mm)</h4>`;
-  if (positionSteps && positionSteps.length > 0) {
-    html += `<table class="summary-table">
-                <thead>
-                    <tr>
-                        <th>Position</th>
-                        <th>L1 (X / Y)</th>
-                        <th>L2 (X / Y)</th>
-                        <th>L3 (X / Y)</th>
-                    </tr>
-                </thead>
-                <tbody>`;
-    positionSteps.forEach((step, index) => {
-      const stepName = index === 0 ? "Start" : `Pos ${index}`;
-      html += `<tr>
-                        <td>${stepName}</td>
-                        <td>${step.L1.x.toFixed(1)} / ${step.L1.y.toFixed(
-        1
-      )}</td>
-                        <td>${step.L2.x.toFixed(1)} / ${step.L2.y.toFixed(
-        1
-      )}</td>
-                        <td>${step.L3.x.toFixed(1)} / ${step.L3.y.toFixed(
-        1
-      )}</td>
-                   </tr>`;
+  html += `<h4>Koordinaten der Visualisierung (mm)</h4>`;
+  if (coordinateSummary && coordinateSummary.length > 0) {
+    coordinateSummary.forEach((step) => {
+      html += `<h5>Position: ${step.step_name}</h5><ul>`;
+      step.coords.forEach((coord) => {
+        html += `<li>${coord}</li>`;
+      });
+      html += `</ul>`;
     });
-    html += `</tbody></table>`;
   } else {
-    html += `<p>Keine Positionsdaten berechnet.</p>`;
+    html += `<p>Keine Koordinaten-Daten berechnet.</p>`;
   }
   container.innerHTML = html;
 }
@@ -385,6 +374,26 @@ function enableSvgZoom(svg) {
       "viewBox",
       `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
     );
+  });
+}
+
+function setupCoordinateDisplay(svg) {
+  const coordDisplay = document.getElementById("coordinate-display");
+  if (!coordDisplay) return;
+
+  svg.addEventListener("mousemove", (e) => {
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+
+    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+    coordDisplay.textContent = `X: ${svgP.x.toFixed(1)}, Y: ${svgP.y.toFixed(
+      1
+    )}`;
+  });
+
+  svg.addEventListener("mouseleave", () => {
+    coordDisplay.textContent = "X: --, Y: --";
   });
 }
 
@@ -505,6 +514,14 @@ function addStandalone(data = {}) {
         }>${s.templateProductInformation.name}</option>`
     )
     .join("");
+  const rotationOptions = [0, 90, 180, 270]
+    .map(
+      (angle) =>
+        `<option value="${angle}" ${
+          data.rotation === angle ? "selected" : ""
+        }>${angle}°</option>`
+    )
+    .join("");
   item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4>
     <label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select>
     <label>Position X:</label><input type="number" class="pos-x" value="${
@@ -513,6 +530,7 @@ function addStandalone(data = {}) {
     <label>Position Y:</label><input type="number" class="pos-y" value="${
       data.position?.y || 0
     }">
+    <label>Rotation:</label><select class="rotation">${rotationOptions}</select>
     <button type="button" onclick="removeItem('standalone-${standaloneCounter}')">Entfernen</button>`;
   list.appendChild(item);
 }
@@ -582,6 +600,7 @@ function gatherFormData() {
         x: parseInt(item.querySelector(".pos-x").value),
         y: parseInt(item.querySelector(".pos-y").value),
       },
+      rotation: parseInt(item.querySelector(".rotation").value),
     })),
   };
 }

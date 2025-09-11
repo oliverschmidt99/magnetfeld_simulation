@@ -1,0 +1,318 @@
+# run_simulation.py (Robuste Geometrie-Erstellung und Fehlerbehebung)
+
+"""
+Haupt-Skript zur Steuerung des FEMM-Simulations-Workflows.
+
+Dieses Skript liest eine 'simulation_run.json' und eine 'library.json',
+iteriert durch verschiedene Positionsschritte und Phasenwinkel und führt für
+jeden Schritt eine FEMM-Simulation durch. Die Ergebnisse werden gesammelt
+und in einer CSV-Datei im 'res'-Verzeichnis gespeichert.
+"""
+
+import json
+import os
+import shutil
+from datetime import datetime
+import numpy as np
+import pandas as pd
+import femm
+
+
+def calculate_instantaneous_current(peak_current, phase_shift_deg, angle_deg):
+    """Berechnet den Momentanstrom für einen gegebenen Phasenwinkel."""
+    return peak_current * np.cos(np.deg2rad(angle_deg + phase_shift_deg))
+
+
+def run_single_simulation(
+    femm_path, step_config, library, params, angle_deg, run_identifier
+):
+    """Führt eine einzelne FEMM-Analyse für einen Phasenwinkel durch."""
+    femm.openfemm(True)
+    femm.newdocument(0)
+
+    # Problemdefinition
+    scenario_params = params.get("scenarioParams", {})
+    freq = float(scenario_params.get("frequencyHz", 50))
+    depth = float(scenario_params.get("problemDepthM", 30))
+    core_perm = float(scenario_params.get("coreRelPermeability", 2500))
+    femm.mi_probdef(freq, "millimeters", "planar", 1e-8, depth, 30)
+
+    # Materialdefinition
+    materials = {"Air", "Copper"}
+    for asm in step_config.get("assemblies", []):
+        t_details = asm.get("transformer_details", {})
+        core_material = (
+            t_details.get("specificProductInformation", {})
+            .get("geometry", {})
+            .get("coreMaterial", "M-36 Steel")
+        )
+        materials.add(core_material)
+    for comp in step_config.get("standAloneComponents", []):
+        sheet_details = next(
+            (
+                s
+                for s in library.get("components", {}).get("transformerSheets", [])
+                if s.get("templateProductInformation", {}).get("name")
+                == comp.get("name")
+            ),
+            None,
+        )
+        if sheet_details:
+            materials.add(
+                sheet_details.get("specificProductInformation", {})
+                .get("geometry", {})
+                .get("material", "M-36 Steel")
+            )
+
+    for mat_name in materials:
+        if "steel" in mat_name.lower():
+            femm.mi_addmaterial(mat_name, core_perm, core_perm, 0)
+        else:
+            femm.mi_getmaterial(mat_name)
+
+    # Stromkreisdefinition
+    for phase in step_config["electricalSystem"]:
+        inst_current = calculate_instantaneous_current(
+            phase["peakCurrentA"], phase["phaseShiftDeg"], angle_deg
+        )
+        femm.mi_addcircprop(phase["name"], inst_current, 1)
+
+    # Geometrieaufbau
+    sim_raum = step_config["simulation_meta"]["simulationsraum"]
+    sim_length, sim_breadth = float(sim_raum["Laenge"]), float(sim_raum["Breite"])
+    femm.mi_drawrectangle(
+        -sim_length / 2, -sim_breadth / 2, sim_length / 2, sim_breadth / 2
+    )
+
+    # Baugruppen zeichnen
+    for i, asm in enumerate(step_config["assemblies"]):
+        pos = asm["position"]
+        rail_name = asm["copperRailName"]
+        rail = next(
+            r
+            for r in library["components"]["copperRails"]
+            if r["templateProductInformation"]["name"] == rail_name
+        )
+        trans = asm["transformer_details"]
+
+        r_geo = rail["specificProductInformation"]["geometry"]
+        t_geo = trans["specificProductInformation"]["geometry"]
+
+        # Geometrie explizit mit Nodes und Segments zeichnen
+        def draw_rect_explicitly(center_x, center_y, width, height):
+            x1, y1 = center_x - width / 2, center_y - height / 2
+            x2, y2 = center_x + width / 2, center_y + height / 2
+            femm.mi_addnode(x1, y1)
+            femm.mi_addnode(x2, y1)
+            femm.mi_addnode(x2, y2)
+            femm.mi_addnode(x1, y2)
+            femm.mi_addsegment(x1, y1, x2, y1)
+            femm.mi_addsegment(x2, y1, x2, y2)
+            femm.mi_addsegment(x2, y2, x1, y2)
+            femm.mi_addsegment(x1, y2, x1, y1)
+
+        draw_rect_explicitly(pos["x"], pos["y"], r_geo["width"], r_geo["height"])
+        draw_rect_explicitly(
+            pos["x"], pos["y"], t_geo["coreOuterWidth"], t_geo["coreOuterHeight"]
+        )
+        draw_rect_explicitly(
+            pos["x"], pos["y"], t_geo["coreInnerWidth"], t_geo["coreInnerHeight"]
+        )
+
+        # Labels platzieren
+        group_num_rail = i * 10 + 1
+        group_num_core = i * 10 + 2
+
+        femm.mi_addblocklabel(pos["x"], pos["y"])
+        femm.mi_selectlabel(pos["x"], pos["y"])
+        femm.mi_setblockprop(
+            r_geo["material"], 1, 0, asm["phaseName"], 0, group_num_rail, 0
+        )
+
+        label_x_core = (
+            pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
+        )
+        femm.mi_addblocklabel(label_x_core, pos["y"])
+        femm.mi_selectlabel(label_x_core, pos["y"])
+        femm.mi_setblockprop(
+            t_geo.get("material", "M-36 Steel"), 1, 0, "<None>", 0, group_num_core, 0
+        )
+
+        label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
+        femm.mi_addblocklabel(label_x_air_gap, pos["y"])
+        femm.mi_selectlabel(label_x_air_gap, pos["y"])
+        femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
+        femm.mi_clearselected()
+
+    # Eigenständige Bauteile (mit Rotations-Logik)
+    for i, comp in enumerate(step_config.get("standAloneComponents", [])):
+        sheet = next(
+            s
+            for s in library["components"]["transformerSheets"]
+            if s["templateProductInformation"]["name"] == comp["name"]
+        )
+        s_geo = sheet["specificProductInformation"]["geometry"]
+        s_pos = comp["position"]
+        rotation_deg = float(comp.get("rotation", 0))
+
+        w, h = s_geo["width"], s_geo["height"]
+        x, y = s_pos["x"], s_pos["y"]
+
+        corners = [(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)]
+        rad = np.deg2rad(rotation_deg)
+        cos_a, sin_a = np.cos(rad), np.sin(rad)
+
+        rotated_corners = []
+        for px, py in corners:
+            rx = px * cos_a - py * sin_a
+            ry = px * sin_a + py * cos_a
+            rotated_corners.append((rx + x, ry + y))
+
+        for k in range(4):
+            p1 = rotated_corners[k]
+            p2 = rotated_corners[(k + 1) % 4]
+            femm.mi_addnode(p1[0], p1[1])
+            femm.mi_addnode(p2[0], p2[1])
+            femm.mi_addsegment(p1[0], p1[1], p2[0], p2[1])
+
+        femm.mi_addblocklabel(x, y)
+        femm.mi_selectlabel(x, y)
+        femm.mi_setblockprop(s_geo["material"], 1, 0, "<None>", 0, 100 + i, 0)
+        femm.mi_clearselected()
+
+    # Label für die umgebende Luft
+    femm.mi_addblocklabel(0, sim_breadth / 2 - 1)
+    femm.mi_selectlabel(0, sim_breadth / 2 - 1)
+    femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
+    femm.mi_clearselected()
+
+    # Randbedingung und Analyse
+    femm.mi_makeABC(7, max(sim_length, sim_breadth) * 1.5, 0, 0, 0)
+    femm.mi_zoomnatural()
+
+    fem_file = os.path.join(femm_path, f"{run_identifier}.fem")
+    femm.mi_saveas(fem_file)
+    femm.mi_analyze(1)
+    femm.mi_loadsolution()
+
+    # Ergebnisse berechnen
+    results = []
+    for i, asm in enumerate(step_config["assemblies"]):
+        phase_name = asm["phaseName"]
+        circuit_props = femm.mo_getcircuitproperties(phase_name)
+        i_sec_complex = circuit_props[0] + 1j * circuit_props[1]
+
+        group_num_core = i * 10 + 2
+        femm.mo_groupselectblock(group_num_core)
+
+        b_avg = femm.mo_blockintegral(18)
+        h_avg = femm.mo_blockintegral(19)
+        femm.mo_clearblock()
+
+        phase_data = next(
+            p for p in step_config["electricalSystem"] if p["name"] == phase_name
+        )
+        i_prim = calculate_instantaneous_current(
+            phase_data["peakCurrentA"], phase_data["phaseShiftDeg"], angle_deg
+        )
+
+        results.append(
+            {
+                "phaseAngle": angle_deg,
+                "conductor": phase_name,
+                "iPrimA": i_prim,
+                "iSecAbs_A": np.abs(i_sec_complex),
+                "iSecReal_A": np.real(i_sec_complex),
+                "iSecImag_A": np.imag(i_sec_complex),
+                "bAvgMagnitude_T": b_avg,
+                "hAvgMagnitude_A_m": h_avg,
+            }
+        )
+
+    femm.closefemm()
+    return results
+
+
+def main():
+    """Hauptfunktion zur Steuerung des Simulationslaufs."""
+    print("--- Starte Python-Simulations-Workflow ---")
+
+    try:
+        with open("simulation_run.json", "r", encoding="utf-8") as f:
+            run_data = json.load(f)
+        with open("library.json", "r", encoding="utf-8") as f:
+            library = json.load(f)
+    except FileNotFoundError as e:
+        print(f"Fehler: Konfigurationsdatei nicht gefunden - {e}")
+        return
+    except json.JSONDecodeError as e:
+        print(f"Fehler: JSON-Datei ist fehlerhaft - {e}")
+        return
+
+    now = datetime.now()
+    date_str, time_str = now.strftime("%Y%m%d"), now.strftime("%H%M%S")
+    results_path = os.path.join("res", date_str, f"{time_str}_position_sweep")
+    femm_files_path = os.path.join(results_path, "femm_files")
+    os.makedirs(femm_files_path, exist_ok=True)
+    shutil.copy(
+        "simulation_run.json", os.path.join(results_path, "simulation_run.json")
+    )
+    print(f"Ergebnisse werden in '{results_path}' gespeichert.")
+
+    master_results = []
+    params = run_data
+    phase_sweep = params["scenarioParams"]["phaseSweep"]
+    phase_angles = np.arange(
+        float(phase_sweep["start"]),
+        float(phase_sweep["end"]) + float(phase_sweep["step"]),
+        float(phase_sweep["step"]),
+    )
+    position_steps = run_data["simulation_meta"]["bewegungspfade_alle_leiter"][
+        "schritte_details"
+    ]
+
+    for i, step in enumerate(position_steps):
+        print(f"\n>> Verarbeite Positionsschritt {i+1}/{len(position_steps)}")
+        step_config = run_data.copy()
+        step_config["assemblies"] = [asm.copy() for asm in run_data["assemblies"]]
+
+        for asm_cfg in step_config["assemblies"]:
+            phase_name = asm_cfg["phaseName"]
+            if phase_name in step:
+                asm_cfg["position"] = step[phase_name]
+
+        for angle in phase_angles:
+            print(f"--> Simuliere für Phasenwinkel: {angle}°")
+            run_identifier = f"step{i}_angle{int(angle)}"
+
+            try:
+                single_run_results = run_single_simulation(
+                    femm_files_path, step_config, library, params, angle, run_identifier
+                )
+                for res in single_run_results:
+                    res.update(
+                        {
+                            "pos_x_L1_mm": step.get("L1", {}).get("x"),
+                            "pos_y_L1_mm": step.get("L1", {}).get("y"),
+                            "pos_x_L2_mm": step.get("L2", {}).get("x"),
+                            "pos_y_L2_mm": step.get("L2", {}).get("y"),
+                            "pos_x_L3_mm": step.get("L3", {}).get("x"),
+                            "pos_y_L3_mm": step.get("L3", {}).get("y"),
+                        }
+                    )
+                master_results.extend(single_run_results)
+            except Exception as e:
+                print(f"!!!! Fehler bei der Simulation für Winkel {angle}°: {e}")
+                femm.closefemm()
+
+    if master_results:
+        df = pd.DataFrame(master_results)
+        csv_path = os.path.join(results_path, f"{time_str}_summary.csv")
+        df.to_csv(csv_path, index=False)
+        print(f"\n--- Alle Ergebnisse wurden in '{csv_path}' gespeichert. ---")
+
+    print("--- Simulations-Workflow erfolgreich abgeschlossen. ---")
+
+
+if __name__ == "__main__":
+    main()

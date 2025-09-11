@@ -133,37 +133,27 @@ def visualize_setup():
     library_path = os.path.join(os.path.dirname(__file__), "..", LIBRARY_FILE)
     library = load_json(library_path)
     form_data = request.json
+    sim_params = form_data.get("simulationParams", {})
 
-    nennstrom_str = form_data.get("simulationParams", {}).get("ratedCurrent")
-    bewegung_gruppe_name = form_data.get("simulationParams", {}).get("movementGroup")
+    nennstrom_str = sim_params.get("ratedCurrent")
+    bewegungs_richtungen = sim_params.get("bewegungsRichtungen", {})
+
+    gewaehlte_bewegung = {
+        "PosGruppe": "Manuell",
+        "L1": bewegungs_richtungen.get("L1"),
+        "L2": bewegungs_richtungen.get("L2"),
+        "L3": bewegungs_richtungen.get("L3"),
+    }
 
     startpos_data = {
         str(item["Strom"]): item for item in load_csv("startpositionen.csv")
     }
-    schrittweiten_data = {
-        str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
-    }
-    bewegungen_data = load_csv("bewegungen.csv")
-    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
 
     startpositionen = startpos_data.get(nennstrom_str)
-    schrittweiten = schrittweiten_data.get(nennstrom_str)
-    gewaehlte_bewegung = next(
-        (b for b in bewegungen_data if b["PosGruppe"] == bewegung_gruppe_name), None
-    )
-    spielraum_raw = spielraum_data.get(nennstrom_str)
+    schrittweiten = sim_params.get("schrittweiten")
+    spielraum = sim_params.get("spielraum")
 
-    spielraum = {}
-    if spielraum_raw:
-        for key, value in spielraum_raw.items():
-            if key.lower() == "länge":
-                spielraum["Länge"] = value
-            elif key.lower() == "breite":
-                spielraum["Breite"] = value
-    if "Länge" not in spielraum or "Breite" not in spielraum:
-        spielraum = {"Länge": "600", "Breite": "400"}
-
-    if not all([startpositionen, schrittweiten, gewaehlte_bewegung]):
+    if not all([startpositionen, schrittweiten, spielraum]):
         position_steps = [
             {
                 "L1": {"x": -150, "y": 0},
@@ -178,6 +168,7 @@ def visualize_setup():
 
     all_rails = library.get("components", {}).get("copperRails", [])
     all_transformers = library.get("components", {}).get("transformers", [])
+    all_sheets = library.get("components", {}).get("transformerSheets", [])
 
     scenes = []
     for i, step in enumerate(position_steps):
@@ -187,6 +178,7 @@ def visualize_setup():
             form_data.get("assemblies", []), step, library, spielraum
         )
 
+        # Baugruppen zeichnen
         for asm in form_data.get("assemblies", []):
             phase_name = asm.get("phaseName")
             pos = step.get(phase_name)
@@ -247,6 +239,31 @@ def visualize_setup():
                     }
                 )
 
+        # Eigenständige Bauteile zeichnen
+        for comp in form_data.get("standAloneComponents", []):
+            sheet = next(
+                (
+                    s
+                    for s in all_sheets
+                    if s["templateProductInformation"]["name"] == comp.get("name")
+                ),
+                None,
+            )
+            if sheet:
+                s_geo = sheet["specificProductInformation"]["geometry"]
+                s_pos = comp.get("position", {"x": 0, "y": 0})
+                svg_elements.append(
+                    {
+                        "type": "rect",
+                        "x": s_pos["x"] - s_geo["width"] / 2,
+                        "y": s_pos["y"] - s_geo["height"] / 2,
+                        "width": s_geo["width"],
+                        "height": s_geo["height"],
+                        "fill": "#a9a9a9",  # Deres Grau für Abschirmbleche
+                    }
+                )
+
+        # Labels zeichnen
         for label in labels:
             svg_elements.append(
                 {
@@ -269,4 +286,6 @@ def visualize_setup():
 
         scenes.append({"name": step_name, "elements": svg_elements})
 
-    return jsonify({"scenes": scenes, "room": spielraum})
+    return jsonify(
+        {"scenes": scenes, "room": spielraum, "position_steps": position_steps}
+    )

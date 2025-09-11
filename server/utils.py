@@ -137,20 +137,24 @@ def calculate_label_positions(assemblies, positions, library, room):
             r_geo = rail["specificProductInformation"]["geometry"]
 
             labels.append({"material": "Copper", "x": pos["x"], "y": pos["y"]})
-            steel_y = (
-                pos["y"] - (t_geo["coreInnerHeight"] + t_geo["coreOuterHeight"]) / 4
-            )
-            labels.append({"material": "M-36 Steel", "x": pos["x"], "y": steel_y})
-            air_y = pos["y"] + (r_geo["height"] + t_geo["coreInnerHeight"]) / 4
-            labels.append({"material": "Air", "x": pos["x"], "y": air_y})
+            steel_x = pos["x"] + (t_geo["coreInnerWidth"] + t_geo["coreOuterWidth"]) / 4
+            labels.append({"material": "M-36 Steel", "x": steel_x, "y": pos["y"]})
+            air_x = pos["x"] + (r_geo["width"] + t_geo["coreInnerWidth"]) / 4
+            labels.append({"material": "Air", "x": air_x, "y": pos["y"]})
 
-    # ### KORREKTUR: "Länge" (X-Achse) statt "Breite" für die Formel verwenden ###
-    room_length = float(room.get("Länge", 0))
+    # KORREKTUR: Raum-Luft-Label in einer Ecke platzieren
+    room_length = float(room.get("Laenge", room.get("Länge", 0)))
+    room_width = float(room.get("Breite", 0))
 
-    # Erstes Label (innen am rechten Rand)
-    labels.append({"material": "Air", "x": (room_length / 2) - 1, "y": 0})
-    # Zweites Label (außen am rechten Rand)
-    labels.append({"material": "Air", "x": (room_length / 2) + 1, "y": 0})
+    # Erstes Label (innen in der oberen rechten Ecke)
+    inner_air_x = (room_length / 2) - 10
+    inner_air_y = (room_width / 2) - 10
+    labels.append({"material": "Air", "x": inner_air_x, "y": inner_air_y})
+
+    # Zweites Label (außen an der oberen rechten Ecke)
+    outer_air_x = (room_length / 2) + 10
+    outer_air_y = (room_width / 2) + 10
+    labels.append({"material": "Air", "x": outer_air_x, "y": outer_air_y})
 
     return labels
 

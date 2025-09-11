@@ -11,6 +11,16 @@
 <script id="library-data" type="application/json">
     {{ library|tojson|safe }}
 </script>
+<script id="spielraum-data" type="application/json">
+    {{ spielraum_data|tojson|safe }}
+</script>
+<script id="schrittweiten-data" type="application/json">
+    {{ schrittweiten_data|tojson|safe }}
+</script>
+<script id="startpos-data" type="application/json">
+    {{ startpos_data|tojson|safe }}
+</script>
+
 
 <div class="container">
     <div class="card-container" id="config-nav">
@@ -41,8 +51,8 @@
             <div id="config-params" class="config-section active">
                 <h2>Allgemeine Simulations-Parameter</h2>
                 <div class="form-group-wrapper">
-                    <div class="form-group"><label for="ratedCurrent">Nennstrom (A) - Filtert Wandler &amp; setzt
-                            Phasenstrom</label><select id="ratedCurrent">
+                    <div class="form-group"><label for="ratedCurrent">Nennstrom (A) - Setzt Standardwerte &amp; filtert
+                            Wandler</label><select id="ratedCurrent">
                             <option value="600">600 A</option>
                             <option value="800">800 A</option>
                             <option value="1000">1000 A</option>
@@ -54,14 +64,78 @@
                             <option value="4000">4000 A</option>
                             <option value="5000">5000 A</option>
                         </select></div>
-                    <div class="form-group"><label for="movementGroup">Bewegungsgruppe</label><select
-                            id="movementGroup">
-                            <option value="">-- Bitte wählen --</option>{% for b in bewegungen %}<option
-                                value="{{ b.PosGruppe }}">{{ b.PosGruppe }}: L1({{ b.L1 }}), L2({{ b.L2 }}), L3({{ b.L3
-                                }})</option>{% endfor %}
-                        </select></div>
+
+                    <h4>Startpositionen (mm)</h4>
+                    <div class="form-row">
+                        <div class="form-group"><label for="startX_L1">L1 - X</label><input type="number" step="0.1"
+                                id="startX_L1"></div>
+                        <div class="form-group"><label for="startY_L1">L1 - Y</label><input type="number" step="0.1"
+                                id="startY_L1"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="startX_L2">L2 - X</label><input type="number" step="0.1"
+                                id="startX_L2"></div>
+                        <div class="form-group"><label for="startY_L2">L2 - Y</label><input type="number" step="0.1"
+                                id="startY_L2"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="startX_L3">L3 - X</label><input type="number" step="0.1"
+                                id="startX_L3"></div>
+                        <div class="form-group"><label for="startY_L3">L3 - Y</label><input type="number" step="0.1"
+                                id="startY_L3"></div>
+                    </div>
+
+                    <h4>Bewegungsrichtungen</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="directionL1">Leiter L1</label>
+                            <select id="directionL1">
+                                {% for direction in direction_options %}
+                                <option value="{{ direction.value }}">{{ direction.text }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="directionL2">Leiter L2</label>
+                            <select id="directionL2">
+                                {% for direction in direction_options %}
+                                <option value="{{ direction.value }}">{{ direction.text }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="directionL3">Leiter L3</label>
+                            <select id="directionL3">
+                                {% for direction in direction_options %}
+                                <option value="{{ direction.value }}">{{ direction.text }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="form-group"><label for="problemDepthM">Problem-Tiefe (mm)</label><input type="number"
                             step="1" id="problemDepthM" value="10"></div>
+
+                    <h4>Simulationsraum (Spielraum)</h4>
+                    <div class="form-row">
+                        <div class="form-group"><label for="spielraumLaenge">Länge (mm)</label><input type="number"
+                                step="0.1" id="spielraumLaenge" value="680.0"></div>
+                        <div class="form-group"><label for="spielraumBreite">Breite (mm)</label><input type="number"
+                                step="0.1" id="spielraumBreite" value="232.5"></div>
+                    </div>
+
+                    <h4>Schrittweiten (mm)</h4>
+                    <div class="form-row">
+                        <div class="form-group"><label for="schrittweitePos1">Pos 1</label><input type="number" step="1"
+                                id="schrittweitePos1" value="0"></div>
+                        <div class="form-group"><label for="schrittweitePos2">Pos 2</label><input type="number" step="1"
+                                id="schrittweitePos2" value="0"></div>
+                        <div class="form-group"><label for="schrittweitePos3">Pos 3</label><input type="number" step="1"
+                                id="schrittweitePos3" value="0"></div>
+                        <div class="form-group"><label for="schrittweitePos4">Pos 4</label><input type="number" step="1"
+                                id="schrittweitePos4" value="0"></div>
+                    </div>
+
                     <h4>Gemessene Sekundärströme (A)</h4>
                     <div class="form-row">
                         <div class="form-group"><label for="I_1_mes">I_1_mes</label><input type="number" step="0.01"
@@ -71,6 +145,7 @@
                         <div class="form-group"><label for="I_3_mes">I_3_mes</label><input type="number" step="0.01"
                                 id="I_3_mes" value="0"></div>
                     </div>
+
                     <h4>Phasenwinkel-Sweep</h4>
                     <div class="form-row">
                         <div class="form-group"><label for="phaseStart">Start (°)</label><input type="number"

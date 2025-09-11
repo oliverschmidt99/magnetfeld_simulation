@@ -47,8 +47,32 @@ def simulation():
     """Zeigt die kombinierte Konfigurations- und Simulations-Seite."""
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
     bewegungen = load_csv("bewegungen.csv")
+    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
+    schrittweiten_data = {
+        str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
+    }
+    startpos_data = {
+        str(item["Strom"]): item for item in load_csv("startpositionen.csv")
+    }
+    direction_options = [
+        {"value": "Keine Bewegung", "text": "Keine Bewegung"},
+        {"value": "Westen", "text": "⬅️ Westen"},
+        {"value": "Osten", "text": "➡️ Osten"},
+        {"value": "Norden", "text": "⬆️ Norden"},
+        {"value": "Süden", "text": "⬇️ Süden"},
+        {"value": "Nordosten", "text": "↗️ Nordosten"},
+        {"value": "Nordwesten", "text": "↖️ Nordwesten"},
+        {"value": "Südosten", "text": "↘️ Südosten"},
+        {"value": "Südwesten", "text": "↙️ Südwesten"},
+    ]
     return render_template(
-        "simulation.html", library=library_data, bewegungen=bewegungen
+        "simulation.html",
+        library=library_data,
+        bewegungen=bewegungen,
+        spielraum_data=spielraum_data,
+        schrittweiten_data=schrittweiten_data,
+        startpos_data=startpos_data,
+        direction_options=direction_options,
     )
 
 
@@ -77,14 +101,6 @@ def generate_simulation():
     """Erstellt die `simulation_run.json` basierend auf den Benutzereingaben."""
     data = request.json
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
-    bewegungen_data = load_csv("bewegungen.csv")
-    startpos_data = {
-        str(item["Strom"]): item for item in load_csv("startpositionen.csv")
-    }
-    schrittweiten_data = {
-        str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
-    }
-    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
 
     sim_params = data.get("simulationParams", {})
     nennstrom_str = sim_params.get("ratedCurrent")
@@ -95,26 +111,26 @@ def generate_simulation():
     except (ValueError, TypeError):
         return jsonify({"error": "Ungültiger Nennstrom-Wert."}), 400
 
-    startpositionen = startpos_data.get(nennstrom_str)
-    schrittweiten = schrittweiten_data.get(nennstrom_str)
-    spielraum = spielraum_data.get(nennstrom_str)
-    bewegung_gruppe_name = sim_params.get("movementGroup")
+    # Werte direkt aus der Anfrage übernehmen
+    startpositionen = sim_params.get("startpositionen")
+    schrittweiten = sim_params.get("schrittweiten")
+    spielraum = sim_params.get("spielraum")
 
-    if not all([startpositionen, schrittweiten, spielraum]):
+    # Bewegungsgruppe aus individuellen Dropdowns zusammensetzen
+    bewegungs_richtungen = sim_params.get("bewegungsRichtungen", {})
+    gewaehlte_bewegung = {
+        "PosGruppe": "Manuell",
+        "L1": bewegungs_richtungen.get("L1"),
+        "L2": bewegungs_richtungen.get("L2"),
+        "L3": bewegungs_richtungen.get("L3"),
+    }
+
+    if not startpositionen:
         return (
             jsonify(
-                {"error": f"Stammdaten für Nennstrom {nennstrom_str}A unvollständig."}
-            ),
-            400,
-        )
-
-    gewaehlte_bewegung = next(
-        (b for b in bewegungen_data if b["PosGruppe"] == bewegung_gruppe_name), None
-    )
-    if not gewaehlte_bewegung:
-        return (
-            jsonify(
-                {"error": f"Bewegungsgruppe '{bewegung_gruppe_name}' nicht gefunden."}
+                {
+                    "error": f"Keine Startpositionen für Nennstrom {nennstrom_str}A gefunden."
+                }
             ),
             400,
         )
@@ -162,7 +178,7 @@ def generate_simulation():
             "bewegungsgruppe": gewaehlte_bewegung,
             "simulationsraum": spielraum,
             "bewegungspfade_alle_leiter": {
-                "beschreibung": f"Bewegungsgruppe: {bewegung_gruppe_name}",
+                "beschreibung": f"Bewegungsgruppe: Manuell",
                 "schritte_details": leiter_bewegungspfade,
             },
             "material_labels": material_labels,

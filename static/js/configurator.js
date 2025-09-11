@@ -6,9 +6,28 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+// Globale Daten aus dem HTML laden
+const libraryDataElement = document.getElementById("library-data");
+const library = libraryDataElement
+  ? JSON.parse(libraryDataElement.textContent)
+  : {};
+const spielraumData = JSON.parse(
+  document.getElementById("spielraum-data").textContent
+);
+const schrittweitenData = JSON.parse(
+  document.getElementById("schrittweiten-data").textContent
+);
+const startposData = JSON.parse(
+  document.getElementById("startpos-data").textContent
+);
+
+const SQRT2 = Math.sqrt(2);
+let phaseCounter = 0;
+let assemblyCounter = 0;
+let standaloneCounter = 0;
+
 function initializeConfigurator() {
   initializeCardNavigation("config-nav", "config-sections");
-  loadState();
 
   const form = document.getElementById("simulation-form");
   form.addEventListener("input", saveState);
@@ -26,15 +45,12 @@ function initializeConfigurator() {
     (data.assemblies || []).forEach((asm) => addAssembly(asm));
     updateAssemblyPhaseDropdowns();
     updatePhaseCurrents();
+    updateParametersFromCsv(); // CSV-Werte für alle Parameter laden
   });
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     const data = gatherFormData();
-    if (!data.simulationParams.movementGroup) {
-      alert("Bitte eine Bewegungsgruppe wählen.");
-      return;
-    }
     fetch("/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -66,6 +82,46 @@ function initializeConfigurator() {
   if (svg) {
     enableSvgZoom(svg);
   }
+
+  // Initialen Zustand laden und Felder füllen
+  loadState();
+}
+
+/**
+ * Füllt die Felder für Spielraum, Schrittweite und Startpositionen basierend auf dem Nennstrom.
+ */
+function updateParametersFromCsv() {
+  const ratedCurrent = document.getElementById("ratedCurrent").value;
+  const currentSpielraum = spielraumData[ratedCurrent];
+  const currentSchrittweiten = schrittweitenData[ratedCurrent];
+  const currentStartpos = startposData[ratedCurrent];
+
+  if (currentSpielraum) {
+    document.getElementById("spielraumLaenge").value =
+      currentSpielraum.Laenge || currentSpielraum.Länge || 0;
+    document.getElementById("spielraumBreite").value =
+      currentSpielraum.Breite || 0;
+  }
+
+  if (currentSchrittweiten) {
+    document.getElementById("schrittweitePos1").value =
+      currentSchrittweiten.Pos1 || 0;
+    document.getElementById("schrittweitePos2").value =
+      currentSchrittweiten.Pos2 || 0;
+    document.getElementById("schrittweitePos3").value =
+      currentSchrittweiten.Pos3 || 0;
+    document.getElementById("schrittweitePos4").value =
+      currentSchrittweiten.Pos4 || 0;
+  }
+
+  if (currentStartpos) {
+    document.getElementById("startX_L1").value = currentStartpos.x_L1 || 0;
+    document.getElementById("startY_L1").value = currentStartpos.y_L1 || 0;
+    document.getElementById("startX_L2").value = currentStartpos.x_L2 || 0;
+    document.getElementById("startY_L2").value = currentStartpos.y_L2 || 0;
+    document.getElementById("startX_L3").value = currentStartpos.x_L3 || 0;
+    document.getElementById("startY_L3").value = currentStartpos.y_L3 || 0;
+  }
 }
 
 function startSimulation() {
@@ -90,15 +146,6 @@ function startSimulation() {
     });
 }
 
-const libraryDataElement = document.getElementById("library-data");
-const library = libraryDataElement
-  ? JSON.parse(libraryDataElement.textContent)
-  : {};
-const SQRT2 = Math.sqrt(2);
-let phaseCounter = 0;
-let assemblyCounter = 0;
-let standaloneCounter = 0;
-
 async function updateVisualization() {
   const data = gatherFormData();
   const svg = document.getElementById("config-preview-svg");
@@ -106,8 +153,6 @@ async function updateVisualization() {
 
   svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
   controls.innerHTML = "";
-
-  updateParameterSummary(data);
 
   try {
     const response = await fetch("/visualize", {
@@ -118,20 +163,20 @@ async function updateVisualization() {
     if (!response.ok)
       throw new Error("Visualisierungs-Daten konnten nicht geladen werden.");
 
-    const { scenes, room } = await response.json();
+    const { scenes, room, position_steps } = await response.json();
+
+    updateParameterSummary(data, position_steps);
+
     svg.innerHTML = "";
 
-    if (
-      !room ||
-      isNaN(parseFloat(room.Länge)) ||
-      isNaN(parseFloat(room.Breite))
-    ) {
+    const roomWidth = parseFloat(room.Laenge || room.Länge);
+    const roomHeight = parseFloat(room.Breite);
+
+    if (!room || isNaN(roomWidth) || isNaN(roomHeight)) {
       svg.innerHTML = `<text x="50%" y="50%" fill="red" dominant-baseline="middle" text-anchor="middle">Simulationsraum-Daten unvollständig.</text>`;
       return;
     }
 
-    const roomWidth = parseFloat(room.Länge);
-    const roomHeight = parseFloat(room.Breite);
     const padding = 150;
     const viewBox = `${-roomWidth / 2 - padding} ${-roomHeight / 2 - padding} ${
       roomWidth + 2 * padding
@@ -243,39 +288,51 @@ async function updateVisualization() {
   }
 }
 
-function updateParameterSummary(data) {
+function updateParameterSummary(data, positionSteps) {
   const container = document.getElementById("parameter-summary-container");
   if (!container) return;
-  const { simulationParams, electricalSystem, assemblies } = data;
-  const leftCol = document.createElement("div");
-  leftCol.className = "summary-column";
-  leftCol.innerHTML = `<h4>Allgemeine Parameter</h4>`;
-  const params = {
-    Nennstrom: `${simulationParams.ratedCurrent} A`,
-    Bewegungsgruppe: simulationParams.movementGroup,
-    "Problem-Tiefe": `${simulationParams.problemDepthM} mm`,
-    "Phasenwinkel-Start": `${simulationParams.phaseSweep.start}°`,
-    "Phasenwinkel-Ende": `${simulationParams.phaseSweep.end}°`,
-    "Phasenwinkel-Schritt": `${simulationParams.phaseSweep.step}°`,
-  };
-  for (const [key, value] of Object.entries(params)) {
-    leftCol.innerHTML += `<div class="summary-item"><span class="summary-label">${key}:</span> <span class="summary-value">${
-      value || "-"
-    }</span></div>`;
-  }
-  const rightCol = document.createElement("div");
-  rightCol.className = "summary-column";
-  rightCol.innerHTML = `<h4>Konfigurierte Baugruppen</h4>`;
-  if (assemblies.length > 0) {
-    assemblies.forEach((asm) => {
-      rightCol.innerHTML += `<div class="summary-item"><span class="summary-label">${asm.name} (${asm.phaseName}):</span> <span class="summary-value">${asm.transformerName}</span></div>`;
+  const { simulationParams } = data;
+
+  let html = `<h4>Allgemeine Parameter</h4>
+    <div class="summary-grid">
+        <span class="summary-label">Nennstrom:</span> <span class="summary-value">${simulationParams.ratedCurrent} A</span>
+        <span class="summary-label">Problem-Tiefe:</span> <span class="summary-value">${simulationParams.problemDepthM} mm</span>
+        <span class="summary-label">Spielraum:</span> <span class="summary-value">${simulationParams.spielraum.Laenge} x ${simulationParams.spielraum.Breite} mm</span>
+        <span class="summary-label">Phasenwinkel:</span> <span class="summary-value">${simulationParams.phaseSweep.start}° bis ${simulationParams.phaseSweep.end}° in ${simulationParams.phaseSweep.step}° Schritten</span>
+    </div>`;
+
+  html += `<h4>Bewegungspfade & Positionen (mm)</h4>`;
+  if (positionSteps && positionSteps.length > 0) {
+    html += `<table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th>L1 (X / Y)</th>
+                        <th>L2 (X / Y)</th>
+                        <th>L3 (X / Y)</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+    positionSteps.forEach((step, index) => {
+      const stepName = index === 0 ? "Start" : `Pos ${index}`;
+      html += `<tr>
+                        <td>${stepName}</td>
+                        <td>${step.L1.x.toFixed(1)} / ${step.L1.y.toFixed(
+        1
+      )}</td>
+                        <td>${step.L2.x.toFixed(1)} / ${step.L2.y.toFixed(
+        1
+      )}</td>
+                        <td>${step.L3.x.toFixed(1)} / ${step.L3.y.toFixed(
+        1
+      )}</td>
+                   </tr>`;
     });
+    html += `</tbody></table>`;
   } else {
-    rightCol.innerHTML += `<div class="summary-item"><span class="summary-value">Keine Baugruppen konfiguriert.</span></div>`;
+    html += `<p>Keine Positionsdaten berechnet.</p>`;
   }
-  container.innerHTML = "";
-  container.appendChild(leftCol);
-  container.appendChild(rightCol);
+  container.innerHTML = html;
 }
 
 function enableSvgZoom(svg) {
@@ -466,11 +523,33 @@ function removeItem(id) {
 
 function gatherFormData() {
   const form = document.getElementById("simulation-form");
-  const data = {
+  return {
     simulationParams: {
       ratedCurrent: form.querySelector("#ratedCurrent").value,
-      movementGroup: form.querySelector("#movementGroup").value,
+      startpositionen: {
+        x_L1: form.querySelector("#startX_L1").value,
+        y_L1: form.querySelector("#startY_L1").value,
+        x_L2: form.querySelector("#startX_L2").value,
+        y_L2: form.querySelector("#startY_L2").value,
+        x_L3: form.querySelector("#startX_L3").value,
+        y_L3: form.querySelector("#startY_L3").value,
+      },
+      bewegungsRichtungen: {
+        L1: form.querySelector("#directionL1").value,
+        L2: form.querySelector("#directionL2").value,
+        L3: form.querySelector("#directionL3").value,
+      },
       problemDepthM: form.querySelector("#problemDepthM").value,
+      spielraum: {
+        Laenge: form.querySelector("#spielraumLaenge").value,
+        Breite: form.querySelector("#spielraumBreite").value,
+      },
+      schrittweiten: {
+        Pos1: form.querySelector("#schrittweitePos1").value,
+        Pos2: form.querySelector("#schrittweitePos2").value,
+        Pos3: form.querySelector("#schrittweitePos3").value,
+        Pos4: form.querySelector("#schrittweitePos4").value,
+      },
       I_1_mes: form.querySelector("#I_1_mes").value,
       I_2_mes: form.querySelector("#I_2_mes").value,
       I_3_mes: form.querySelector("#I_3_mes").value,
@@ -480,40 +559,31 @@ function gatherFormData() {
         step: form.querySelector("#phaseStep").value,
       },
     },
-    electricalSystem: [],
-    assemblies: [],
-    standAloneComponents: [],
-  };
-
-  form
-    .querySelectorAll("#electrical-system-list .list-item")
-    .forEach((item) => {
-      data.electricalSystem.push({
-        name: item.querySelector(".phase-name").value,
-        phaseShiftDeg: parseInt(item.querySelector(".phase-shift").value),
-        peakCurrentA: parseFloat(item.dataset.peakCurrent),
-      });
-    });
-
-  form.querySelectorAll("#assemblies-list .list-item").forEach((item) => {
-    data.assemblies.push({
+    electricalSystem: Array.from(
+      form.querySelectorAll("#electrical-system-list .list-item")
+    ).map((item) => ({
+      name: item.querySelector(".phase-name").value,
+      phaseShiftDeg: parseInt(item.querySelector(".phase-shift").value),
+      peakCurrentA: parseFloat(item.dataset.peakCurrent),
+    })),
+    assemblies: Array.from(
+      form.querySelectorAll("#assemblies-list .list-item")
+    ).map((item) => ({
       name: item.querySelector(".assembly-name").value,
       phaseName: item.querySelector(".assembly-phase-select").value,
       copperRailName: item.querySelector(".copper-rail").value,
       transformerName: item.querySelector(".transformer").value,
-    });
-  });
-
-  form.querySelectorAll("#standalone-list .list-item").forEach((item) => {
-    data.standAloneComponents.push({
+    })),
+    standAloneComponents: Array.from(
+      form.querySelectorAll("#standalone-list .list-item")
+    ).map((item) => ({
       name: item.querySelector(".standalone-name").value,
       position: {
         x: parseInt(item.querySelector(".pos-x").value),
         y: parseInt(item.querySelector(".pos-y").value),
       },
-    });
-  });
-  return data;
+    })),
+  };
 }
 
 function saveState() {
@@ -524,6 +594,10 @@ function saveState() {
 function loadState(data = null) {
   const configData =
     data || JSON.parse(localStorage.getItem("latestSimConfig"));
+
+  // Start with default CSV values
+  updateParametersFromCsv();
+
   if (!configData) return;
 
   const {
@@ -534,10 +608,52 @@ function loadState(data = null) {
   } = configData;
   document.getElementById("ratedCurrent").value =
     simulationParams.ratedCurrent || "600";
-  document.getElementById("movementGroup").value =
-    simulationParams.movementGroup || "";
+
+  if (simulationParams.startpositionen) {
+    document.getElementById("startX_L1").value =
+      simulationParams.startpositionen.x_L1;
+    document.getElementById("startY_L1").value =
+      simulationParams.startpositionen.y_L1;
+    document.getElementById("startX_L2").value =
+      simulationParams.startpositionen.x_L2;
+    document.getElementById("startY_L2").value =
+      simulationParams.startpositionen.y_L2;
+    document.getElementById("startX_L3").value =
+      simulationParams.startpositionen.x_L3;
+    document.getElementById("startY_L3").value =
+      simulationParams.startpositionen.y_L3;
+  }
+
+  if (simulationParams.bewegungsRichtungen) {
+    document.getElementById("directionL1").value =
+      simulationParams.bewegungsRichtungen.L1 || "Keine Bewegung";
+    document.getElementById("directionL2").value =
+      simulationParams.bewegungsRichtungen.L2 || "Keine Bewegung";
+    document.getElementById("directionL3").value =
+      simulationParams.bewegungsRichtungen.L3 || "Keine Bewegung";
+  }
+
   document.getElementById("problemDepthM").value =
     simulationParams.problemDepthM;
+
+  // Overwrite with saved values if they exist
+  if (simulationParams.spielraum) {
+    document.getElementById("spielraumLaenge").value =
+      simulationParams.spielraum.Laenge;
+    document.getElementById("spielraumBreite").value =
+      simulationParams.spielraum.Breite;
+  }
+  if (simulationParams.schrittweiten) {
+    document.getElementById("schrittweitePos1").value =
+      simulationParams.schrittweiten.Pos1;
+    document.getElementById("schrittweitePos2").value =
+      simulationParams.schrittweiten.Pos2;
+    document.getElementById("schrittweitePos3").value =
+      simulationParams.schrittweiten.Pos3;
+    document.getElementById("schrittweitePos4").value =
+      simulationParams.schrittweiten.Pos4;
+  }
+
   document.getElementById("I_1_mes").value = simulationParams.I_1_mes || "0";
   document.getElementById("I_2_mes").value = simulationParams.I_2_mes || "0";
   document.getElementById("I_3_mes").value = simulationParams.I_3_mes || "0";

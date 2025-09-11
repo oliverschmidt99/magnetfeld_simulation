@@ -69,7 +69,6 @@ function renderComponentList() {
 
       const item = document.createElement("div");
       item.className = "accordion-item";
-      // KORREKTUR: type="button" bei den dynamisch erzeugten Buttons hinzugefügt
       item.innerHTML = `
                 <button type="button" class="accordion-button">
                     <span>${name} <small>(${type})</small></span>
@@ -123,7 +122,10 @@ function openEditor(component = null, type = "transformers") {
 
   const data = component || {
     templateProductInformation: { name: "", manufacturer: "", tags: [] },
-    specificProductInformation: { geometry: { type: "Rectangle" } },
+    specificProductInformation: {
+      geometry: { type: "Rectangle" },
+      electrical: {},
+    },
   };
 
   // Wählt das passende Formular basierend auf dem Bauteiltyp
@@ -155,6 +157,18 @@ function getTransformerFormHtml(data) {
   const tpi = data.templateProductInformation;
   const spi = data.specificProductInformation;
   const geo = spi.geometry || {};
+  const ele = spi.electrical || {};
+
+  const stromOptions = [
+    600, 800, 1000, 1250, 1600, 2000, 2500, 3000, 4000, 5000,
+  ]
+    .map(
+      (strom) =>
+        `<option value="${strom}" ${
+          ele.primaryRatedCurrentA === strom ? "selected" : ""
+        }>${strom} A</option>`
+    )
+    .join("");
 
   return `
         <div class="form-section">
@@ -164,6 +178,19 @@ function getTransformerFormHtml(data) {
             }" required></div>
             <div class="form-group"><label>Hersteller</label><input type="text" id="edit-manufacturer" value="${
               tpi.manufacturer || ""
+            }"></div>
+        </div>
+        <div class="form-section">
+            <h3>Elektrische Daten</h3>
+            <div class="form-group"><label>Nennstrom</label><select id="edit-primaryRatedCurrentA">${stromOptions}</select></div>
+            <div class="form-group"><label>Bürde (VA)</label><input type="number" step="0.1" id="edit-burdenVA" value="${
+              ele.burdenVA || 0
+            }"></div>
+            <div class="form-group"><label>Übersetzung</label><input type="text" id="edit-ratio" placeholder="z.B. 800/1A" value="${
+              ele.ratio || ""
+            }"></div>
+            <div class="form-group"><label>Klasse</label><input type="text" id="edit-accuracyClass" placeholder="z.B. 0.5" value="${
+              ele.accuracyClass || ""
             }"></div>
         </div>
         <div class="form-section">
@@ -195,6 +222,19 @@ function getTransformerFormHtml(data) {
 function getSimpleComponentFormHtml(data, type) {
   const tpi = data.templateProductInformation;
   const geo = data.specificProductInformation.geometry || {};
+  const ele = data.specificProductInformation.electrical || {};
+
+  const stromOptions = [
+    600, 800, 1000, 1250, 1600, 2000, 2500, 3000, 4000, 5000,
+  ]
+    .map(
+      (strom) =>
+        `<option value="${strom}" ${
+          ele.ratedCurrentA === strom ? "selected" : ""
+        }>${strom} A</option>`
+    )
+    .join("");
+
   return `
         <div class="form-section">
             <h3>Allgemeine Informationen</h3>
@@ -202,6 +242,15 @@ function getSimpleComponentFormHtml(data, type) {
               tpi.name || ""
             }" required></div>
         </div>
+        ${
+          type === "copperRails"
+            ? `
+        <div class="form-section">
+            <h3>Elektrische Daten</h3>
+            <div class="form-group"><label>Nennstrom</label><select id="edit-ratedCurrentA">${stromOptions}</select></div>
+        </div>`
+            : ""
+        }
         <div class="form-section">
             <h3>Geometrie (Rechteck)</h3>
             <div class="form-group"><label>Breite (width)</label><input type="number" step="0.1" class="geo-input" id="edit-width" value="${
@@ -222,8 +271,10 @@ function getSimpleComponentFormHtml(data, type) {
  */
 function gatherComponentDataFromForm(type) {
   const form = document.getElementById("component-editor-form");
+  const data = {};
+
   if (type === "transformers") {
-    return {
+    data.geometry = {
       type: "Rectangle",
       coreOuterWidth:
         parseFloat(form.querySelector("#edit-coreOuterWidth")?.value) || 0,
@@ -234,14 +285,28 @@ function gatherComponentDataFromForm(type) {
       coreInnerHeight:
         parseFloat(form.querySelector("#edit-coreInnerHeight")?.value) || 0,
     };
+    data.electrical = {
+      primaryRatedCurrentA:
+        parseInt(form.querySelector("#edit-primaryRatedCurrentA")?.value) || 0,
+      burdenVA: parseFloat(form.querySelector("#edit-burdenVA")?.value) || 0,
+      ratio: form.querySelector("#edit-ratio")?.value || "",
+      accuracyClass: form.querySelector("#edit-accuracyClass")?.value || "",
+    };
   } else {
-    return {
+    data.geometry = {
       type: "Rectangle",
       width: parseFloat(form.querySelector("#edit-width")?.value) || 0,
       height: parseFloat(form.querySelector("#edit-height")?.value) || 0,
       material: type === "copperRails" ? "Copper" : "M-36 Steel",
     };
+    if (type === "copperRails") {
+      data.electrical = {
+        ratedCurrentA:
+          parseInt(form.querySelector("#edit-ratedCurrentA")?.value) || 0,
+      };
+    }
   }
+  return data;
 }
 
 /**
@@ -252,22 +317,17 @@ function updateEditorPreview(type) {
   const componentData = gatherComponentDataFromForm(type);
   if (componentData) {
     if (type === "transformers") {
-      // Für die Vorschau benötigen wir die äußeren Maße, auch wenn sie nicht im Formular sind.
-      // Wir können sie aus den Kernmaßen ableiten oder feste Werte annehmen.
-      // Hier nehme ich an, sie sind etwas größer als die Kernmaße.
-      const previewData = {
-        ...componentData,
-        outerAirWidth: componentData.coreOuterWidth + 10,
-        outerAirHeight: componentData.coreOuterHeight + 10,
-        innerWidth: componentData.coreInnerWidth - 10,
-        innerHeight:
-          componentData.coreInnerHeight - 10 > 0
-            ? componentData.coreInnerHeight - 10
-            : 2,
-      };
-      renderTransformerPreview(previewData, "editor-preview-svg", true);
+      renderTransformerPreview(
+        componentData.geometry,
+        "editor-preview-svg",
+        true
+      );
     } else {
-      renderComponentPreview(componentData, "editor-preview-svg", true);
+      renderComponentPreview(
+        componentData.geometry,
+        "editor-preview-svg",
+        true
+      );
     }
   }
 }
@@ -286,21 +346,54 @@ function saveComponent() {
   const isNew = !currentEditorComponent;
   const componentToSave = isNew
     ? // Erstellt eine leere Vorlage für ein neues Bauteil
-      { templateProductInformation: {}, specificProductInformation: {} }
+      {
+        templateProductInformation: { tags: [] },
+        specificProductInformation: { geometry: {}, electrical: {} },
+      }
     : JSON.parse(JSON.stringify(currentEditorComponent));
+
+  // KORREKTUR: Stellt sicher, dass die verschachtelten Objekte existieren, bevor darauf zugegriffen wird.
+  if (!componentToSave.specificProductInformation) {
+    componentToSave.specificProductInformation = {};
+  }
+  if (!componentToSave.specificProductInformation.electrical) {
+    componentToSave.specificProductInformation.electrical = {};
+  }
+  if (!componentToSave.specificProductInformation.geometry) {
+    componentToSave.specificProductInformation.geometry = {};
+  }
+  if (!componentToSave.templateProductInformation.tags) {
+    componentToSave.templateProductInformation.tags = [];
+  }
 
   // Allgemeine Infos aktualisieren
   componentToSave.templateProductInformation.name = newName;
   componentToSave.templateProductInformation.manufacturer =
     form.querySelector("#edit-manufacturer")?.value || "";
 
-  // Geometrie aktualisieren
-  const geometryData = gatherComponentDataFromForm(currentEditorComponentType);
-  // Behalte die entfernten Felder bei, falls sie in der Originalstruktur existieren
+  // Geometrie & Elektrische Daten aktualisieren
+  const updatedData = gatherComponentDataFromForm(currentEditorComponentType);
   componentToSave.specificProductInformation.geometry = {
     ...componentToSave.specificProductInformation.geometry,
-    ...geometryData,
+    ...updatedData.geometry,
   };
+  componentToSave.specificProductInformation.electrical = {
+    ...componentToSave.specificProductInformation.electrical,
+    ...updatedData.electrical,
+  };
+
+  // Nennstrom als Tag hinzufügen, um die Filterung zu ermöglichen
+  const stromTag = `${
+    updatedData.electrical.primaryRatedCurrentA ||
+    updatedData.electrical.ratedCurrentA
+  } A`;
+
+  if (
+    stromTag &&
+    !componentToSave.templateProductInformation.tags.includes(stromTag)
+  ) {
+    componentToSave.templateProductInformation.tags.push(stromTag);
+  }
 
   fetch("/api/library", {
     method: "POST",

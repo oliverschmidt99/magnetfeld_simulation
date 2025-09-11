@@ -84,35 +84,26 @@
         "transformers": [
             {
                 "specificProductInformation": {
-                    "coreMaterial": "M-36 Steel",
-                    "depth": 31,
                     "electrical": {
-                        "burdenVA": 10,
-                        "primaryRatedCurrentA": 800,
-                        "secondaryRatedCurrentA": 1
+                        "accuracyClass": "1",
+                        "burdenVA": 15,
+                        "primaryRatedCurrentA": 600,
+                        "ratio": "600/1"
                     },
-                    "gapMaterial": "Air",
                     "geometry": {
-                        "coreInnerHeight": 50.2,
-                        "coreInnerWidth": 50.2,
-                        "coreOuterHeight": 92,
-                        "coreOuterWidth": 85.5,
-                        "innerHeight": 10,
-                        "innerWidth": 20.2,
-                        "outerAirHeight": 120,
-                        "outerAirWidth": 100,
+                        "coreInnerHeight": 75,
+                        "coreInnerWidth": 75,
+                        "coreOuterHeight": 100,
+                        "coreOuterWidth": 100,
                         "type": "Rectangle"
                     }
                 },
                 "templateProductInformation": {
-                    "manufacturer": "ALO 5012",
-                    "name": "CELSA_ALO-5012_800-1A",
-                    "productName": "ALO 4012",
+                    "manufacturer": "Test",
+                    "name": "Test",
                     "tags": [
-                        "600 A",
-                        "310_CELSA"
-                    ],
-                    "uniqueNumber": "96a30"
+                        "600 A"
+                    ]
                 }
             }
         ],

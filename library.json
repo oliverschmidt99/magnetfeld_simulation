@@ -83,25 +83,15 @@
         ],
         "transformers": [
             {
-                "templateProductInformation": {
-                    "name": "CELSA_ALO-5012_800-1A",
-                    "productName": "ALO 4012",
-                    "manufacturer": "ALO 5012",
-                    "tags": [
-                        "600 A",
-                        "310_CELSA"
-                    ],
-                    "uniqueNumber": "96a30"
-                },
                 "specificProductInformation": {
                     "coreMaterial": "M-36 Steel",
-                    "gapMaterial": "Air",
                     "depth": 31,
                     "electrical": {
+                        "burdenVA": 10,
                         "primaryRatedCurrentA": 800,
-                        "secondaryRatedCurrentA": 1,
-                        "burdenVA": 10
+                        "secondaryRatedCurrentA": 1
                     },
+                    "gapMaterial": "Air",
                     "geometry": {
                         "type": "Rectangle",
                         "outerAirWidth": 100,
@@ -113,54 +103,34 @@
                         "innerWidth": 20.2,
                         "innerHeight": 10
                     }
-                }
-            },
-            {
-                "templateProductInformation": {
-                    "name": "Test",
-                    "productName": "Test",
-                    "manufacturer": "Test",
-                    "tags": [],
-                    "uniqueNumber": "b758c"
                 },
-                "specificProductInformation": {
-                    "coreMaterial": "M-36 Steel",
-                    "gapMaterial": "Air",
-                    "depth": 30,
-                    "electrical": {
-                        "primaryRatedCurrentA": 5000,
-                        "secondaryRatedCurrentA": 1,
-                        "burdenVA": 10
-                    },
-                    "geometry": {
-                        "type": "Rectangle",
-                        "outerAirWidth": 65,
-                        "outerAirHeight": 35,
-                        "coreOuterWidth": 60,
-                        "coreOuterHeight": 30,
-                        "coreInnerWidth": 55,
-                        "coreInnerHeight": 25,
-                        "innerWidth": 50,
-                        "innerHeight": 20
-                    }
+                "templateProductInformation": {
+                    "manufacturer": "ALO 5012",
+                    "name": "CELSA_ALO-5012_800-1A",
+                    "productName": "ALO 4012",
+                    "tags": [
+                        "600 A",
+                        "310_CELSA"
+                    ],
+                    "uniqueNumber": "96a30"
                 }
             }
         ],
         "transformerSheets": [
             {
-                "templateProductInformation": {
-                    "name": "Sheet_200x5",
-                    "manufacturer": "Standard",
-                    "productName": "Abschirmblech 200x5",
-                    "tags": []
-                },
                 "specificProductInformation": {
                     "geometry": {
                         "type": "Rectangle",
-                        "material": "M-36 Steel",
                         "width": 200,
-                        "height": 5
+                        "height": 5,
+                        "material": "M-36 Steel"
                     }
+                },
+                "templateProductInformation": {
+                    "manufacturer": "",
+                    "name": "Sheet_200x5",
+                    "productName": "Abschirmblech 200x5",
+                    "tags": []
                 }
             },
             {

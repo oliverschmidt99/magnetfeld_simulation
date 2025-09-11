@@ -20,43 +20,16 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 @api_bp.route("/tags", methods=["GET"])
 def get_tags():
     """Gibt alle verfügbaren Tags zurück."""
-    tags_data = load_data(TAGS_FILE, [])
+    tags_data = load_data(TAGS_FILE, {"categories": []})
     return jsonify(tags_data)
 
 
 @api_bp.route("/tags", methods=["POST"])
-def add_tag():
-    """Fügt einen neuen Tag hinzu."""
-    tags = load_data(TAGS_FILE, [])
-    new_tag_name = request.json.get("name", "").strip()
-    if not new_tag_name:
-        return (
-            jsonify({"success": False, "message": "Tag-Name darf nicht leer sein."}),
-            400,
-        )
-    if any(tag["name"].lower() == new_tag_name.lower() for tag in tags):
-        return (
-            jsonify({"success": False, "message": "Dieser Tag existiert bereits."}),
-            409,
-        )
-
-    new_id = max(tag["id"] for tag in tags) + 1 if tags else 1
-    tags.append({"id": new_id, "name": new_tag_name})
-    save_data(TAGS_FILE, tags)
-    return jsonify({"success": True, "message": "Tag hinzugefügt."})
-
-
-@api_bp.route("/tags/<int:tag_id>", methods=["DELETE"])
-def delete_tag(tag_id):
-    """Löscht einen Tag."""
-    tags = load_data(TAGS_FILE, [])
-    tags_before = len(tags)
-    tags = [tag for tag in tags if tag["id"] != tag_id]
-
-    if len(tags) < tags_before:
-        save_data(TAGS_FILE, tags)
-        return jsonify({"success": True, "message": "Tag gelöscht."})
-    return jsonify({"success": False, "message": "Tag nicht gefunden."}), 404
+def update_tags():
+    """Speichert die gesamte Tag-Struktur."""
+    data = request.json
+    save_data(TAGS_FILE, data)
+    return jsonify({"success": True, "message": "Tags gespeichert."})
 
 
 # --- Library Management ---
@@ -74,13 +47,37 @@ def update_library():
     action = data.get("action")
     component_type = data.get("type")
     original_name = data.get("originalName")
+    component_data = data.get("component")
 
     library = load_data(LIBRARY_FILE, {"components": {}})
 
     if action == "save":
-        # Ungenutzte Variable entfernt
-        # component_data = data.get("component")
-        return jsonify({"message": "Bauteil gespeichert (Platzhalter)."}), 200
+        if component_type not in library["components"]:
+            library["components"][component_type] = []
+
+        components_list = library["components"][component_type]
+
+        if original_name:  # Existing component
+            found = False
+            for i, comp in enumerate(components_list):
+                if (
+                    comp.get("templateProductInformation", {}).get("name")
+                    == original_name
+                ):
+                    components_list[i] = component_data
+                    found = True
+                    break
+            if not found:
+                return (
+                    jsonify({"message": f"Bauteil '{original_name}' nicht gefunden."}),
+                    404,
+                )
+        else:  # New component
+            # Hier müsste eine Validierung und ID-Vergabe stattfinden
+            components_list.append(component_data)
+
+        save_data(LIBRARY_FILE, library)
+        return jsonify({"message": "Bauteil erfolgreich gespeichert."}), 200
 
     elif action == "delete":
         if component_type in library["components"]:
@@ -94,8 +91,13 @@ def update_library():
                 library["components"][component_type] = new_list
                 save_data(LIBRARY_FILE, library)
                 return jsonify({"message": f"Bauteil '{original_name}' gelöscht."}), 200
+            else:
+                return (
+                    jsonify({"message": f"Bauteil '{original_name}' nicht gefunden."}),
+                    404,
+                )
 
-    return jsonify({"message": "Aktion nicht erfolgreich."}), 400
+    return jsonify({"message": "Aktion nicht erfolgreich oder ungültig."}), 400
 
 
 # --- Routen für den CSV-Editor ---

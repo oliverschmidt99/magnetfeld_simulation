@@ -135,9 +135,7 @@ def visualize_setup():
     form_data = request.json
     sim_params = form_data.get("simulationParams", {})
 
-    nennstrom_str = sim_params.get("ratedCurrent")
     bewegungs_richtungen = sim_params.get("bewegungsRichtungen", {})
-
     gewaehlte_bewegung = {
         "PosGruppe": "Manuell",
         "L1": bewegungs_richtungen.get("L1"),
@@ -145,11 +143,8 @@ def visualize_setup():
         "L3": bewegungs_richtungen.get("L3"),
     }
 
-    startpos_data = {
-        str(item["Strom"]): item for item in load_csv("startpositionen.csv")
-    }
-
-    startpositionen = startpos_data.get(nennstrom_str)
+    # KORREKTUR: Parameter direkt aus der Anfrage verwenden, statt aus CSV zu lesen
+    startpositionen = sim_params.get("startpositionen")
     schrittweiten = sim_params.get("schrittweiten")
     spielraum = sim_params.get("spielraum")
 
@@ -259,7 +254,7 @@ def visualize_setup():
                         "y": s_pos["y"] - s_geo["height"] / 2,
                         "width": s_geo["width"],
                         "height": s_geo["height"],
-                        "fill": "#a9a9a9",  # Deres Grau für Abschirmbleche
+                        "fill": "#a9a9a9",
                     }
                 )
 

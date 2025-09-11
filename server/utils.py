@@ -55,7 +55,7 @@ def generate_unique_id():
 
 def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
     """Wandelt einen Richtungstext in einen (x, y) Vektor um."""
-    if not isinstance(direction_str, str):
+    if not isinstance(direction_str, str) or direction_str == "Keine Bewegung":
         return (0, 0)
     mapping = {
         "Westen": (-1, 0),
@@ -69,7 +69,9 @@ def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
     }
     for key, vector in mapping.items():
         if key in direction_str:
-            return vector
+            norm = (vector[0] ** 2 + vector[1] ** 2) ** 0.5
+            if norm > 0:
+                return (vector[0] / norm, vector[1] / norm)
     return (0, 0)
 
 
@@ -78,28 +80,40 @@ def calculate_position_steps(
 ) -> List[Dict]:
     """Berechnet alle Positionsschritte."""
     all_steps = []
+
+    # KORREKTUR: Stellt sicher, dass die Leiter (L1, L2, L3) korrekt aus den Startpositionen extrahiert werden
+    conductors = sorted(list(set([key.split("_")[1] for key in start_pos.keys()])))
+    if not conductors:
+        conductors = ["L1", "L2", "L3"]
+
     start_pos_vec = {
-        f"L{i}": {
-            "x": float(start_pos.get(f"x_L{i}", 0)),
-            "y": float(start_pos.get(f"y_L{i}", 0)),
+        leiter: {
+            "x": float(start_pos.get(f"x_{leiter}", 0)),
+            "y": float(start_pos.get(f"y_{leiter}", 0)),
         }
-        for i in range(1, 4)
+        for leiter in conductors
     }
+
     current_pos = copy.deepcopy(start_pos_vec)
     all_steps.append(current_pos)
+
     for i in range(1, 5):
         pos_key = f"Pos{i}"
         step_width_str = schrittweiten.get(pos_key)
-        if not step_width_str:
+
+        if not step_width_str or float(step_width_str) == 0:
             continue
+
         step_width = float(step_width_str)
         next_pos = copy.deepcopy(all_steps[-1])
-        for leiter in ["L1", "L2", "L3"]:
+
+        for leiter in conductors:
             direction_str = bewegung.get(leiter, "")
             vector = parse_direction_to_vector(direction_str)
             next_pos[leiter]["x"] += vector[0] * step_width
             next_pos[leiter]["y"] += vector[1] * step_width
         all_steps.append(next_pos)
+
     return all_steps
 
 
@@ -137,21 +151,25 @@ def calculate_label_positions(assemblies, positions, library, room):
             r_geo = rail["specificProductInformation"]["geometry"]
 
             labels.append({"material": "Copper", "x": pos["x"], "y": pos["y"]})
-            steel_x = pos["x"] + (t_geo["coreInnerWidth"] + t_geo["coreOuterWidth"]) / 4
+
+            steel_x = (
+                pos["x"]
+                + (t_geo.get("coreInnerWidth", 0) + t_geo.get("coreOuterWidth", 0)) / 4
+            )
             labels.append({"material": "M-36 Steel", "x": steel_x, "y": pos["y"]})
-            air_x = pos["x"] + (r_geo["width"] + t_geo["coreInnerWidth"]) / 4
+
+            air_x = (
+                pos["x"] + (r_geo.get("width", 0) + t_geo.get("coreInnerWidth", 0)) / 4
+            )
             labels.append({"material": "Air", "x": air_x, "y": pos["y"]})
 
-    # KORREKTUR: Raum-Luft-Label in einer Ecke platzieren
     room_length = float(room.get("Laenge", room.get("Länge", 0)))
     room_width = float(room.get("Breite", 0))
 
-    # Erstes Label (innen in der oberen rechten Ecke)
     inner_air_x = (room_length / 2) - 10
     inner_air_y = (room_width / 2) - 10
     labels.append({"material": "Air", "x": inner_air_x, "y": inner_air_y})
 
-    # Zweites Label (außen an der oberen rechten Ecke)
     outer_air_x = (room_length / 2) + 10
     outer_air_y = (room_width / 2) + 10
     labels.append({"material": "Air", "x": outer_air_x, "y": outer_air_y})

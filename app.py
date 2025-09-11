@@ -14,7 +14,12 @@ from flask import Flask, jsonify, render_template, request
 from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
-from server.utils import load_json, load_csv, calculate_position_steps
+from server.utils import (
+    load_json,
+    load_csv,
+    calculate_position_steps,
+    calculate_label_positions,
+)
 
 # --- Konfiguration ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -117,6 +122,10 @@ def generate_simulation():
     leiter_bewegungspfade = calculate_position_steps(
         startpositionen, gewaehlte_bewegung, schrittweiten
     )
+    material_labels = calculate_label_positions(
+        data.get("assemblies", []), leiter_bewegungspfade[0], library_data, spielraum
+    )
+
     peak_current = nennstrom_float * math.sqrt(2)
     electrical_system = data.get("electricalSystem", [])
     for phase in electrical_system:
@@ -156,6 +165,7 @@ def generate_simulation():
                 "beschreibung": f"Bewegungsgruppe: {bewegung_gruppe_name}",
                 "schritte_details": leiter_bewegungspfade,
             },
+            "material_labels": material_labels,
         },
     }
 

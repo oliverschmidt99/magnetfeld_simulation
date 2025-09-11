@@ -61,6 +61,11 @@ function initializeConfigurator() {
   if (summaryCard) {
     summaryCard.addEventListener("click", updateVisualization);
   }
+
+  const svg = document.getElementById("config-preview-svg");
+  if (svg) {
+    enableSvgZoom(svg);
+  }
 }
 
 function startSimulation() {
@@ -99,9 +104,10 @@ async function updateVisualization() {
   const svg = document.getElementById("config-preview-svg");
   const controls = document.getElementById("preview-controls");
 
-  // KORREKTUR: Beide Container zu Beginn leeren
   svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
   controls.innerHTML = "";
+
+  updateParameterSummary(data);
 
   try {
     const response = await fetch("/visualize", {
@@ -126,7 +132,7 @@ async function updateVisualization() {
 
     const roomWidth = parseFloat(room.Länge);
     const roomHeight = parseFloat(room.Breite);
-    const padding = 50;
+    const padding = 150;
     const viewBox = `${-roomWidth / 2 - padding} ${-roomHeight / 2 - padding} ${
       roomWidth + 2 * padding
     } ${roomHeight + 2 * padding}`;
@@ -139,16 +145,36 @@ async function updateVisualization() {
       return el;
     };
 
+    const boundaryRadius = Math.max(roomWidth, roomHeight) * 0.85;
+    const boundary = createSvgElement("circle", {
+      cx: 0,
+      cy: 0,
+      r: boundaryRadius,
+      fill: "none",
+      stroke: "#0d6efd",
+      "stroke-width": 2,
+      "stroke-dasharray": "10,10",
+    });
+    svg.appendChild(boundary);
+
     const roomRect = createSvgElement("rect", {
       x: -roomWidth / 2,
       y: -roomHeight / 2,
       width: roomWidth,
       height: roomHeight,
-      fill: "white",
-      stroke: "#343a40",
-      "stroke-width": 2,
+      class: "simulation-room-border",
     });
+    const roomLabel = createSvgElement(
+      "text",
+      {
+        x: 0,
+        y: -roomHeight / 2 - 15,
+        class: "simulation-room-label",
+      },
+      "Simulationsraum (Spielraum)"
+    );
     svg.appendChild(roomRect);
+    svg.appendChild(roomLabel);
 
     scenes.forEach((scene, index) => {
       const group = createSvgElement("g", {
@@ -164,7 +190,7 @@ async function updateVisualization() {
             width: elData.width,
             height: elData.height,
             fill: elData.fill,
-            stroke: "#343a40",
+            stroke: elData.stroke || "#343a40",
             "stroke-width": 0.5,
           });
         } else if (elData.type === "circle") {
@@ -180,8 +206,7 @@ async function updateVisualization() {
             {
               x: elData.x,
               y: elData.y,
-              "font-size": "10px",
-              "font-family": "monospace",
+              class: elData.class || "material-label",
             },
             elData.text
           );
@@ -218,7 +243,94 @@ async function updateVisualization() {
   }
 }
 
-// ... (Rest der Datei bleibt unverändert) ...
+function updateParameterSummary(data) {
+  const container = document.getElementById("parameter-summary-container");
+  if (!container) return;
+  const { simulationParams, electricalSystem, assemblies } = data;
+  const leftCol = document.createElement("div");
+  leftCol.className = "summary-column";
+  leftCol.innerHTML = `<h4>Allgemeine Parameter</h4>`;
+  const params = {
+    Nennstrom: `${simulationParams.ratedCurrent} A`,
+    Bewegungsgruppe: simulationParams.movementGroup,
+    "Problem-Tiefe": `${simulationParams.problemDepthM} mm`,
+    "Phasenwinkel-Start": `${simulationParams.phaseSweep.start}°`,
+    "Phasenwinkel-Ende": `${simulationParams.phaseSweep.end}°`,
+    "Phasenwinkel-Schritt": `${simulationParams.phaseSweep.step}°`,
+  };
+  for (const [key, value] of Object.entries(params)) {
+    leftCol.innerHTML += `<div class="summary-item"><span class="summary-label">${key}:</span> <span class="summary-value">${
+      value || "-"
+    }</span></div>`;
+  }
+  const rightCol = document.createElement("div");
+  rightCol.className = "summary-column";
+  rightCol.innerHTML = `<h4>Konfigurierte Baugruppen</h4>`;
+  if (assemblies.length > 0) {
+    assemblies.forEach((asm) => {
+      rightCol.innerHTML += `<div class="summary-item"><span class="summary-label">${asm.name} (${asm.phaseName}):</span> <span class="summary-value">${asm.transformerName}</span></div>`;
+    });
+  } else {
+    rightCol.innerHTML += `<div class="summary-item"><span class="summary-value">Keine Baugruppen konfiguriert.</span></div>`;
+  }
+  container.innerHTML = "";
+  container.appendChild(leftCol);
+  container.appendChild(rightCol);
+}
+
+function enableSvgZoom(svg) {
+  let pan = false;
+  let point = { x: 0, y: 0 };
+  let viewbox = { x: 0, y: 0, w: 0, h: 0 };
+  const updateViewBox = () => {
+    const parts = (svg.getAttribute("viewBox") || "0 0 1 1")
+      .split(" ")
+      .map(Number);
+    [viewbox.x, viewbox.y, viewbox.w, viewbox.h] = parts;
+  };
+  svg.addEventListener("mousedown", (e) => {
+    pan = true;
+    point.x = e.clientX;
+    point.y = e.clientY;
+    updateViewBox();
+  });
+  svg.addEventListener("mousemove", (e) => {
+    if (!pan) return;
+    const dx = e.clientX - point.x;
+    const dy = e.clientY - point.y;
+    viewbox.x -= dx * (viewbox.w / svg.clientWidth);
+    viewbox.y -= dy * (viewbox.h / svg.clientHeight);
+    svg.setAttribute(
+      "viewBox",
+      `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
+    );
+    point.x = e.clientX;
+    point.y = e.clientY;
+  });
+  const stopPan = () => {
+    pan = false;
+  };
+  svg.addEventListener("mouseup", stopPan);
+  svg.addEventListener("mouseleave", stopPan);
+  svg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    updateViewBox();
+    const w = viewbox.w;
+    const h = viewbox.h;
+    const mx = e.offsetX;
+    const my = e.offsetY;
+    const dw = w * Math.sign(e.deltaY) * 0.1;
+    const dh = h * Math.sign(e.deltaY) * 0.1;
+    const dx = (dw * mx) / svg.clientWidth;
+    const dy = (dh * my) / svg.clientHeight;
+    viewbox = { x: viewbox.x + dx, y: viewbox.y + dy, w: w - dw, h: h - dh };
+    svg.setAttribute(
+      "viewBox",
+      `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
+    );
+  });
+}
+
 function updatePhaseCurrents() {
   const ratedCurrent = parseFloat(
     document.getElementById("ratedCurrent").value

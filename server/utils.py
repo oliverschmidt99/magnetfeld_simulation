@@ -103,6 +103,58 @@ def calculate_position_steps(
     return all_steps
 
 
+def calculate_label_positions(assemblies, positions, library, room):
+    """Berechnet die Positionen aller Material-Labels für die Simulation."""
+    labels = []
+    all_rails = library.get("components", {}).get("copperRails", [])
+    all_transformers = library.get("components", {}).get("transformers", [])
+
+    for asm_data in assemblies:
+        phase_name = asm_data.get("phaseName")
+        pos = positions.get(phase_name, {"x": 0, "y": 0})
+
+        transformer = next(
+            (
+                t
+                for t in all_transformers
+                if t["templateProductInformation"]["name"]
+                == asm_data.get("transformerName")
+            ),
+            None,
+        )
+        rail = next(
+            (
+                r
+                for r in all_rails
+                if r["templateProductInformation"]["name"]
+                == asm_data.get("copperRailName")
+            ),
+            None,
+        )
+
+        if transformer and rail:
+            t_geo = transformer["specificProductInformation"]["geometry"]
+            r_geo = rail["specificProductInformation"]["geometry"]
+
+            labels.append({"material": "Copper", "x": pos["x"], "y": pos["y"]})
+            steel_y = (
+                pos["y"] - (t_geo["coreInnerHeight"] + t_geo["coreOuterHeight"]) / 4
+            )
+            labels.append({"material": "M-36 Steel", "x": pos["x"], "y": steel_y})
+            air_y = pos["y"] + (r_geo["height"] + t_geo["coreInnerHeight"]) / 4
+            labels.append({"material": "Air", "x": pos["x"], "y": air_y})
+
+    # ### KORREKTUR: "Länge" (X-Achse) statt "Breite" für die Formel verwenden ###
+    room_length = float(room.get("Länge", 0))
+
+    # Erstes Label (innen am rechten Rand)
+    labels.append({"material": "Air", "x": (room_length / 2) - 1, "y": 0})
+    # Zweites Label (außen am rechten Rand)
+    labels.append({"material": "Air", "x": (room_length / 2) + 1, "y": 0})
+
+    return labels
+
+
 def parse_fem_ans_files(fem_path, ans_path):
     """
     Liest die Geometrie aus einer .fem-Datei und die Lösung aus einer .ans-Datei.
@@ -118,11 +170,8 @@ def parse_fem_ans_files(fem_path, ans_path):
             parts = line.split()
             if len(parts) >= 3:
                 nodes[int(parts[0])] = (float(parts[1]), float(parts[2]))
-
         element_block = re.search(
-            r"\[Elements\](.*?)\[NumBlockLabels\]",
-            content,
-            re.DOTALL | re.IGNORECASE,
+            r"\[Elements\](.*?)\[NumBlockLabels\]", content, re.DOTALL | re.IGNORECASE
         ).group(1)
         for line in element_block.strip().split("\n"):
             parts = line.split()
@@ -130,7 +179,6 @@ def parse_fem_ans_files(fem_path, ans_path):
                 elements.append(tuple(int(p) for p in parts[3:6]))
     except (AttributeError, FileNotFoundError):
         return {}, [], {}
-
     try:
         with open(ans_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -142,7 +190,6 @@ def parse_fem_ans_files(fem_path, ans_path):
                 solution[i] = float(line.split()[0])
     except (AttributeError, FileNotFoundError):
         return nodes, elements, {}
-
     return nodes, elements, solution
 
 
@@ -181,8 +228,8 @@ def get_contour_lines(nodes, elements, solution, num_levels=30):
                     t = (level - a_start) / (a_end - a_start)
                     sides.append(
                         (
-                            p_start[0] * (1 - t) + p_end[0] * t,
-                            p_start[1] * (1 - t) + p_end[1] * t,
+                            (p_start[0] * (1 - t) + p_end[0] * t),
+                            (p_start[1] * (1 - t) + p_end[1] * t),
                         )
                     )
             if len(sides) == 2:

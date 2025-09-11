@@ -15,11 +15,13 @@ from .utils import (
     LIBRARY_FILE,
     load_csv,
     calculate_position_steps,
+    calculate_label_positions,
 )
 
 analysis_bp = Blueprint("analysis_bp", __name__)
 
 
+# ... (andere Routen bleiben unverändert) ...
 @analysis_bp.route("/analysis/runs")
 def list_runs():
     """Listet alle Simulationsläufe im res-Ordner auf."""
@@ -41,7 +43,6 @@ def list_runs():
     return jsonify(runs)
 
 
-# ... (andere Routen wie get_summary_csv, list_files_in_run, etc. bleiben unverändert) ...
 @analysis_bp.route("/analysis/summary_csv/<date_dir>/<time_dir>")
 def get_summary_csv(date_dir, time_dir):
     """Liest eine summary.csv-Datei und gibt sie als JSON zurück."""
@@ -182,6 +183,10 @@ def visualize_setup():
     for i, step in enumerate(position_steps):
         step_name = f"Pos {i}" if i > 0 else "Start"
         svg_elements = []
+        labels = calculate_label_positions(
+            form_data.get("assemblies", []), step, library, spielraum
+        )
+
         for asm in form_data.get("assemblies", []):
             phase_name = asm.get("phaseName")
             pos = step.get(phase_name)
@@ -210,7 +215,6 @@ def visualize_setup():
             if transformer and rail:
                 t_geo = transformer["specificProductInformation"]["geometry"]
                 r_geo = rail["specificProductInformation"]["geometry"]
-
                 svg_elements.append(
                     {
                         "type": "rect",
@@ -228,7 +232,8 @@ def visualize_setup():
                         "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
                         "width": t_geo["coreInnerWidth"],
                         "height": t_geo["coreInnerHeight"],
-                        "fill": "#FFFFFF",
+                        "fill": "white",
+                        "stroke": "#DDD",
                     }
                 )
                 svg_elements.append(
@@ -242,67 +247,25 @@ def visualize_setup():
                     }
                 )
 
-                label_offset_x = -25
-                label_offset_y = -8
-                svg_elements.append(
-                    {
-                        "type": "circle",
-                        "cx": pos["x"],
-                        "cy": pos["y"],
-                        "r": 3,
-                        "fill": "red",
-                    }
-                )
-                svg_elements.append(
-                    {
-                        "type": "text",
-                        "x": pos["x"] + label_offset_x,
-                        "y": pos["y"] - r_geo["height"] / 2 + label_offset_y,
-                        "text": '"material": "Copper"',
-                    }
-                )
-
-                steel_label_y = (
-                    pos["y"] - (t_geo["coreInnerHeight"] + t_geo["coreOuterHeight"]) / 4
-                )
-                svg_elements.append(
-                    {
-                        "type": "circle",
-                        "cx": pos["x"],
-                        "cy": steel_label_y,
-                        "r": 3,
-                        "fill": "red",
-                    }
-                )
-                svg_elements.append(
-                    {
-                        "type": "text",
-                        "x": pos["x"] + label_offset_x,
-                        "y": steel_label_y + label_offset_y,
-                        "text": '"material": "M-36 Steel"',
-                    }
-                )
-
-                air_label_y = (
-                    pos["y"] + (r_geo["height"] + t_geo["coreInnerHeight"]) / 4
-                )
-                svg_elements.append(
-                    {
-                        "type": "circle",
-                        "cx": pos["x"],
-                        "cy": air_label_y,
-                        "r": 3,
-                        "fill": "red",
-                    }
-                )
-                svg_elements.append(
-                    {
-                        "type": "text",
-                        "x": pos["x"] + label_offset_x,
-                        "y": air_label_y + label_offset_y,
-                        "text": '"material": "Air"',
-                    }
-                )
+        for label in labels:
+            svg_elements.append(
+                {
+                    "type": "circle",
+                    "cx": label["x"],
+                    "cy": label["y"],
+                    "r": 3,
+                    "fill": "red",
+                }
+            )
+            svg_elements.append(
+                {
+                    "type": "text",
+                    "x": label["x"] + 8,
+                    "y": label["y"] - 8,
+                    "class": "material-label",
+                    "text": f'"material": "{label["material"]}"',
+                }
+            )
 
         scenes.append({"name": step_name, "elements": svg_elements})
 

@@ -6,7 +6,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// Globale Daten aus dem HTML laden
 const libraryDataElement = document.getElementById("library-data");
 const library = libraryDataElement
   ? JSON.parse(libraryDataElement.textContent)
@@ -21,7 +20,6 @@ const startposData = JSON.parse(
   document.getElementById("startpos-data").textContent
 );
 
-// NEU: Vektoren für die Himmelsrichtungen
 const directionVectors = {
   "Keine Bewegung": { x: 0, y: 0 },
   Norden: { x: 0, y: 1 },
@@ -51,7 +49,6 @@ function updateDirectionInputs(selectElement) {
     targetYInput.value = vector.y;
   }
 
-  // Felder deaktivieren, wenn eine der vier Haupt-Himmelsrichtungen gewählt ist
   const isDisabled = cardinalDirections.includes(selectedDirection);
   targetXInput.disabled = isDisabled;
   targetYInput.disabled = isDisabled;
@@ -115,18 +112,14 @@ function initializeConfigurator() {
     setupCoordinateDisplay(svg);
   }
 
-  // NEU: Event-Listener für die Preset-Dropdowns
   document.querySelectorAll(".direction-preset").forEach((select) => {
     select.addEventListener("change", () => updateDirectionInputs(select));
-    updateDirectionInputs(select); // Initialen Status setzen
+    updateDirectionInputs(select);
   });
 
   loadState();
 }
 
-/**
- * Füllt die Felder für Spielraum, Schrittweite und Startpositionen basierend auf dem Nennstrom.
- */
 function updateParametersFromCsv() {
   const ratedCurrent = document.getElementById("ratedCurrent").value;
   const currentSpielraum = spielraumData[ratedCurrent];

@@ -2,15 +2,12 @@
 Hauptanwendung für den FEMM-Simulationskonfigurator.
 """
 
-# 1. Standard-Bibliotheken
 import json
 import os
 import math
 
-# 2. Third-Party-Bibliotheken
 from flask import Flask, jsonify, render_template, request
 
-# 3. Lokale Anwendungsimporte
 from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
@@ -21,21 +18,17 @@ from server.utils import (
     calculate_label_positions,
 )
 
-# --- Konfiguration ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SCENARIOS_DIR = os.path.join(BASE_DIR, "conf")
 LIBRARY_FILE = "library.json"
 SIMULATION_RUN_FILE = "simulation_run.json"
 
 app = Flask(__name__)
 
-# --- Blueprints registrieren ---
 app.register_blueprint(api_bp)
 app.register_blueprint(analysis_bp)
 app.register_blueprint(simulation_bp)
 
 
-# --- Routen für die Webseiten ---
 @app.route("/")
 def index():
     """Zeigt die Hauptseite an."""
@@ -46,7 +39,6 @@ def index():
 def simulation():
     """Zeigt die kombinierte Konfigurations- und Simulations-Seite."""
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
-    bewegungen = load_csv("bewegungen.csv")
     spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
     schrittweiten_data = {
         str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
@@ -56,10 +48,10 @@ def simulation():
     }
     direction_options = [
         {"value": "Keine Bewegung", "text": "Keine Bewegung"},
-        {"value": "Westen", "text": "⬅️ Westen"},
-        {"value": "Osten", "text": "➡️ Osten"},
         {"value": "Norden", "text": "⬆️ Norden"},
+        {"value": "Osten", "text": "➡️ Osten"},
         {"value": "Süden", "text": "⬇️ Süden"},
+        {"value": "Westen", "text": "⬅️ Westen"},
         {"value": "Nordosten", "text": "↗️ Nordosten"},
         {"value": "Nordwesten", "text": "↖️ Nordwesten"},
         {"value": "Südosten", "text": "↘️ Südosten"},
@@ -68,7 +60,6 @@ def simulation():
     return render_template(
         "simulation.html",
         library=library_data,
-        bewegungen=bewegungen,
         spielraum_data=spielraum_data,
         schrittweiten_data=schrittweiten_data,
         startpos_data=startpos_data,
@@ -95,7 +86,6 @@ def settings():
     return render_template("settings.html")
 
 
-# --- API Endpunkt für den Konfigurator ---
 @app.route("/generate", methods=["POST"])
 def generate_simulation():
     """Erstellt die `simulation_run.json` basierend auf den Benutzereingaben."""
@@ -111,37 +101,32 @@ def generate_simulation():
     except (ValueError, TypeError):
         return jsonify({"error": "Ungültiger Nennstrom-Wert."}), 400
 
-    # Werte direkt aus der Anfrage übernehmen
     startpositionen = sim_params.get("startpositionen")
     schrittweiten = sim_params.get("schrittweiten")
     spielraum = sim_params.get("spielraum")
-
-    # Bewegungsgruppe aus individuellen Dropdowns zusammensetzen
     bewegungs_richtungen = sim_params.get("bewegungsRichtungen", {})
-    gewaehlte_bewegung = {
-        "PosGruppe": "Manuell",
-        "L1": bewegungs_richtungen.get("L1"),
-        "L2": bewegungs_richtungen.get("L2"),
-        "L3": bewegungs_richtungen.get("L3"),
-    }
 
     if not startpositionen:
         return (
             jsonify(
                 {
-                    "error": "Keine Startpositionen für Nennstrom {}A gefunden.".format(
-                        nennstrom_str
-                    )
+                    "error": f"Keine Startpositionen für Nennstrom {nennstrom_str}A gefunden."
                 }
             ),
             400,
         )
 
     leiter_bewegungspfade = calculate_position_steps(
-        startpositionen, gewaehlte_bewegung, schrittweiten
+        startpositionen, bewegungs_richtungen, schrittweiten
     )
-    material_labels = calculate_label_positions(
-        data.get("assemblies", []), leiter_bewegungspfade[0], library_data, spielraum
+
+    # KORRIGIERTER AUFRUF
+    initial_labels = calculate_label_positions(
+        data.get("assemblies", []),
+        data.get("standAloneComponents", []),
+        leiter_bewegungspfade[0],
+        library_data,
+        spielraum,
     )
 
     peak_current = nennstrom_float * math.sqrt(2)
@@ -169,7 +154,7 @@ def generate_simulation():
             ]
             final_assemblies.append(assembly_data)
 
-    output = {
+    simulation_data = {
         "description": "Konfiguration erstellt via Web-UI",
         "scenarioParams": sim_params,
         "electricalSystem": electrical_system,
@@ -177,29 +162,27 @@ def generate_simulation():
         "standAloneComponents": data.get("standAloneComponents"),
         "simulation_meta": {
             "nennstrom_A": nennstrom_str,
-            "bewegungsgruppe": gewaehlte_bewegung,
+            "bewegungsgruppe": bewegungs_richtungen,
             "simulationsraum": spielraum,
             "bewegungspfade_alle_leiter": {
                 "beschreibung": "Bewegungsgruppe: Manuell",
                 "schritte_details": leiter_bewegungspfade,
             },
-            "material_labels": material_labels,
+            "material_labels": initial_labels,
         },
     }
 
     output_path = os.path.join(BASE_DIR, SIMULATION_RUN_FILE)
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+        json.dump(simulation_data, f, indent=2, ensure_ascii=False)
 
     return jsonify(
         {
-            "message": "{} erfolgreich erstellt!".format(SIMULATION_RUN_FILE),
-            "data": output,
+            "message": f"{SIMULATION_RUN_FILE} erfolgreich erstellt!",
+            "data": simulation_data,
         }
     )
 
 
 if __name__ == "__main__":
-    if not os.path.exists(SCENARIOS_DIR):
-        os.makedirs(SCENARIOS_DIR)
     app.run(debug=True)

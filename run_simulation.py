@@ -1,12 +1,7 @@
-# run_simulation.py (Finale Version, nutzt Labels aus JSON)
+# run_simulation.py (Finale Version mit korrekter Zeichnung aller Bauteile)
 
 """
 Haupt-Skript zur Steuerung des FEMM-Simulations-Workflows.
-
-Dieses Skript liest eine 'simulation_run.json' und eine 'library.json',
-iteriert durch verschiedene Positionsschritte und Phasenwinkel und führt für
-jeden Schritt eine FEMM-Simulation durch. Die Ergebnisse werden gesammelt
-und in einer CSV-Datei im 'res'-Verzeichnis gespeichert.
 """
 
 import json
@@ -16,6 +11,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import femm
+
+from server.utils import calculate_label_positions
 
 
 def calculate_instantaneous_current(peak_current, phase_shift_deg, angle_deg):
@@ -63,13 +60,13 @@ def run_single_simulation(
         )
         femm.mi_addcircprop(phase["name"], inst_current, 1)
 
+    # Schritt 1: Zeichne die gesamte Geometrie OHNE Labels
     sim_raum = step_config["simulation_meta"]["simulationsraum"]
     sim_length, sim_breadth = float(sim_raum["Laenge"]), float(sim_raum["Breite"])
     femm.mi_drawrectangle(
         -sim_length / 2, -sim_breadth / 2, sim_length / 2, sim_breadth / 2
     )
 
-    # Nur noch die Geometrie der Bauteile zeichnen
     for asm in step_config["assemblies"]:
         pos = asm["position"]
         rail = next(
@@ -89,14 +86,60 @@ def run_single_simulation(
         )
         draw_rect_explicitly(pos["x"], pos["y"], r_geo["width"], r_geo["height"])
 
-    # Labels exakt aus der JSON-Datei platzieren
-    material_labels = step_config.get("simulation_meta", {}).get("material_labels", [])
+    # KORREKTUR: Fehlender Code zum Zeichnen der eigenständigen Bauteile wieder eingefügt
+    for comp in step_config.get("standAloneComponents", []):
+        sheet = next(
+            (
+                s
+                for s in library.get("components", {}).get("transformerSheets", [])
+                if s.get("templateProductInformation", {}).get("name")
+                == comp.get("name")
+            ),
+            None,
+        )
+        if not sheet:
+            continue
+
+        s_geo = sheet["specificProductInformation"]["geometry"]
+        s_pos = comp["position"]
+        rotation_deg = float(comp.get("rotation", 0))
+
+        w, h = s_geo["width"], s_geo["height"]
+        x, y = float(s_pos["x"]), float(s_pos["y"])
+
+        corners = [(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)]
+        rad = np.deg2rad(rotation_deg)
+        cos_a, sin_a = np.cos(rad), np.sin(rad)
+
+        rotated_corners = []
+        for px, py in corners:
+            rx = px * cos_a - py * sin_a
+            ry = px * sin_a + py * cos_a
+            rotated_corners.append((rx + x, ry + y))
+
+        for k in range(4):
+            p1 = rotated_corners[k]
+            p2 = rotated_corners[(k + 1) % 4]
+            femm.mi_addsegment(p1[0], p1[1], p2[0], p2[1])
+
+    # Schritt 2: Labels DYNAMISCH für den aktuellen Schritt berechnen und platzieren
+    current_positions = {
+        asm["phaseName"]: asm["position"] for asm in step_config["assemblies"]
+    }
+    material_labels = calculate_label_positions(
+        step_config["assemblies"],
+        step_config.get("standAloneComponents", []),
+        current_positions,
+        library,
+        sim_raum,
+    )
+
     for label in material_labels:
         x, y, material = float(label["x"]), float(label["y"]), label["material"]
         circuit_name = "<None>"
         group_num = 0
 
-        # Spezifische Zuweisungen für Kupfer und Stahl
+        # Finde zugehörige Baugruppe für Kupfer- und Stahl-Labels
         for i, asm in enumerate(step_config["assemblies"]):
             pos = asm["position"]
             if (
@@ -121,11 +164,20 @@ def run_single_simulation(
                 group_num = i * 10 + 2
                 break
 
+        # Gruppennummer für eigenständige Bauteile
+        if group_num == 0 and material != "Air" and material != "Copper":
+            for i, comp in enumerate(step_config.get("standAloneComponents", [])):
+                pos = comp["position"]
+                if abs(float(pos["x"]) - x) < 1e-6 and abs(float(pos["y"]) - y) < 1e-6:
+                    group_num = 100 + i
+                    break
+
         femm.mi_addblocklabel(x, y)
         femm.mi_selectlabel(x, y)
         femm.mi_setblockprop(material, 1, 0, circuit_name, 0, group_num, 0)
         femm.mi_clearselected()
 
+    # Schritt 3: Analyse starten
     femm.mi_makeABC(7, max(sim_length, sim_breadth) * 1.5, 0, 0, 0)
     femm.mi_zoomnatural()
 
@@ -135,6 +187,7 @@ def run_single_simulation(
     femm.mi_loadsolution()
 
     results = []
+    # Ergebnisberechnung
     for i, asm in enumerate(step_config["assemblies"]):
         phase_name = asm["phaseName"]
         circuit_props = femm.mo_getcircuitproperties(phase_name)
@@ -209,6 +262,9 @@ def main():
         print(f"\n>> Verarbeite Positionsschritt {i+1}/{len(position_steps)}")
         step_config = run_data.copy()
         step_config["assemblies"] = [asm.copy() for asm in run_data["assemblies"]]
+        step_config["standAloneComponents"] = [
+            comp.copy() for comp in run_data.get("standAloneComponents", [])
+        ]
 
         for asm_cfg in step_config["assemblies"]:
             phase_name = asm_cfg["phaseName"]

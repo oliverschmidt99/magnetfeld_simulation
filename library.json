@@ -51,33 +51,38 @@
                 }
             },
             {
-                "templateProductInformation": {
-                    "name": "1",
-                    "productName": "",
-                    "manufacturer": "",
-                    "manufacturerNumber": "",
-                    "companyNumber": "",
-                    "eanNumber": "",
-                    "additionalInfo": "",
-                    "sellingPrice": "",
-                    "purchasePrice": "",
-                    "condition": "new",
-                    "tags": [],
-                    "uniqueNumber": "8e567"
-                },
                 "specificProductInformation": {
                     "electricInformation": {
-                        "voltage": "",
                         "current": "",
-                        "power": ""
+                        "power": "",
+                        "voltage": ""
                     },
                     "geometry": {
-                        "type": "Rectangle",
-                        "material": "Copper",
+                        "height": 10,
                         "length": null,
-                        "width": 10,
-                        "height": 10
+                        "material": "Copper",
+                        "type": "Rectangle",
+                        "width": 10
+                    },
+                    "electrical": {
+                        "ratedCurrentA": 600
                     }
+                },
+                "templateProductInformation": {
+                    "additionalInfo": "",
+                    "companyNumber": "",
+                    "condition": "new",
+                    "eanNumber": "",
+                    "manufacturer": "",
+                    "manufacturerNumber": "",
+                    "name": "1",
+                    "productName": "",
+                    "purchasePrice": "",
+                    "sellingPrice": "",
+                    "tags": [
+                        "600 A"
+                    ],
+                    "uniqueNumber": "8e567"
                 }
             }
         ],

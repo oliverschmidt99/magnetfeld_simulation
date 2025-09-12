@@ -25,7 +25,8 @@ SIMULATION_RUN_FILE = "simulation_run.json"
 app = Flask(__name__)
 
 app.register_blueprint(api_bp)
-app.register_blueprint(analysis_bp)
+# KORREKTUR: Fehlendes URL-Präfix hinzugefügt, damit die Routen unter /api/... gefunden werden
+app.register_blueprint(analysis_bp, url_prefix="/api")
 app.register_blueprint(simulation_bp)
 
 
@@ -161,7 +162,6 @@ def generate_simulation():
             component_data["component_details"] = component_details
         standalone_with_details.append(component_data)
 
-    # KORRIGIERTER AUFRUF
     initial_labels = calculate_label_positions(
         assemblies_with_details,
         standalone_with_details,

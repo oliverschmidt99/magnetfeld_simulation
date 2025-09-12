@@ -223,15 +223,13 @@ def main():
 
     now = datetime.now()
     date_str, time_str = now.strftime("%Y%m%d"), now.strftime("%H%M%S")
-    results_path = os.path.join("res", date_str, f"{time_str}_position_sweep")
-    femm_files_path = os.path.join(results_path, "femm_files")
-    os.makedirs(femm_files_path, exist_ok=True)
+    base_results_path = os.path.join("res", date_str, f"{time_str}_position_sweep")
+    os.makedirs(base_results_path, exist_ok=True)
     shutil.copy(
-        "simulation_run.json", os.path.join(results_path, "simulation_run.json")
+        "simulation_run.json", os.path.join(base_results_path, "simulation_run.json")
     )
-    print(f"Ergebnisse werden in '{results_path}' gespeichert.")
+    print(f"Ergebnisse werden in '{base_results_path}' gespeichert.")
 
-    master_results = []
     params = run_data
     phase_sweep = params["scenarioParams"]["phaseSweep"]
     phase_angles = np.arange(
@@ -242,51 +240,76 @@ def main():
     position_steps = run_data["simulation_meta"]["bewegungspfade_alle_leiter"][
         "schritte_details"
     ]
+    measured_currents = {
+        "I_1_mes": float(params["scenarioParams"]["I_1_mes"]),
+        "I_2_mes": float(params["scenarioParams"]["I_2_mes"]),
+        "I_3_mes": float(params["scenarioParams"]["I_3_mes"]),
+    }
 
     for i, step in enumerate(position_steps):
-        print(f"\n>> Verarbeite Positionsschritt {i+1}/{len(position_steps)}")
-        step_config = run_data.copy()
-        step_config["assemblies"] = [asm.copy() for asm in run_data["assemblies"]]
-        step_config["standAloneComponents"] = [
-            comp.copy() for comp in run_data.get("standAloneComponents", [])
-        ]
+        pos_name = f"pos_{i+1}"
+        print(f"\n>> Verarbeite {pos_name}")
 
-        for asm_cfg in step_config["assemblies"]:
-            phase_name = asm_cfg["phaseName"]
-            if phase_name in step:
-                asm_cfg["position"] = step[phase_name]
+        for current_name, current_value in measured_currents.items():
+            print(f"--> Führe Simulation für {current_name} = {current_value}A durch")
 
-        for angle in phase_angles:
-            print(f"--> Simuliere für Phasenwinkel: {angle}°")
-            run_identifier = f"step{i}_angle{int(angle)}"
+            master_results = []
+            step_config = run_data.copy()
+            step_config["electricalSystem"] = [
+                phase.copy() for phase in run_data["electricalSystem"]
+            ]
+            # Setze den Strom für diesen Durchlauf
+            for phase in step_config["electricalSystem"]:
+                phase["peakCurrentA"] = current_value * np.sqrt(2)
 
-            try:
-                single_run_results = run_single_simulation(
-                    femm_files_path, step_config, params, angle, run_identifier
-                )
-                for res in single_run_results:
-                    res.update(
-                        {
-                            "pos_x_L1_mm": step.get("L1", {}).get("x"),
-                            "pos_y_L1_mm": step.get("L1", {}).get("y"),
-                            "pos_x_L2_mm": step.get("L2", {}).get("x"),
-                            "pos_y_L2_mm": step.get("L2", {}).get("y"),
-                            "pos_x_L3_mm": step.get("L3", {}).get("x"),
-                            "pos_y_L3_mm": step.get("L3", {}).get("y"),
-                        }
+            step_config["assemblies"] = [asm.copy() for asm in run_data["assemblies"]]
+            step_config["standAloneComponents"] = [
+                comp.copy() for comp in run_data.get("standAloneComponents", [])
+            ]
+
+            for asm_cfg in step_config["assemblies"]:
+                phase_name = asm_cfg["phaseName"]
+                if phase_name in step:
+                    asm_cfg["position"] = step[phase_name]
+
+            # Phasenwinkel-Sweep für die aktuelle Position und Strom
+            for angle in phase_angles:
+                run_identifier = f"{pos_name}_{current_name}_angle{int(angle)}"
+                femm_files_path = os.path.join(base_results_path, "femm_files")
+                os.makedirs(femm_files_path, exist_ok=True)
+
+                try:
+                    single_run_results = run_single_simulation(
+                        femm_files_path,
+                        step_config,
+                        params,
+                        angle,
+                        run_identifier,
                     )
-                master_results.extend(single_run_results)
-            except (RuntimeError, OSError, FileNotFoundError) as e:
-                print(f"!!!! Fehler bei der Simulation für Winkel {angle}°: {e}")
-                femm.closefemm()
+                    for res in single_run_results:
+                        res.update(
+                            {
+                                "pos_x_L1_mm": step.get("L1", {}).get("x"),
+                                "pos_y_L1_mm": step.get("L1", {}).get("y"),
+                                "pos_x_L2_mm": step.get("L2", {}).get("x"),
+                                "pos_y_L2_mm": step.get("L2", {}).get("y"),
+                                "pos_x_L3_mm": step.get("L3", {}).get("x"),
+                                "pos_y_L3_mm": step.get("L3", {}).get("y"),
+                            }
+                        )
+                    master_results.extend(single_run_results)
+                except (RuntimeError, OSError, FileNotFoundError) as e:
+                    print(f"!!!! Fehler bei der Simulation für Winkel {angle}°: {e}")
+                    femm.closefemm()
 
-    if master_results:
-        df = pd.DataFrame(master_results)
-        csv_path = os.path.join(results_path, f"{time_str}_summary.csv")
-        df.to_csv(csv_path, index=False)
-        print(f"\n--- Alle Ergebnisse wurden in '{csv_path}' gespeichert. ---")
+            if master_results:
+                df = pd.DataFrame(master_results)
+                csv_filename = f"{pos_name}_{current_name}_summary.csv"
+                csv_path = os.path.join(base_results_path, csv_filename)
+                df.to_csv(csv_path, index=False)
+                print(f"   -> Ergebnisse in '{csv_filename}' gespeichert.")
 
-    print("--- Simulations-Workflow erfolgreich abgeschlossen. ---")
+    print("\n--- Simulations-Workflow erfolgreich abgeschlossen. ---")
 
 
 if __name__ == "__main__":

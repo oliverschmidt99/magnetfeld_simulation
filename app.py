@@ -25,7 +25,6 @@ SIMULATION_RUN_FILE = "simulation_run.json"
 app = Flask(__name__)
 
 app.register_blueprint(api_bp)
-# KORREKTUR: Fehlendes URL-Präfix hinzugefügt, damit die Routen unter /api/... gefunden werden
 app.register_blueprint(analysis_bp, url_prefix="/api")
 app.register_blueprint(simulation_bp)
 
@@ -209,6 +208,153 @@ def generate_simulation():
         {
             "message": f"{SIMULATION_RUN_FILE} erfolgreich erstellt!",
             "data": simulation_data,
+        }
+    )
+
+
+@app.route("/visualize", methods=["POST"])
+def visualize_configuration():
+    """Erstellt eine SVG-Visualisierung der Simulationskonfiguration."""
+    data = request.json
+    library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
+
+    sim_params = data.get("simulationParams", {})
+    spielraum = sim_params.get("spielraum")
+    startpositionen = sim_params.get("startpositionen")
+    bewegungs_richtungen = sim_params.get("bewegungsRichtungen", {})
+    schrittweiten = sim_params.get("schrittweiten")
+
+    position_steps = calculate_position_steps(
+        startpositionen, bewegungs_richtungen, schrittweiten
+    )
+
+    assemblies = data.get("assemblies", [])
+    for asm in assemblies:
+        asm["transformer_details"] = next(
+            (
+                t
+                for t in library_data.get("components", {}).get("transformers", [])
+                if t.get("templateProductInformation", {}).get("name")
+                == asm.get("transformerName")
+            ),
+            None,
+        )
+        asm["copperRail_details"] = next(
+            (
+                r
+                for r in library_data.get("components", {}).get("copperRails", [])
+                if r.get("templateProductInformation", {}).get("name")
+                == asm.get("copperRailName")
+            ),
+            None,
+        )
+
+    standalone_components = data.get("standAloneComponents", [])
+    for comp in standalone_components:
+        comp["component_details"] = next(
+            (
+                s
+                for s in library_data.get("components", {}).get("transformerSheets", [])
+                if s.get("templateProductInformation", {}).get("name")
+                == comp.get("name")
+            ),
+            None,
+        )
+
+    scenes = []
+    coordinate_summary = []
+    for i, step in enumerate(position_steps):
+        scene_elements = []
+        step_coords = {"step_name": f"Positionsschritt {i}", "components": []}
+
+        for asm in assemblies:
+            phase = asm.get("phaseName")
+            pos = step.get(phase, {"x": 0, "y": 0})
+            trans = asm.get("transformer_details")
+            rail = asm.get("copperRail_details")
+
+            if trans and rail:
+                t_geo = trans["specificProductInformation"]["geometry"]
+                r_geo = rail["specificProductInformation"]["geometry"]
+                scene_elements.extend(
+                    [
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
+                            "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
+                            "width": t_geo["coreOuterWidth"],
+                            "height": t_geo["coreOuterHeight"],
+                            "fill": "#808080",
+                        },
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
+                            "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
+                            "width": t_geo["coreInnerWidth"],
+                            "height": t_geo["coreInnerHeight"],
+                            "fill": "white",
+                        },
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - r_geo["width"] / 2,
+                            "y": pos["y"] - r_geo["height"] / 2,
+                            "width": r_geo["width"],
+                            "height": r_geo["height"],
+                            "fill": "#b87333",
+                        },
+                        {
+                            "type": "text",
+                            "x": pos["x"],
+                            "y": pos["y"] + t_geo["coreOuterHeight"] / 2 + 10,
+                            "text": phase,
+                        },
+                    ]
+                )
+                step_coords["components"].append(
+                    {
+                        "name": asm.get("name"),
+                        "type": "Assembly",
+                        "x": pos["x"],
+                        "y": pos["y"],
+                    }
+                )
+
+        for comp in standalone_components:
+            pos = comp.get("position", {"x": 0, "y": 0})
+            sheet = comp.get("component_details")
+            if sheet:
+                s_geo = sheet["specificProductInformation"]["geometry"]
+                rotation = comp.get("rotation", 0)
+                scene_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos["x"] - s_geo["width"] / 2,
+                        "y": pos["y"] - s_geo["height"] / 2,
+                        "width": s_geo["width"],
+                        "height": s_geo["height"],
+                        "fill": "#a9a9a9",
+                        "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                    }
+                )
+                step_coords["components"].append(
+                    {
+                        "name": comp.get("name"),
+                        "type": "Standalone",
+                        "x": pos["x"],
+                        "y": pos["y"],
+                        "rotation": rotation,
+                    }
+                )
+
+        scenes.append({"name": f"Schritt {i}", "elements": scene_elements})
+        coordinate_summary.append(step_coords)
+
+    return jsonify(
+        {
+            "scenes": scenes,
+            "room": spielraum,
+            "position_steps": len(position_steps),
+            "coordinate_summary": coordinate_summary,
         }
     )
 

@@ -86,32 +86,57 @@
                     </div>
 
                     <h4>Bewegungsrichtungen</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="directionL1">Leiter L1</label>
-                            <select id="directionL1">
-                                {% for direction in direction_options %}
-                                <option value="{{ direction.value }}">{{ direction.text }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="directionL2">Leiter L2</label>
-                            <select id="directionL2">
-                                {% for direction in direction_options %}
-                                <option value="{{ direction.value }}">{{ direction.text }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="directionL3">Leiter L3</label>
-                            <select id="directionL3">
-                                {% for direction in direction_options %}
-                                <option value="{{ direction.value }}">{{ direction.text }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                    <p>Wähle eine Himmelsrichtung als Voreinstellung oder gib ein genaues Vektor-Verhältnis manuell ein.
+                    </p>
+
+                    <div class="form-group">
+                        <label for="directionL1_preset">Leiter L1 - Voreinstellung</label>
+                        <select id="directionL1_preset" class="direction-preset" data-target-x="directionL1_x"
+                            data-target-y="directionL1_y">
+                            {% for direction in direction_options %}
+                            <option value="{{ direction.value }}">{{ direction.text }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="directionL1_x">Leiter L1 - Anteil X</label><input
+                                type="number" id="directionL1_x" value="0" step="1"></div>
+                        <div class="form-group"><label for="directionL1_y">Leiter L1 - Anteil Y</label><input
+                                type="number" id="directionL1_y" value="0" step="1"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="directionL2_preset">Leiter L2 - Voreinstellung</label>
+                        <select id="directionL2_preset" class="direction-preset" data-target-x="directionL2_x"
+                            data-target-y="directionL2_y">
+                            {% for direction in direction_options %}
+                            <option value="{{ direction.value }}">{{ direction.text }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="directionL2_x">Leiter L2 - Anteil X</label><input
+                                type="number" id="directionL2_x" value="0" step="1"></div>
+                        <div class="form-group"><label for="directionL2_y">Leiter L2 - Anteil Y</label><input
+                                type="number" id="directionL2_y" value="0" step="1"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="directionL3_preset">Leiter L3 - Voreinstellung</label>
+                        <select id="directionL3_preset" class="direction-preset" data-target-x="directionL3_x"
+                            data-target-y="directionL3_y">
+                            {% for direction in direction_options %}
+                            <option value="{{ direction.value }}">{{ direction.text }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="directionL3_x">Leiter L3 - Anteil X</label><input
+                                type="number" id="directionL3_x" value="0" step="1"></div>
+                        <div class="form-group"><label for="directionL3_y">Leiter L3 - Anteil Y</label><input
+                                type="number" id="directionL3_y" value="0" step="1"></div>
+                    </div>
+
 
                     <div class="form-group"><label for="problemDepthM">Problem-Tiefe (mm)</label><input type="number"
                             step="1" id="problemDepthM" value="10"></div>

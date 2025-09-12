@@ -1,4 +1,4 @@
-# run_simulation.py (Finale Version mit Pylint-Korrekturen)
+# run_simulation.py (Finale Version, nutzt Labels aus JSON)
 
 """
 Haupt-Skript zur Steuerung des FEMM-Simulations-Workflows.
@@ -69,7 +69,8 @@ def run_single_simulation(
         -sim_length / 2, -sim_breadth / 2, sim_length / 2, sim_breadth / 2
     )
 
-    for i, asm in enumerate(step_config["assemblies"]):
+    # Nur noch die Geometrie der Bauteile zeichnen
+    for asm in step_config["assemblies"]:
         pos = asm["position"]
         rail = next(
             r
@@ -88,80 +89,44 @@ def run_single_simulation(
         )
         draw_rect_explicitly(pos["x"], pos["y"], r_geo["width"], r_geo["height"])
 
-        group_num_rail = i * 10 + 1
-        group_num_core = i * 10 + 2
+    # Labels exakt aus der JSON-Datei platzieren
+    material_labels = step_config.get("simulation_meta", {}).get("material_labels", [])
+    for label in material_labels:
+        x, y, material = float(label["x"]), float(label["y"]), label["material"]
+        circuit_name = "<None>"
+        group_num = 0
 
-        copper_material = r_geo.get("material", "Copper")
-        femm.mi_addblocklabel(pos["x"], pos["y"])
-        femm.mi_selectlabel(pos["x"], pos["y"])
-        femm.mi_setblockprop(
-            copper_material, 1, 0, asm["phaseName"], 0, group_num_rail, 0
-        )
-        femm.mi_clearselected()
+        # Spezifische Zuweisungen für Kupfer und Stahl
+        for i, asm in enumerate(step_config["assemblies"]):
+            pos = asm["position"]
+            if (
+                material == "Copper"
+                and abs(pos["x"] - x) < 1e-6
+                and abs(pos["y"] - y) < 1e-6
+            ):
+                circuit_name = asm["phaseName"]
+                group_num = i * 10 + 1
+                break
 
-        steel_material = t_geo.get("coreMaterial", "M-36 Steel")
-        label_x_core = (
-            pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
-        )
-        femm.mi_addblocklabel(label_x_core, pos["y"])
-        femm.mi_selectlabel(label_x_core, pos["y"])
-        femm.mi_setblockprop(steel_material, 1, 0, "<None>", 0, group_num_core, 0)
-        femm.mi_clearselected()
-
-        label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
-        femm.mi_addblocklabel(label_x_air_gap, pos["y"])
-        femm.mi_selectlabel(label_x_air_gap, pos["y"])
-        femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
-        femm.mi_clearselected()
-
-    for i, comp in enumerate(step_config.get("standAloneComponents", [])):
-        sheet = next(
-            s
-            for s in library["components"]["transformerSheets"]
-            if s["templateProductInformation"]["name"] == comp["name"]
-        )
-        s_geo = sheet["specificProductInformation"]["geometry"]
-        s_pos = comp["position"]
-        rotation_deg = float(comp.get("rotation", 0))
-
-        w, h = s_geo["width"], s_geo["height"]
-        x, y = s_pos["x"], s_pos["y"]
-
-        corners = [(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)]
-        rad = np.deg2rad(rotation_deg)
-        cos_a, sin_a = np.cos(rad), np.sin(rad)
-
-        rotated_corners = []
-        for px, py in corners:
-            rx = px * cos_a - py * sin_a
-            ry = px * sin_a + py * cos_a
-            rotated_corners.append((rx + x, ry + y))
-
-        for k in range(4):
-            p1 = rotated_corners[k]
-            p2 = rotated_corners[(k + 1) % 4]
-            femm.mi_addnode(p1[0], p1[1])
-            femm.mi_addnode(p2[0], p2[1])
-            femm.mi_addsegment(p1[0], p1[1], p2[0], p2[1])
+            trans = asm["transformer_details"]
+            t_geo = trans["specificProductInformation"]["geometry"]
+            label_x_core_calc = (
+                pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
+            )
+            if (
+                material == "M-36 Steel"
+                and abs(label_x_core_calc - x) < 1e-6
+                and abs(pos["y"] - y) < 1e-6
+            ):
+                group_num = i * 10 + 2
+                break
 
         femm.mi_addblocklabel(x, y)
         femm.mi_selectlabel(x, y)
-        femm.mi_setblockprop(s_geo["material"], 1, 0, "<None>", 0, 100 + i, 0)
+        femm.mi_setblockprop(material, 1, 0, circuit_name, 0, group_num, 0)
         femm.mi_clearselected()
 
-    femm.mi_addblocklabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
-    femm.mi_selectlabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
-    femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
-    femm.mi_clearselected()
-
     femm.mi_makeABC(7, max(sim_length, sim_breadth) * 1.5, 0, 0, 0)
-
-    label_x_outer = sim_length / 2 + 10
-    femm.mi_addblocklabel(label_x_outer, 0)
-    femm.mi_selectlabel(label_x_outer, 0)
-    femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
-    femm.mi_clearselected()
-
     femm.mi_zoomnatural()
 
     fem_file = os.path.join(femm_path, f"{run_identifier}.fem")

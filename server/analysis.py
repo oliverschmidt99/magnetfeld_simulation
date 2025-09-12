@@ -1,3 +1,5 @@
+# server/analysis.py
+
 """
 Blueprint für die Analyse- und Visualisierungs-Endpunkte.
 """
@@ -20,7 +22,6 @@ from .utils import (
 analysis_bp = Blueprint("analysis_bp", __name__)
 
 
-# ... (andere Routen bleiben unverändert) ...
 @analysis_bp.route("/analysis/runs")
 def list_runs():
     """Listet alle Simulationsläufe im res-Ordner auf."""
@@ -164,15 +165,22 @@ def visualize_setup():
     all_sheets = library.get("components", {}).get("transformerSheets", [])
 
     scenes = []
-    all_coords = []
+    coordinate_summary = []
 
     for i, step in enumerate(position_steps):
         step_name = f"Pos {i}" if i > 0 else "Start"
         svg_elements = []
+
+        # --- KORREKTUR: Fehlende Argumente hinzugefügt ---
         labels = calculate_label_positions(
-            form_data.get("assemblies", []), step, library, spielraum
+            form_data.get("assemblies", []),
+            form_data.get("standAloneComponents", []),
+            step,
+            library,
+            spielraum,
         )
-        step_coords = []
+
+        step_components = []
 
         # Baugruppen zeichnen
         for asm in form_data.get("assemblies", []):
@@ -204,22 +212,15 @@ def visualize_setup():
                 t_geo = transformer["specificProductInformation"]["geometry"]
                 r_geo = rail["specificProductInformation"]["geometry"]
 
-                # Beschriftung für die Baugruppe
                 svg_elements.append(
                     {
                         "type": "text",
                         "x": pos["x"],
-                        "y": pos["y"] - t_geo["coreOuterHeight"] / 2 - 10,
+                        "y": pos["y"] + t_geo["coreOuterHeight"] / 2 + 10,
                         "class": "assembly-label",
-                        "text": f"{phase_name}: {transformer['templateProductInformation']['name']}",
+                        "text": f"{phase_name}: {asm.get('name')}",
                     }
                 )
-                step_coords.append(
-                    f"{phase_name} Label: ({pos['x']:.1f}, "
-                    f"{pos['y'] - t_geo['coreOuterHeight'] / 2 - 10:.1f})"
-                )
-
-                # Körper zeichnen
                 svg_elements.append(
                     {
                         "type": "rect",
@@ -248,14 +249,16 @@ def visualize_setup():
                         "y": pos["y"] - r_geo["height"] / 2,
                         "width": r_geo["width"],
                         "height": r_geo["height"],
-                        "fill": "#FFA500",
+                        "fill": "#b87333",
                     }
                 )
-                step_coords.append(
-                    f"{asm['name']} Core: Center ({pos['x']:.1f}, {pos['y']:.1f})"
-                )
-                step_coords.append(
-                    f"{asm['name']} Rail: Center ({pos['x']:.1f}, {pos['y']:.1f})"
+                step_components.append(
+                    {
+                        "name": asm.get("name"),
+                        "type": "Baugruppe",
+                        "x": pos["x"],
+                        "y": pos["y"],
+                    }
                 )
 
         # Eigenständige Bauteile zeichnen
@@ -270,11 +273,23 @@ def visualize_setup():
             )
             if sheet:
                 s_geo = sheet["specificProductInformation"]["geometry"]
-                s_pos = comp.get("position", {"x": 0, "y": 0})
-                rotation = comp.get("rotation", 0)
-                material = s_geo.get("material", "Unknown")
 
-                # Körper des Bauteils
+                s_pos_raw = comp.get("position", {})
+                s_pos = {}
+                try:
+                    s_pos["x"] = float(s_pos_raw.get("x", 0))
+                except (ValueError, TypeError):
+                    s_pos["x"] = 0
+                try:
+                    s_pos["y"] = float(s_pos_raw.get("y", 0))
+                except (ValueError, TypeError):
+                    s_pos["y"] = 0
+
+                try:
+                    rotation = float(comp.get("rotation", 0))
+                except (ValueError, TypeError):
+                    rotation = 0
+
                 svg_elements.append(
                     {
                         "type": "rect",
@@ -286,21 +301,17 @@ def visualize_setup():
                         "transform": f"translate({s_pos['x']}, {s_pos['y']}) rotate({rotation})",
                     }
                 )
-                step_coords.append(
-                    f"{comp.get('name')} Sheet: Center ({s_pos['x']:.1f}, {s_pos['y']:.1f}), "
-                    f"Rotation: {rotation}°"
-                )
-
-                # Label für das Bauteil
-                labels.append(
+                step_components.append(
                     {
-                        "material": material,
+                        "name": comp.get("name"),
+                        "type": "Blech",
                         "x": s_pos["x"],
                         "y": s_pos["y"],
+                        "rotation": rotation,
                     }
                 )
 
-        # Alle Labels (von Baugruppen und eigenständigen Bauteilen) zeichnen
+        # Alle Labels zeichnen
         for label in labels:
             svg_elements.append(
                 {
@@ -312,18 +323,17 @@ def visualize_setup():
                     "material": label["material"],
                 }
             )
-            step_coords.append(
-                f"Material-Label ({label['material']}): ({label['x']:.1f}, {label['y']:.1f})"
-            )
 
         scenes.append({"name": step_name, "elements": svg_elements})
-        all_coords.append({"step_name": step_name, "coords": step_coords})
+        coordinate_summary.append(
+            {"step_name": step_name, "components": step_components}
+        )
 
     return jsonify(
         {
             "scenes": scenes,
             "room": spielraum,
             "position_steps": position_steps,
-            "coordinate_summary": all_coords,
+            "coordinate_summary": coordinate_summary,
         }
     )

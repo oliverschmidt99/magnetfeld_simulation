@@ -627,3 +627,74 @@ button.secondary.active {
 .summary-value {
     color: #6c757d;
 }
+
+/* --- NEUE STILE FÜR DIE PARAMETER-ZUSAMMENFASSUNG --- */
+
+/* Container für die allgemeinen Parameter */
+.summary-general {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0.5rem 1.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    border: 1px solid #dee2e6;
+}
+
+.summary-general .summary-label {
+    font-weight: bold;
+    color: #495057;
+}
+
+/* Akkordeon-Stile */
+.summary-accordion details {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    overflow: hidden; /* Verhindert, dass die Tabelle über den Radius hinausgeht */
+}
+
+.summary-accordion summary {
+    font-weight: bold;
+    padding: 0.75rem 1.25rem;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.2s;
+}
+
+.summary-accordion summary:hover {
+    background-color: #e9ecef;
+}
+
+.summary-accordion details[open] summary {
+    background-color: #e7f1ff;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Tabellen-Stile */
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: -1px; /* Korrigiert den Abstand nach dem summary-Rand */
+}
+
+.summary-table th,
+.summary-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.summary-table th {
+    background-color: #f8f9fa;
+}
+
+.summary-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.summary-table tbody tr:last-child td {
+    border-bottom: none;
+}

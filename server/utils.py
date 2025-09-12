@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 from typing import Dict, List, Tuple
+import math
 
 import pandas as pd
 
@@ -53,26 +54,19 @@ def generate_unique_id():
     return secrets.token_hex(3)[:5]
 
 
-def parse_direction_to_vector(direction_str: str) -> Tuple[int, int]:
-    """Wandelt einen Richtungstext in einen (x, y) Vektor um."""
-    if not isinstance(direction_str, str) or direction_str == "Keine Bewegung":
-        return (0, 0)
-    mapping = {
-        "Westen": (-1, 0),
-        "Osten": (1, 0),
-        "Norden": (0, 1),
-        "Süden": (0, -1),
-        "Nordosten": (1, 1),
-        "Nordwesten": (-1, 1),
-        "Südosten": (1, -1),
-        "Südwesten": (-1, -1),
-    }
-    for key, vector in mapping.items():
-        if key in direction_str:
-            norm = (vector[0] ** 2 + vector[1] ** 2) ** 0.5
-            if norm > 0:
-                return (vector[0] / norm, vector[1] / norm)
-    return (0, 0)
+def parse_direction_to_vector(direction_dict: Dict) -> Tuple[float, float]:
+    """Wandelt ein Richtungs-Dictionary in einen normalisierten (x, y) Vektor um."""
+    try:
+        x = float(direction_dict.get("x", 0))
+        y = float(direction_dict.get("y", 0))
+    except (ValueError, TypeError):
+        x, y = 0.0, 0.0
+
+    if x == 0 and y == 0:
+        return (0.0, 0.0)
+
+    norm = math.sqrt(x**2 + y**2)
+    return (x / norm, y / norm) if norm > 0 else (0.0, 0.0)
 
 
 def calculate_position_steps(
@@ -81,8 +75,6 @@ def calculate_position_steps(
     """Berechnet alle Positionsschritte."""
     all_steps = []
 
-    # KORREKTUR: Stellt sicher, dass die Leiter (L1, L2, L3) korrekt
-    # aus den Startpositionen extrahiert werden
     conductors = sorted(list(set([key.split("_")[1] for key in start_pos.keys()])))
     if not conductors:
         conductors = ["L1", "L2", "L3"]
@@ -109,8 +101,8 @@ def calculate_position_steps(
         next_pos = copy.deepcopy(all_steps[-1])
 
         for leiter in conductors:
-            direction_str = bewegung.get(leiter, "")
-            vector = parse_direction_to_vector(direction_str)
+            direction_dict = bewegung.get(leiter, {})
+            vector = parse_direction_to_vector(direction_dict)
             next_pos[leiter]["x"] += vector[0] * step_width
             next_pos[leiter]["y"] += vector[1] * step_width
         all_steps.append(next_pos)
@@ -118,12 +110,16 @@ def calculate_position_steps(
     return all_steps
 
 
-def calculate_label_positions(assemblies, positions, library, room):
+def calculate_label_positions(
+    assemblies, standalone_components, positions, library, room
+):
     """Berechnet die Positionen aller Material-Labels für die Simulation."""
     labels = []
     all_rails = library.get("components", {}).get("copperRails", [])
     all_transformers = library.get("components", {}).get("transformers", [])
+    all_sheets = library.get("components", {}).get("transformerSheets", [])
 
+    # Labels für Baugruppen
     for asm_data in assemblies:
         phase_name = asm_data.get("phaseName")
         pos = positions.get(phase_name, {"x": 0, "y": 0})
@@ -149,31 +145,51 @@ def calculate_label_positions(assemblies, positions, library, room):
 
         if transformer and rail:
             t_geo = transformer["specificProductInformation"]["geometry"]
-            r_geo = rail["specificProductInformation"]["geometry"]
 
             labels.append({"material": "Copper", "x": pos["x"], "y": pos["y"]})
-
             steel_x = (
                 pos["x"]
                 + (t_geo.get("coreInnerWidth", 0) + t_geo.get("coreOuterWidth", 0)) / 4
             )
             labels.append({"material": "M-36 Steel", "x": steel_x, "y": pos["y"]})
-
             air_x = (
-                pos["x"] + (r_geo.get("width", 0) + t_geo.get("coreInnerWidth", 0)) / 4
+                pos["x"]
+                + (
+                    rail["specificProductInformation"]["geometry"].get("width", 0)
+                    + t_geo.get("coreInnerWidth", 0)
+                )
+                / 4
             )
             labels.append({"material": "Air", "x": air_x, "y": pos["y"]})
 
+    # Labels für eigenständige Bauteile
+    for comp_data in standalone_components:
+        sheet = next(
+            (
+                s
+                for s in all_sheets
+                if s["templateProductInformation"]["name"] == comp_data.get("name")
+            ),
+            None,
+        )
+        if sheet:
+            pos = comp_data.get("position", {"x": 0, "y": 0})
+            material = sheet["specificProductInformation"]["geometry"].get(
+                "material", "M-36 Steel"
+            )
+            labels.append(
+                {"material": material, "x": pos.get("x", 0), "y": pos.get("y", 0)}
+            )
+
+    # Labels für den Simulationsraum
     room_length = float(room.get("Laenge", room.get("Länge", 0)))
     room_width = float(room.get("Breite", 0))
-
-    inner_air_x = (room_length / 2) - 10
-    inner_air_y = (room_width / 2) - 10
-    labels.append({"material": "Air", "x": inner_air_x, "y": inner_air_y})
-
-    outer_air_x = (room_length / 2) + 10
-    outer_air_y = (room_width / 2) + 10
-    labels.append({"material": "Air", "x": outer_air_x, "y": outer_air_y})
+    labels.append(
+        {"material": "Air", "x": room_length / 2 - 10, "y": room_width / 2 - 10}
+    )
+    labels.append(
+        {"material": "Air", "x": room_length / 2 + 10, "y": room_width / 2 + 10}
+    )
 
     return labels
 

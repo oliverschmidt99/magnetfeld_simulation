@@ -21,10 +21,41 @@ const startposData = JSON.parse(
   document.getElementById("startpos-data").textContent
 );
 
+// NEU: Vektoren für die Himmelsrichtungen
+const directionVectors = {
+  "Keine Bewegung": { x: 0, y: 0 },
+  Norden: { x: 0, y: 1 },
+  Osten: { x: 1, y: 0 },
+  Süden: { x: 0, y: -1 },
+  Westen: { x: -1, y: 0 },
+  Nordosten: { x: 1, y: 1 },
+  Südosten: { x: 1, y: -1 },
+  Südwesten: { x: -1, y: -1 },
+  Nordwesten: { x: -1, y: 1 },
+};
+const cardinalDirections = ["Norden", "Süden", "Osten", "Westen"];
+
 const SQRT2 = Math.sqrt(2);
 let phaseCounter = 0;
 let assemblyCounter = 0;
 let standaloneCounter = 0;
+
+function updateDirectionInputs(selectElement) {
+  const selectedDirection = selectElement.value;
+  const vector = directionVectors[selectedDirection];
+  const targetXInput = document.getElementById(selectElement.dataset.targetX);
+  const targetYInput = document.getElementById(selectElement.dataset.targetY);
+
+  if (vector) {
+    targetXInput.value = vector.x;
+    targetYInput.value = vector.y;
+  }
+
+  // Felder deaktivieren, wenn eine der vier Haupt-Himmelsrichtungen gewählt ist
+  const isDisabled = cardinalDirections.includes(selectedDirection);
+  targetXInput.disabled = isDisabled;
+  targetYInput.disabled = isDisabled;
+}
 
 function initializeConfigurator() {
   initializeCardNavigation("config-nav", "config-sections");
@@ -45,7 +76,7 @@ function initializeConfigurator() {
     (data.assemblies || []).forEach((asm) => addAssembly(asm));
     updateAssemblyPhaseDropdowns();
     updatePhaseCurrents();
-    updateParametersFromCsv(); // CSV-Werte für alle Parameter laden
+    updateParametersFromCsv();
   });
 
   form.addEventListener("submit", function (event) {
@@ -84,7 +115,12 @@ function initializeConfigurator() {
     setupCoordinateDisplay(svg);
   }
 
-  // Initialen Zustand laden und Felder füllen
+  // NEU: Event-Listener für die Preset-Dropdowns
+  document.querySelectorAll(".direction-preset").forEach((select) => {
+    select.addEventListener("change", () => updateDirectionInputs(select));
+    updateDirectionInputs(select); // Initialen Status setzen
+  });
+
   loadState();
 }
 
@@ -179,7 +215,7 @@ async function updateVisualization() {
       return;
     }
 
-    const padding = 150;
+    const padding = 50;
     const viewBox = `${-roomWidth / 2 - padding} ${-roomHeight / 2 - padding} ${
       roomWidth + 2 * padding
     } ${roomHeight + 2 * padding}`;
@@ -192,6 +228,9 @@ async function updateVisualization() {
       return el;
     };
 
+    const mainGroup = createSvgElement("g", { transform: "scale(1, -1)" });
+    svg.appendChild(mainGroup);
+
     const boundaryRadius = Math.max(roomWidth, roomHeight) * 0.85;
     const boundary = createSvgElement("circle", {
       cx: 0,
@@ -202,7 +241,7 @@ async function updateVisualization() {
       "stroke-width": 2,
       "stroke-dasharray": "10,10",
     });
-    svg.appendChild(boundary);
+    mainGroup.appendChild(boundary);
 
     const roomRect = createSvgElement("rect", {
       x: -roomWidth / 2,
@@ -211,17 +250,19 @@ async function updateVisualization() {
       height: roomHeight,
       class: "simulation-room-border",
     });
+    mainGroup.appendChild(roomRect);
+
     const roomLabel = createSvgElement(
       "text",
       {
         x: 0,
-        y: -roomHeight / 2 - 15,
+        y: -(roomHeight / 2 + 15),
         class: "simulation-room-label",
+        transform: "scale(1, -1)",
       },
       "Simulationsraum (Spielraum)"
     );
-    svg.appendChild(roomRect);
-    svg.appendChild(roomLabel);
+    mainGroup.appendChild(roomLabel);
 
     scenes.forEach((scene, index) => {
       const group = createSvgElement("g", {
@@ -238,7 +279,7 @@ async function updateVisualization() {
             height: elData.height,
             fill: elData.fill,
             stroke: elData.stroke || "#343a40",
-            "stroke-width": 0.5,
+            "stroke-width": 1,
             transform: elData.transform || "",
           });
         } else if (elData.type === "circle") {
@@ -257,16 +298,18 @@ async function updateVisualization() {
             "text",
             {
               x: elData.x,
-              y: elData.y,
+              y: -elData.y,
               class: elData.class || "assembly-label",
               "text-anchor": "middle",
+              "dominant-baseline": "middle",
+              transform: "scale(1, -1)",
             },
             elData.text
           );
         }
         if (el) group.appendChild(el);
       });
-      svg.appendChild(group);
+      mainGroup.appendChild(group);
     });
 
     scenes.forEach((scene, index) => {
@@ -275,10 +318,10 @@ async function updateVisualization() {
       button.className = "button secondary";
       button.textContent = scene.name;
       button.onclick = () => {
-        svg
-          .querySelectorAll("g")
+        mainGroup
+          .querySelectorAll("g[id^='scene-']")
           .forEach((g) => (g.style.visibility = "hidden"));
-        svg.querySelector(`#scene-${index}`).style.visibility = "visible";
+        mainGroup.querySelector(`#scene-${index}`).style.visibility = "visible";
         controls
           .querySelectorAll("button")
           .forEach((b) => b.classList.remove("active"));
@@ -301,26 +344,52 @@ function updateParameterSummary(data, positionSteps, coordinateSummary) {
   if (!container) return;
   const { simulationParams } = data;
 
-  let html = `<h4>Allgemeine Parameter</h4>
-    <div class="summary-grid">
-        <span class="summary-label">Nennstrom:</span> <span class="summary-value">${simulationParams.ratedCurrent} A</span>
-        <span class="summary-label">Problem-Tiefe:</span> <span class="summary-value">${simulationParams.problemDepthM} mm</span>
-        <span class="summary-label">Spielraum:</span> <span class="summary-value">${simulationParams.spielraum.Laenge} x ${simulationParams.spielraum.Breite} mm</span>
-        <span class="summary-label">Phasenwinkel:</span> <span class="summary-value">${simulationParams.phaseSweep.start}° bis ${simulationParams.phaseSweep.end}° in ${simulationParams.phaseSweep.step}° Schritten</span>
+  let html = `
+    <div class="summary-general">
+        <div><span class="summary-label">Nennstrom:</span> <span class="summary-value">${simulationParams.ratedCurrent} A</span></div>
+        <div><span class="summary-label">Problem-Tiefe:</span> <span class="summary-value">${simulationParams.problemDepthM} mm</span></div>
+        <div><span class="summary-label">Spielraum:</span> <span class="summary-value">${simulationParams.spielraum.Laenge} x ${simulationParams.spielraum.Breite} mm</span></div>
+        <div><span class="summary-label">Phasenwinkel:</span> <span class="summary-value">${simulationParams.phaseSweep.start}° bis ${simulationParams.phaseSweep.end}° (${simulationParams.phaseSweep.step}° Schritte)</span></div>
     </div>`;
 
-  html += `<h4>Koordinaten der Visualisierung (mm)</h4>`;
+  html += `<h4>Koordinaten der Positionsschritte (mm)</h4><div class="summary-accordion">`;
+
   if (coordinateSummary && coordinateSummary.length > 0) {
-    coordinateSummary.forEach((step) => {
-      html += `<h5>Position: ${step.step_name}</h5><ul>`;
-      step.coords.forEach((coord) => {
-        html += `<li>${coord}</li>`;
+    coordinateSummary.forEach((step, index) => {
+      html += `<details ${index === 0 ? "open" : ""}>`;
+      html += `<summary>${step.step_name}</summary>`;
+
+      html += `<table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Bauteil</th>
+                        <th>Typ</th>
+                        <th>X-Position</th>
+                        <th>Y-Position</th>
+                        <th>Rotation</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+      step.components.forEach((comp) => {
+        html += `<tr>
+                    <td>${comp.name}</td>
+                    <td>${comp.type}</td>
+                    <td>${comp.x.toFixed(2)}</td>
+                    <td>${comp.y.toFixed(2)}</td>
+                    <td>${
+                      comp.rotation !== undefined ? comp.rotation + "°" : "–"
+                    }</td>
+                </tr>`;
       });
-      html += `</ul>`;
+
+      html += `</tbody></table></details>`;
     });
   } else {
     html += `<p>Keine Koordinaten-Daten berechnet.</p>`;
   }
+
+  html += `</div>`;
   container.innerHTML = html;
 }
 
@@ -387,7 +456,8 @@ function setupCoordinateDisplay(svg) {
     pt.y = e.clientY;
 
     const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-    coordDisplay.textContent = `X: ${svgP.x.toFixed(1)}, Y: ${svgP.y.toFixed(
+
+    coordDisplay.textContent = `X: ${svgP.x.toFixed(1)}, Y: ${(-svgP.y).toFixed(
       1
     )}`;
   });
@@ -524,10 +594,10 @@ function addStandalone(data = {}) {
     .join("");
   item.innerHTML = `<h4>Eigenständiges Bauteil ${standaloneCounter}</h4>
     <label>Bauteil:</label><select class="standalone-name">${sheetOptions}</select>
-    <label>Position X:</label><input type="number" class="pos-x" value="${
+    <label>Position X:</label><input type="number" step="0.1" class="pos-x" value="${
       data.position?.x || 0
     }">
-    <label>Position Y:</label><input type="number" class="pos-y" value="${
+    <label>Position Y:</label><input type="number" step="0.1" class="pos-y" value="${
       data.position?.y || 0
     }">
     <label>Rotation:</label><select class="rotation">${rotationOptions}</select>
@@ -553,9 +623,18 @@ function gatherFormData() {
         y_L3: form.querySelector("#startY_L3").value,
       },
       bewegungsRichtungen: {
-        L1: form.querySelector("#directionL1").value,
-        L2: form.querySelector("#directionL2").value,
-        L3: form.querySelector("#directionL3").value,
+        L1: {
+          x: form.querySelector("#directionL1_x").value,
+          y: form.querySelector("#directionL1_y").value,
+        },
+        L2: {
+          x: form.querySelector("#directionL2_x").value,
+          y: form.querySelector("#directionL2_y").value,
+        },
+        L3: {
+          x: form.querySelector("#directionL3_x").value,
+          y: form.querySelector("#directionL3_y").value,
+        },
       },
       problemDepthM: form.querySelector("#problemDepthM").value,
       spielraum: {
@@ -581,7 +660,7 @@ function gatherFormData() {
       form.querySelectorAll("#electrical-system-list .list-item")
     ).map((item) => ({
       name: item.querySelector(".phase-name").value,
-      phaseShiftDeg: parseInt(item.querySelector(".phase-shift").value),
+      phaseShiftDeg: parseFloat(item.querySelector(".phase-shift").value) || 0,
       peakCurrentA: parseFloat(item.dataset.peakCurrent),
     })),
     assemblies: Array.from(
@@ -597,10 +676,10 @@ function gatherFormData() {
     ).map((item) => ({
       name: item.querySelector(".standalone-name").value,
       position: {
-        x: parseInt(item.querySelector(".pos-x").value),
-        y: parseInt(item.querySelector(".pos-y").value),
+        x: parseFloat(item.querySelector(".pos-x").value) || 0,
+        y: parseFloat(item.querySelector(".pos-y").value) || 0,
       },
-      rotation: parseInt(item.querySelector(".rotation").value),
+      rotation: parseFloat(item.querySelector(".rotation").value) || 0,
     })),
   };
 }
@@ -614,7 +693,6 @@ function loadState(data = null) {
   const configData =
     data || JSON.parse(localStorage.getItem("latestSimConfig"));
 
-  // Start with default CSV values
   updateParametersFromCsv();
 
   if (!configData) return;
@@ -644,18 +722,23 @@ function loadState(data = null) {
   }
 
   if (simulationParams.bewegungsRichtungen) {
-    document.getElementById("directionL1").value =
-      simulationParams.bewegungsRichtungen.L1 || "Keine Bewegung";
-    document.getElementById("directionL2").value =
-      simulationParams.bewegungsRichtungen.L2 || "Keine Bewegung";
-    document.getElementById("directionL3").value =
-      simulationParams.bewegungsRichtungen.L3 || "Keine Bewegung";
+    document.getElementById("directionL1_x").value =
+      simulationParams.bewegungsRichtungen.L1?.x || 0;
+    document.getElementById("directionL1_y").value =
+      simulationParams.bewegungsRichtungen.L1?.y || 0;
+    document.getElementById("directionL2_x").value =
+      simulationParams.bewegungsRichtungen.L2?.x || 0;
+    document.getElementById("directionL2_y").value =
+      simulationParams.bewegungsRichtungen.L2?.y || 0;
+    document.getElementById("directionL3_x").value =
+      simulationParams.bewegungsRichtungen.L3?.x || 0;
+    document.getElementById("directionL3_y").value =
+      simulationParams.bewegungsRichtungen.L3?.y || 0;
   }
 
   document.getElementById("problemDepthM").value =
     simulationParams.problemDepthM;
 
-  // Overwrite with saved values if they exist
   if (simulationParams.spielraum) {
     document.getElementById("spielraumLaenge").value =
       simulationParams.spielraum.Laenge;

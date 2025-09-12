@@ -1,7 +1,9 @@
-# run_simulation.py (Finale Version mit korrekter Zeichnung aller Bauteile)
+# run_simulation.py (Final korrigierte Version)
 
 """
 Haupt-Skript zur Steuerung des FEMM-Simulations-Workflows.
+Stellt die korrekte und explizite Label-Platzierung für die geschachtelten
+Wandler-Baugruppen wieder her.
 """
 
 import json
@@ -11,8 +13,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import femm
-
-from server.utils import calculate_label_positions
 
 
 def calculate_instantaneous_current(peak_current, phase_shift_deg, angle_deg):
@@ -34,9 +34,40 @@ def draw_rect_explicitly(center_x, center_y, width, height):
     femm.mi_addsegment(x1, y2, x1, y1)
 
 
-def run_single_simulation(
-    femm_path, step_config, library, params, angle_deg, run_identifier
+def create_standalone_object(
+    center_x, center_y, width, height, rotation_deg, material, circuit, group_id
 ):
+    """
+    Zeichnet ein einzelnes, rotiertes Rechteck für eigenständige Bauteile,
+    erstellt Knoten explizit und platziert das Label.
+    """
+    corners = [
+        (-width / 2, -height / 2),
+        (width / 2, -height / 2),
+        (width / 2, height / 2),
+        (-width / 2, height / 2),
+    ]
+    rad = np.deg2rad(rotation_deg)
+    cos_a, sin_a = np.cos(rad), np.sin(rad)
+
+    rotated_corners = []
+    for px, py in corners:
+        rx = px * cos_a - py * sin_a
+        ry = px * sin_a + py * cos_a
+        rotated_corners.append((rx + center_x, ry + center_y))
+
+    for k in range(4):
+        p1 = rotated_corners[k]
+        p2 = rotated_corners[(k + 1) % 4]
+        femm.mi_addsegment(p1[0], p1[1], p2[0], p2[1])
+
+    femm.mi_addblocklabel(center_x, center_y)
+    femm.mi_selectlabel(center_x, center_y)
+    femm.mi_setblockprop(material, 1, 0, circuit, 0, group_id, 0)
+    femm.mi_clearselected()
+
+
+def run_single_simulation(femm_path, step_config, params, angle_deg, run_identifier):
     """Führt eine einzelne FEMM-Analyse für einen Phasenwinkel durch."""
     femm.openfemm(True)
     femm.newdocument(0)
@@ -60,24 +91,21 @@ def run_single_simulation(
         )
         femm.mi_addcircprop(phase["name"], inst_current, 1)
 
-    # Schritt 1: Zeichne die gesamte Geometrie OHNE Labels
     sim_raum = step_config["simulation_meta"]["simulationsraum"]
     sim_length, sim_breadth = float(sim_raum["Laenge"]), float(sim_raum["Breite"])
     femm.mi_drawrectangle(
         -sim_length / 2, -sim_breadth / 2, sim_length / 2, sim_breadth / 2
     )
 
-    for asm in step_config["assemblies"]:
+    # --- Baugruppen zeichnen (explizite Methode) ---
+    for i, asm in enumerate(step_config["assemblies"]):
         pos = asm["position"]
-        rail = next(
-            r
-            for r in library["components"]["copperRails"]
-            if r["templateProductInformation"]["name"] == asm["copperRailName"]
-        )
+        rail = asm["copperRail_details"]
         trans = asm["transformer_details"]
         r_geo = rail["specificProductInformation"]["geometry"]
         t_geo = trans["specificProductInformation"]["geometry"]
 
+        # 1. Geometrien zeichnen
         draw_rect_explicitly(
             pos["x"], pos["y"], t_geo["coreOuterWidth"], t_geo["coreOuterHeight"]
         )
@@ -86,98 +114,51 @@ def run_single_simulation(
         )
         draw_rect_explicitly(pos["x"], pos["y"], r_geo["width"], r_geo["height"])
 
-    # KORREKTUR: Fehlender Code zum Zeichnen der eigenständigen Bauteile wieder eingefügt
-    for comp in step_config.get("standAloneComponents", []):
-        sheet = next(
-            (
-                s
-                for s in library.get("components", {}).get("transformerSheets", [])
-                if s.get("templateProductInformation", {}).get("name")
-                == comp.get("name")
-            ),
-            None,
+        # 2. Labels an korrekten, versetzten Positionen platzieren
+        # Kupfer-Label im Zentrum
+        femm.mi_addblocklabel(pos["x"], pos["y"])
+        femm.mi_selectlabel(pos["x"], pos["y"])
+        femm.mi_setblockprop("Copper", 1, 0, asm["phaseName"], 0, i * 10 + 1, 0)
+        femm.mi_clearselected()
+
+        # Stahl-Label im Kernmaterial
+        label_x_core = (
+            pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
         )
+        femm.mi_addblocklabel(label_x_core, pos["y"])
+        femm.mi_selectlabel(label_x_core, pos["y"])
+        femm.mi_setblockprop("M-36 Steel", 1, 0, "<None>", 0, i * 10 + 2, 0)
+        femm.mi_clearselected()
+
+        # Luft-Label im Luftspalt zwischen Kern und Schiene
+        label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
+        femm.mi_addblocklabel(label_x_air_gap, pos["y"])
+        femm.mi_selectlabel(label_x_air_gap, pos["y"])
+        femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
+        femm.mi_clearselected()
+
+    # --- Eigenständige Bauteile zeichnen ---
+    for i, comp in enumerate(step_config.get("standAloneComponents", [])):
+        sheet = comp.get("component_details")
         if not sheet:
             continue
 
         s_geo = sheet["specificProductInformation"]["geometry"]
         s_pos = comp["position"]
-        rotation_deg = float(comp.get("rotation", 0))
-
-        w, h = s_geo["width"], s_geo["height"]
+        rotation = float(comp.get("rotation", 0))
         x, y = float(s_pos["x"]), float(s_pos["y"])
+        w, h = float(s_geo["width"]), float(s_geo["height"])
+        material = s_geo.get("material", "M-36 Steel")
 
-        corners = [(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)]
-        rad = np.deg2rad(rotation_deg)
-        cos_a, sin_a = np.cos(rad), np.sin(rad)
+        create_standalone_object(x, y, w, h, rotation, material, "<None>", 100 + i)
 
-        rotated_corners = []
-        for px, py in corners:
-            rx = px * cos_a - py * sin_a
-            ry = px * sin_a + py * cos_a
-            rotated_corners.append((rx + x, ry + y))
+    # --- Air-Label für den Umgebungsraum ---
+    femm.mi_addblocklabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
+    femm.mi_selectlabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
+    femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
+    femm.mi_clearselected()
 
-        for k in range(4):
-            p1 = rotated_corners[k]
-            p2 = rotated_corners[(k + 1) % 4]
-            femm.mi_addsegment(p1[0], p1[1], p2[0], p2[1])
-
-    # Schritt 2: Labels DYNAMISCH für den aktuellen Schritt berechnen und platzieren
-    current_positions = {
-        asm["phaseName"]: asm["position"] for asm in step_config["assemblies"]
-    }
-    material_labels = calculate_label_positions(
-        step_config["assemblies"],
-        step_config.get("standAloneComponents", []),
-        current_positions,
-        library,
-        sim_raum,
-    )
-
-    for label in material_labels:
-        x, y, material = float(label["x"]), float(label["y"]), label["material"]
-        circuit_name = "<None>"
-        group_num = 0
-
-        # Finde zugehörige Baugruppe für Kupfer- und Stahl-Labels
-        for i, asm in enumerate(step_config["assemblies"]):
-            pos = asm["position"]
-            if (
-                material == "Copper"
-                and abs(pos["x"] - x) < 1e-6
-                and abs(pos["y"] - y) < 1e-6
-            ):
-                circuit_name = asm["phaseName"]
-                group_num = i * 10 + 1
-                break
-
-            trans = asm["transformer_details"]
-            t_geo = trans["specificProductInformation"]["geometry"]
-            label_x_core_calc = (
-                pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
-            )
-            if (
-                material == "M-36 Steel"
-                and abs(label_x_core_calc - x) < 1e-6
-                and abs(pos["y"] - y) < 1e-6
-            ):
-                group_num = i * 10 + 2
-                break
-
-        # Gruppennummer für eigenständige Bauteile
-        if group_num == 0 and material != "Air" and material != "Copper":
-            for i, comp in enumerate(step_config.get("standAloneComponents", [])):
-                pos = comp["position"]
-                if abs(float(pos["x"]) - x) < 1e-6 and abs(float(pos["y"]) - y) < 1e-6:
-                    group_num = 100 + i
-                    break
-
-        femm.mi_addblocklabel(x, y)
-        femm.mi_selectlabel(x, y)
-        femm.mi_setblockprop(material, 1, 0, circuit_name, 0, group_num, 0)
-        femm.mi_clearselected()
-
-    # Schritt 3: Analyse starten
+    # --- Analyse starten ---
     femm.mi_makeABC(7, max(sim_length, sim_breadth) * 1.5, 0, 0, 0)
     femm.mi_zoomnatural()
 
@@ -187,7 +168,6 @@ def run_single_simulation(
     femm.mi_loadsolution()
 
     results = []
-    # Ergebnisberechnung
     for i, asm in enumerate(step_config["assemblies"]):
         phase_name = asm["phaseName"]
         circuit_props = femm.mo_getcircuitproperties(phase_name)
@@ -227,8 +207,6 @@ def main():
     try:
         with open("simulation_run.json", "r", encoding="utf-8") as f:
             run_data = json.load(f)
-        with open("library.json", "r", encoding="utf-8") as f:
-            library = json.load(f)
     except FileNotFoundError as e:
         print(f"Fehler: Konfigurationsdatei nicht gefunden - {e}")
         return
@@ -277,7 +255,7 @@ def main():
 
             try:
                 single_run_results = run_single_simulation(
-                    femm_files_path, step_config, library, params, angle, run_identifier
+                    femm_files_path, step_config, params, angle, run_identifier
                 )
                 for res in single_run_results:
                     res.update(

@@ -110,68 +110,38 @@ def calculate_position_steps(
     return all_steps
 
 
-def calculate_label_positions(
-    assemblies, standalone_components, positions, library, room
-):
+def calculate_label_positions(assemblies, standalone_components, positions, room):
     """Berechnet die Positionen aller Material-Labels für die Simulation."""
     labels = []
-    all_rails = library.get("components", {}).get("copperRails", [])
-    all_transformers = library.get("components", {}).get("transformers", [])
-    all_sheets = library.get("components", {}).get("transformerSheets", [])
 
     # Labels für Baugruppen
     for asm_data in assemblies:
         phase_name = asm_data.get("phaseName")
         pos = positions.get(phase_name, {"x": 0, "y": 0})
 
-        transformer = next(
-            (
-                t
-                for t in all_transformers
-                if t["templateProductInformation"]["name"]
-                == asm_data.get("transformerName")
-            ),
-            None,
-        )
-        rail = next(
-            (
-                r
-                for r in all_rails
-                if r["templateProductInformation"]["name"]
-                == asm_data.get("copperRailName")
-            ),
-            None,
-        )
+        transformer = asm_data.get("transformer_details")
+        rail = asm_data.get("copperRail_details")
 
         if transformer and rail:
             t_geo = transformer["specificProductInformation"]["geometry"]
+            r_geo = rail["specificProductInformation"]["geometry"]
 
             labels.append({"material": "Copper", "x": pos["x"], "y": pos["y"]})
+
             steel_x = (
                 pos["x"]
                 + (t_geo.get("coreInnerWidth", 0) + t_geo.get("coreOuterWidth", 0)) / 4
             )
             labels.append({"material": "M-36 Steel", "x": steel_x, "y": pos["y"]})
+
             air_x = (
-                pos["x"]
-                + (
-                    rail["specificProductInformation"]["geometry"].get("width", 0)
-                    + t_geo.get("coreInnerWidth", 0)
-                )
-                / 4
+                pos["x"] + (r_geo.get("width", 0) + t_geo.get("coreInnerWidth", 0)) / 4
             )
             labels.append({"material": "Air", "x": air_x, "y": pos["y"]})
 
     # Labels für eigenständige Bauteile
     for comp_data in standalone_components:
-        sheet = next(
-            (
-                s
-                for s in all_sheets
-                if s["templateProductInformation"]["name"] == comp_data.get("name")
-            ),
-            None,
-        )
+        sheet = comp_data.get("component_details")
         if sheet:
             pos = comp_data.get("position", {"x": 0, "y": 0})
             material = sheet["specificProductInformation"]["geometry"].get(
@@ -188,7 +158,7 @@ def calculate_label_positions(
         {"material": "Air", "x": room_length / 2 - 10, "y": room_width / 2 - 10}
     )
     labels.append(
-        {"material": "Air", "x": room_length / 2 + 10, "y": room_width / 2 + 10}
+        {"material": "Air", "x": -room_length / 2 + 10, "y": -room_width / 2 + 10}
     )
 
     return labels

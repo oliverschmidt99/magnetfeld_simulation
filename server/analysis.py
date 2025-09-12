@@ -160,9 +160,40 @@ def visualize_setup():
             startpositionen, gewaehlte_bewegung, schrittweiten
         )
 
-    all_rails = library.get("components", {}).get("copperRails", [])
-    all_transformers = library.get("components", {}).get("transformers", [])
-    all_sheets = library.get("components", {}).get("transformerSheets", [])
+    assemblies_with_details = []
+    for asm_data in form_data.get("assemblies", []):
+        asm_data["transformer_details"] = next(
+            (
+                t
+                for t in library.get("components", {}).get("transformers", [])
+                if t.get("templateProductInformation", {}).get("name")
+                == asm_data.get("transformerName")
+            ),
+            None,
+        )
+        asm_data["copperRail_details"] = next(
+            (
+                r
+                for r in library.get("components", {}).get("copperRails", [])
+                if r.get("templateProductInformation", {}).get("name")
+                == asm_data.get("copperRailName")
+            ),
+            None,
+        )
+        assemblies_with_details.append(asm_data)
+
+    standalone_with_details = []
+    for comp_data in form_data.get("standAloneComponents", []):
+        comp_data["component_details"] = next(
+            (
+                s
+                for s in library.get("components", {}).get("transformerSheets", [])
+                if s.get("templateProductInformation", {}).get("name")
+                == comp_data.get("name")
+            ),
+            None,
+        )
+        standalone_with_details.append(comp_data)
 
     scenes = []
     coordinate_summary = []
@@ -171,42 +202,25 @@ def visualize_setup():
         step_name = f"Pos {i}" if i > 0 else "Start"
         svg_elements = []
 
-        # --- KORREKTUR: Fehlende Argumente hinzugefügt ---
+        # KORRIGIERTER AUFRUF
         labels = calculate_label_positions(
-            form_data.get("assemblies", []),
-            form_data.get("standAloneComponents", []),
+            assemblies_with_details,
+            standalone_with_details,
             step,
-            library,
             spielraum,
         )
 
         step_components = []
 
         # Baugruppen zeichnen
-        for asm in form_data.get("assemblies", []):
+        for asm in assemblies_with_details:
             phase_name = asm.get("phaseName")
             pos = step.get(phase_name)
             if not pos:
                 continue
 
-            transformer = next(
-                (
-                    t
-                    for t in all_transformers
-                    if t["templateProductInformation"]["name"]
-                    == asm.get("transformerName")
-                ),
-                None,
-            )
-            rail = next(
-                (
-                    r
-                    for r in all_rails
-                    if r["templateProductInformation"]["name"]
-                    == asm.get("copperRailName")
-                ),
-                None,
-            )
+            transformer = asm.get("transformer_details")
+            rail = asm.get("copperRail_details")
 
             if transformer and rail:
                 t_geo = transformer["specificProductInformation"]["geometry"]
@@ -262,15 +276,8 @@ def visualize_setup():
                 )
 
         # Eigenständige Bauteile zeichnen
-        for comp in form_data.get("standAloneComponents", []):
-            sheet = next(
-                (
-                    s
-                    for s in all_sheets
-                    if s["templateProductInformation"]["name"] == comp.get("name")
-                ),
-                None,
-            )
+        for comp in standalone_with_details:
+            sheet = comp.get("component_details")
             if sheet:
                 s_geo = sheet["specificProductInformation"]["geometry"]
 

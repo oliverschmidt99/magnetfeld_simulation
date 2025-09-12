@@ -120,12 +120,52 @@ def generate_simulation():
         startpositionen, bewegungs_richtungen, schrittweiten
     )
 
+    assemblies_with_details = []
+    for assembly_data in data.get("assemblies", []):
+        transformer_details = next(
+            (
+                t
+                for t in library_data.get("components", {}).get("transformers", [])
+                if t.get("templateProductInformation", {}).get("name")
+                == assembly_data.get("transformerName")
+            ),
+            None,
+        )
+        rail_details = next(
+            (
+                r
+                for r in library_data.get("components", {}).get("copperRails", [])
+                if r.get("templateProductInformation", {}).get("name")
+                == assembly_data.get("copperRailName")
+            ),
+            None,
+        )
+        if transformer_details:
+            assembly_data["transformer_details"] = transformer_details
+        if rail_details:
+            assembly_data["copperRail_details"] = rail_details
+        assemblies_with_details.append(assembly_data)
+
+    standalone_with_details = []
+    for component_data in data.get("standAloneComponents", []):
+        component_details = next(
+            (
+                s
+                for s in library_data.get("components", {}).get("transformerSheets", [])
+                if s.get("templateProductInformation", {}).get("name")
+                == component_data.get("name")
+            ),
+            None,
+        )
+        if component_details:
+            component_data["component_details"] = component_details
+        standalone_with_details.append(component_data)
+
     # KORRIGIERTER AUFRUF
     initial_labels = calculate_label_positions(
-        data.get("assemblies", []),
-        data.get("standAloneComponents", []),
+        assemblies_with_details,
+        standalone_with_details,
         leiter_bewegungspfade[0],
-        library_data,
         spielraum,
     )
 
@@ -135,20 +175,9 @@ def generate_simulation():
         phase["peakCurrentA"] = peak_current
 
     final_assemblies = []
-    for assembly_data in data.get("assemblies", []):
+    for assembly_data in assemblies_with_details:
         phase_name = assembly_data.get("phaseName")
         if startpositionen and f"x_{phase_name}" in startpositionen:
-            transformer_details = next(
-                (
-                    t
-                    for t in library_data.get("components", {}).get("transformers", [])
-                    if t.get("templateProductInformation", {}).get("name")
-                    == assembly_data.get("transformerName")
-                ),
-                None,
-            )
-            if transformer_details:
-                assembly_data["transformer_details"] = transformer_details
             assembly_data["calculated_positions"] = [
                 step[phase_name] for step in leiter_bewegungspfade
             ]
@@ -159,7 +188,7 @@ def generate_simulation():
         "scenarioParams": sim_params,
         "electricalSystem": electrical_system,
         "assemblies": final_assemblies,
-        "standAloneComponents": data.get("standAloneComponents"),
+        "standAloneComponents": standalone_with_details,
         "simulation_meta": {
             "nennstrom_A": nennstrom_str,
             "bewegungsgruppe": bewegungs_richtungen,

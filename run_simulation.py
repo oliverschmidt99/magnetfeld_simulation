@@ -1,9 +1,10 @@
-# run_simulation.py (Final korrigierte Version)
+# run_simulation.py (Finale Version)
 
 """
 Haupt-Skript zur Steuerung des FEMM-Simulations-Workflows.
-Stellt die korrekte und explizite Label-Platzierung für die geschachtelten
-Wandler-Baugruppen wieder her.
+Kombiniert die robuste, funktionsbasierte Erstellung von eigenständigen
+Bauteilen mit der expliziten und korrekten Label-Platzierung für die
+komplexen Wandler-Baugruppen.
 """
 
 import json
@@ -38,8 +39,8 @@ def create_standalone_object(
     center_x, center_y, width, height, rotation_deg, material, circuit, group_id
 ):
     """
-    Zeichnet ein einzelnes, rotiertes Rechteck für eigenständige Bauteile,
-    erstellt Knoten explizit und platziert das Label.
+    Zeichnet ein einzelnes, rotiertes Rechteck, erstellt die Knotenpunkte
+    explizit und platziert sofort das zugehörige Material-Label.
     """
     corners = [
         (-width / 2, -height / 2),
@@ -55,6 +56,9 @@ def create_standalone_object(
         rx = px * cos_a - py * sin_a
         ry = px * sin_a + py * cos_a
         rotated_corners.append((rx + center_x, ry + center_y))
+
+    for corner_x, corner_y in rotated_corners:
+        femm.mi_addnode(corner_x, corner_y)
 
     for k in range(4):
         p1 = rotated_corners[k]
@@ -97,7 +101,7 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
         -sim_length / 2, -sim_breadth / 2, sim_length / 2, sim_breadth / 2
     )
 
-    # --- Baugruppen zeichnen (explizite Methode) ---
+    # --- Baugruppen zeichnen (explizite Methode für korrekte Labels) ---
     for i, asm in enumerate(step_config["assemblies"]):
         pos = asm["position"]
         rail = asm["copperRail_details"]
@@ -105,7 +109,6 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
         r_geo = rail["specificProductInformation"]["geometry"]
         t_geo = trans["specificProductInformation"]["geometry"]
 
-        # 1. Geometrien zeichnen
         draw_rect_explicitly(
             pos["x"], pos["y"], t_geo["coreOuterWidth"], t_geo["coreOuterHeight"]
         )
@@ -114,14 +117,11 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
         )
         draw_rect_explicitly(pos["x"], pos["y"], r_geo["width"], r_geo["height"])
 
-        # 2. Labels an korrekten, versetzten Positionen platzieren
-        # Kupfer-Label im Zentrum
         femm.mi_addblocklabel(pos["x"], pos["y"])
         femm.mi_selectlabel(pos["x"], pos["y"])
         femm.mi_setblockprop("Copper", 1, 0, asm["phaseName"], 0, i * 10 + 1, 0)
         femm.mi_clearselected()
 
-        # Stahl-Label im Kernmaterial
         label_x_core = (
             pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
         )
@@ -130,14 +130,13 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
         femm.mi_setblockprop("M-36 Steel", 1, 0, "<None>", 0, i * 10 + 2, 0)
         femm.mi_clearselected()
 
-        # Luft-Label im Luftspalt zwischen Kern und Schiene
         label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
         femm.mi_addblocklabel(label_x_air_gap, pos["y"])
         femm.mi_selectlabel(label_x_air_gap, pos["y"])
         femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
         femm.mi_clearselected()
 
-    # --- Eigenständige Bauteile zeichnen ---
+    # --- Eigenständige Bauteile zeichnen (mit der robusten Funktion) ---
     for i, comp in enumerate(step_config.get("standAloneComponents", [])):
         sheet = comp.get("component_details")
         if not sheet:
@@ -152,9 +151,17 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
 
         create_standalone_object(x, y, w, h, rotation, material, "<None>", 100 + i)
 
-    # --- Air-Label für den Umgebungsraum ---
+    # --- Air-Labels für den Raum ---
+    # Innerhalb des Spielraums
     femm.mi_addblocklabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
     femm.mi_selectlabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
+    femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
+    femm.mi_clearselected()
+
+    # Außerhalb des Spielraums (für offene Randbedingungen)
+    label_x_outer = sim_length / 2 + 10
+    femm.mi_addblocklabel(label_x_outer, 0)
+    femm.mi_selectlabel(label_x_outer, 0)
     femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
     femm.mi_clearselected()
 

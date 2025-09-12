@@ -1,15 +1,13 @@
-# run_simulation.py (Finale Version)
-
+# run_simulation.py (Aktualisiert – Speichert alle FEMM-Dateien)
 """
 Haupt-Skript zur Steuerung des FEMM-Simulations-Workflows.
-Kombiniert die robuste, funktionsbasierte Erstellung von eigenständigen
-Bauteilen mit der expliziten und korrekten Label-Platzierung für die
-komplexen Wandler-Baugruppen.
+Nutzt Multiprocessing und speichert alle generierten .fem- und .ans-Dateien.
 """
 
 import json
 import os
 import shutil
+import multiprocessing
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -39,8 +37,7 @@ def create_standalone_object(
     center_x, center_y, width, height, rotation_deg, material, circuit, group_id
 ):
     """
-    Zeichnet ein einzelnes, rotiertes Rechteck, erstellt die Knotenpunkte
-    explizit und platziert sofort das zugehörige Material-Label.
+    Zeichnet ein einzelnes, rotiertes Rechteck und platziert das Material-Label.
     """
     corners = [
         (-width / 2, -height / 2),
@@ -51,18 +48,16 @@ def create_standalone_object(
     rad = np.deg2rad(rotation_deg)
     cos_a, sin_a = np.cos(rad), np.sin(rad)
 
-    rotated_corners = []
-    for px, py in corners:
-        rx = px * cos_a - py * sin_a
-        ry = px * sin_a + py * cos_a
-        rotated_corners.append((rx + center_x, ry + center_y))
+    rotated_corners = [
+        (px * cos_a - py * sin_a + center_x, px * sin_a + py * cos_a + center_y)
+        for px, py in corners
+    ]
 
     for corner_x, corner_y in rotated_corners:
         femm.mi_addnode(corner_x, corner_y)
 
     for k in range(4):
-        p1 = rotated_corners[k]
-        p2 = rotated_corners[(k + 1) % 4]
+        p1, p2 = rotated_corners[k], rotated_corners[(k + 1) % 4]
         femm.mi_addsegment(p1[0], p1[1], p2[0], p2[1])
 
     femm.mi_addblocklabel(center_x, center_y)
@@ -71,12 +66,24 @@ def create_standalone_object(
     femm.mi_clearselected()
 
 
-def run_single_simulation(femm_path, step_config, params, angle_deg, run_identifier):
-    """Führt eine einzelne FEMM-Analyse für einen Phasenwinkel durch."""
+def run_single_simulation(task_params):
+    """
+    Führt eine einzelne FEMM-Analyse durch.
+    Diese Funktion dient als Worker für den Multiprocessing-Pool.
+    """
+    (
+        femm_files_dir,
+        step_config,
+        global_params,
+        angle_deg,
+        run_identifier,
+        step_positions,
+    ) = task_params
+
     femm.openfemm(True)
     femm.newdocument(0)
 
-    scenario_params = params.get("scenarioParams", {})
+    scenario_params = global_params.get("scenarioParams", {})
     freq = float(scenario_params.get("frequencyHz", 50))
     depth = float(scenario_params.get("problemDepthM", 30))
     core_perm = float(scenario_params.get("coreRelPermeability", 2500))
@@ -101,13 +108,10 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
         -sim_length / 2, -sim_breadth / 2, sim_length / 2, sim_breadth / 2
     )
 
-    # --- Baugruppen zeichnen (explizite Methode für korrekte Labels) ---
     for i, asm in enumerate(step_config["assemblies"]):
         pos = asm["position"]
-        rail = asm["copperRail_details"]
-        trans = asm["transformer_details"]
-        r_geo = rail["specificProductInformation"]["geometry"]
-        t_geo = trans["specificProductInformation"]["geometry"]
+        t_geo = asm["transformer_details"]["specificProductInformation"]["geometry"]
+        r_geo = asm["copperRail_details"]["specificProductInformation"]["geometry"]
 
         draw_rect_explicitly(
             pos["x"], pos["y"], t_geo["coreOuterWidth"], t_geo["coreOuterHeight"]
@@ -136,40 +140,33 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
         femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
         femm.mi_clearselected()
 
-    # --- Eigenständige Bauteile zeichnen (mit der robusten Funktion) ---
     for i, comp in enumerate(step_config.get("standAloneComponents", [])):
-        sheet = comp.get("component_details")
-        if not sheet:
-            continue
-
-        s_geo = sheet["specificProductInformation"]["geometry"]
+        s_geo = comp["component_details"]["specificProductInformation"]["geometry"]
         s_pos = comp["position"]
-        rotation = float(comp.get("rotation", 0))
-        x, y = float(s_pos["x"]), float(s_pos["y"])
-        w, h = float(s_geo["width"]), float(s_geo["height"])
-        material = s_geo.get("material", "M-36 Steel")
+        create_standalone_object(
+            float(s_pos["x"]),
+            float(s_pos["y"]),
+            float(s_geo["width"]),
+            float(s_geo["height"]),
+            float(comp.get("rotation", 0)),
+            s_geo.get("material", "M-36 Steel"),
+            "<None>",
+            100 + i,
+        )
 
-        create_standalone_object(x, y, w, h, rotation, material, "<None>", 100 + i)
-
-    # --- Air-Labels für den Raum ---
-    # Innerhalb des Spielraums
-    femm.mi_addblocklabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
-    femm.mi_selectlabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
+    femm.mi_addblocklabel(sim_length / 2 - 5, sim_breadth / 2 - 5)
+    femm.mi_selectlabel(sim_length / 2 - 5, sim_breadth / 2 - 5)
     femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
     femm.mi_clearselected()
 
-    # Außerhalb des Spielraums (für offene Randbedingungen)
-    label_x_outer = sim_length / 2 + 10
-    femm.mi_addblocklabel(label_x_outer, 0)
-    femm.mi_selectlabel(label_x_outer, 0)
+    femm.mi_addblocklabel(sim_length / 2 + 5, 0)
+    femm.mi_selectlabel(sim_length / 2 + 5, 0)
     femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
     femm.mi_clearselected()
 
-    # --- Analyse starten ---
     femm.mi_makeABC(7, max(sim_length, sim_breadth) * 1.5, 0, 0, 0)
-    femm.mi_zoomnatural()
-
-    fem_file = os.path.join(femm_path, f"{run_identifier}.fem")
+    # KORREKTUR: Speichert die Datei im dafür vorgesehenen Ordner
+    fem_file = os.path.join(femm_files_dir, f"{run_identifier}.fem")
     femm.mi_saveas(fem_file)
     femm.mi_analyze(1)
     femm.mi_loadsolution()
@@ -177,31 +174,31 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
     results = []
     for i, asm in enumerate(step_config["assemblies"]):
         phase_name = asm["phaseName"]
-        circuit_props = femm.mo_getcircuitproperties(phase_name)
-        i_sec_complex = circuit_props[0] + 1j * circuit_props[1]
-        group_num_core = i * 10 + 2
-        femm.mo_groupselectblock(group_num_core)
+        i_sec_real, i_sec_imag, _ = femm.mo_getcircuitproperties(phase_name)
+        i_sec_complex = i_sec_real + 1j * i_sec_imag
+
+        femm.mo_groupselectblock(i * 10 + 2)
         b_avg = femm.mo_blockintegral(18)
-        h_avg = femm.mo_blockintegral(19)
         femm.mo_clearblock()
+
         phase_data = next(
             p for p in step_config["electricalSystem"] if p["name"] == phase_name
         )
         i_prim = calculate_instantaneous_current(
             phase_data["peakCurrentA"], phase_data["phaseShiftDeg"], angle_deg
         )
-        results.append(
-            {
-                "phaseAngle": angle_deg,
-                "conductor": phase_name,
-                "iPrimA": i_prim,
-                "iSecAbs_A": np.abs(i_sec_complex),
-                "iSecReal_A": np.real(i_sec_complex),
-                "iSecImag_A": np.imag(i_sec_complex),
-                "bAvgMagnitude_T": b_avg,
-                "hAvgMagnitude_A_m": h_avg,
-            }
-        )
+
+        res = {
+            "phaseAngle": angle_deg,
+            "conductor": phase_name,
+            "iPrimA": i_prim,
+            "iSecAbs_A": abs(i_sec_complex),
+            "iSecReal_A": i_sec_real,
+            "iSecImag_A": i_sec_imag,
+            "bAvgMagnitude_T": b_avg,
+        }
+        res.update({f"pos_{k.lower()}_mm": v for k, v in step_positions.items()})
+        results.append(res)
 
     femm.closefemm()
     return results
@@ -209,21 +206,18 @@ def run_single_simulation(femm_path, step_config, params, angle_deg, run_identif
 
 def main():
     """Hauptfunktion zur Steuerung des Simulationslaufs."""
-    print("--- Starte Python-Simulations-Workflow ---")
+    print("--- Starte parallelen Python-Simulations-Workflow ---")
 
     try:
         with open("simulation_run.json", "r", encoding="utf-8") as f:
             run_data = json.load(f)
-    except FileNotFoundError as e:
-        print(f"Fehler: Konfigurationsdatei nicht gefunden - {e}")
-        return
-    except json.JSONDecodeError as e:
-        print(f"Fehler: JSON-Datei ist fehlerhaft - {e}")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Fehler beim Laden der Konfigurationsdatei: {e}")
         return
 
     now = datetime.now()
     date_str, time_str = now.strftime("%Y%m%d"), now.strftime("%H%M%S")
-    base_results_path = os.path.join("res", date_str, f"{time_str}_position_sweep")
+    base_results_path = os.path.join("res", date_str, f"{time_str}_parallel_sweep")
     os.makedirs(base_results_path, exist_ok=True)
     shutil.copy(
         "simulation_run.json", os.path.join(base_results_path, "simulation_run.json")
@@ -246,62 +240,58 @@ def main():
         "I_3_mes": float(params["scenarioParams"]["I_3_mes"]),
     }
 
+    num_processes = os.cpu_count()
+    print(f"Nutze {num_processes} Prozessorkerne für die Parallelisierung.")
+
     for i, step in enumerate(position_steps):
         pos_name = f"pos_{i+1}"
         print(f"\n>> Verarbeite {pos_name}")
 
         for current_name, current_value in measured_currents.items():
-            print(f"--> Führe Simulation für {current_name} = {current_value}A durch")
+            print(
+                f"--> Bereite Simulation für {current_name} = {current_value}A vor..."
+            )
 
-            master_results = []
+            # KORREKTUR: Strukturiertes Verzeichnis für die .fem/.ans Dateien
+            femm_files_path = os.path.join(
+                base_results_path, "femm_files", f"{pos_name}_{current_name}"
+            )
+            os.makedirs(femm_files_path, exist_ok=True)
+
             step_config = run_data.copy()
             step_config["electricalSystem"] = [
-                phase.copy() for phase in run_data["electricalSystem"]
+                p.copy() for p in run_data["electricalSystem"]
             ]
-            # Setze den Strom für diesen Durchlauf
             for phase in step_config["electricalSystem"]:
                 phase["peakCurrentA"] = current_value * np.sqrt(2)
 
             step_config["assemblies"] = [asm.copy() for asm in run_data["assemblies"]]
-            step_config["standAloneComponents"] = [
-                comp.copy() for comp in run_data.get("standAloneComponents", [])
-            ]
-
             for asm_cfg in step_config["assemblies"]:
-                phase_name = asm_cfg["phaseName"]
-                if phase_name in step:
-                    asm_cfg["position"] = step[phase_name]
+                if asm_cfg["phaseName"] in step:
+                    asm_cfg["position"] = step[asm_cfg["phaseName"]]
 
-            # Phasenwinkel-Sweep für die aktuelle Position und Strom
+            tasks = []
             for angle in phase_angles:
                 run_identifier = f"{pos_name}_{current_name}_angle{int(angle)}"
-                femm_files_path = os.path.join(base_results_path, "femm_files")
-                os.makedirs(femm_files_path, exist_ok=True)
+                flat_positions = {
+                    f"{p}_{ax}": val
+                    for p, coords in step.items()
+                    for ax, val in coords.items()
+                }
+                task = (
+                    femm_files_path,
+                    step_config,
+                    params,
+                    angle,
+                    run_identifier,
+                    flat_positions,
+                )
+                tasks.append(task)
 
-                try:
-                    single_run_results = run_single_simulation(
-                        femm_files_path,
-                        step_config,
-                        params,
-                        angle,
-                        run_identifier,
-                    )
-                    for res in single_run_results:
-                        res.update(
-                            {
-                                "pos_x_L1_mm": step.get("L1", {}).get("x"),
-                                "pos_y_L1_mm": step.get("L1", {}).get("y"),
-                                "pos_x_L2_mm": step.get("L2", {}).get("x"),
-                                "pos_y_L2_mm": step.get("L2", {}).get("y"),
-                                "pos_x_L3_mm": step.get("L3", {}).get("x"),
-                                "pos_y_L3_mm": step.get("L3", {}).get("y"),
-                            }
-                        )
-                    master_results.extend(single_run_results)
-                except (RuntimeError, OSError, FileNotFoundError) as e:
-                    print(f"!!!! Fehler bei der Simulation für Winkel {angle}°: {e}")
-                    femm.closefemm()
+            with multiprocessing.Pool(processes=num_processes) as pool:
+                results_list = pool.map(run_single_simulation, tasks)
 
+            master_results = [item for sublist in results_list for item in sublist]
             if master_results:
                 df = pd.DataFrame(master_results)
                 csv_filename = f"{pos_name}_{current_name}_summary.csv"
@@ -309,8 +299,11 @@ def main():
                 df.to_csv(csv_path, index=False)
                 print(f"   -> Ergebnisse in '{csv_filename}' gespeichert.")
 
+            # KORREKTUR: Temporäre Verzeichnisse werden nicht mehr erstellt und müssen daher nicht gelöscht werden.
+
     print("\n--- Simulations-Workflow erfolgreich abgeschlossen. ---")
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

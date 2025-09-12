@@ -95,6 +95,8 @@ def generate_simulation():
     sim_params = data.get("simulationParams", {})
     nennstrom_str = sim_params.get("ratedCurrent")
     sim_params["type"] = "none"
+    # NEU: Permeabilität als Standardwert hinzufügen
+    sim_params["coreRelPermeability"] = sim_params.get("coreRelPermeability", 2500)
 
     try:
         nennstrom_float = float(nennstrom_str)
@@ -182,9 +184,20 @@ def generate_simulation():
             ]
             final_assemblies.append(assembly_data)
 
+    # NEU: Materialdefinitionen werden hier erstellt
+    materials = {
+        "air": {"name": "Air"},
+        "copper": {"name": "Copper"},
+        "steel": {
+            "name": "M-36 Steel",
+            "is_steel": True,  # Ein Flag, um die Permeabilität zu setzen
+        },
+    }
+
     simulation_data = {
         "description": "Konfiguration erstellt via Web-UI",
         "scenarioParams": sim_params,
+        "materials": materials,  # NEU
         "electricalSystem": electrical_system,
         "assemblies": final_assemblies,
         "standAloneComponents": standalone_with_details,

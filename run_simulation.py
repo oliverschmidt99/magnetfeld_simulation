@@ -1,4 +1,4 @@
-# run_simulation.py (Robuste Geometrie-Erstellung und Fehlerbehebung)
+# run_simulation.py (Finale Version mit Pylint-Korrekturen)
 
 """
 Haupt-Skript zur Steuerung des FEMM-Simulations-Workflows.
@@ -23,6 +23,20 @@ def calculate_instantaneous_current(peak_current, phase_shift_deg, angle_deg):
     return peak_current * np.cos(np.deg2rad(angle_deg + phase_shift_deg))
 
 
+def draw_rect_explicitly(center_x, center_y, width, height):
+    """Zeichnet ein Rechteck explizit über Nodes und Segmente."""
+    x1, y1 = center_x - width / 2, center_y - height / 2
+    x2, y2 = center_x + width / 2, center_y + height / 2
+    femm.mi_addnode(x1, y1)
+    femm.mi_addnode(x2, y1)
+    femm.mi_addnode(x2, y2)
+    femm.mi_addnode(x1, y2)
+    femm.mi_addsegment(x1, y1, x2, y1)
+    femm.mi_addsegment(x2, y1, x2, y2)
+    femm.mi_addsegment(x2, y2, x1, y2)
+    femm.mi_addsegment(x1, y2, x1, y1)
+
+
 def run_single_simulation(
     femm_path, step_config, library, params, angle_deg, run_identifier
 ):
@@ -30,113 +44,69 @@ def run_single_simulation(
     femm.openfemm(True)
     femm.newdocument(0)
 
-    # Problemdefinition
     scenario_params = params.get("scenarioParams", {})
     freq = float(scenario_params.get("frequencyHz", 50))
     depth = float(scenario_params.get("problemDepthM", 30))
     core_perm = float(scenario_params.get("coreRelPermeability", 2500))
     femm.mi_probdef(freq, "millimeters", "planar", 1e-8, depth, 30)
 
-    # Materialdefinition
-    materials = {"Air", "Copper"}
-    for asm in step_config.get("assemblies", []):
-        t_details = asm.get("transformer_details", {})
-        core_material = (
-            t_details.get("specificProductInformation", {})
-            .get("geometry", {})
-            .get("coreMaterial", "M-36 Steel")
-        )
-        materials.add(core_material)
-    for comp in step_config.get("standAloneComponents", []):
-        sheet_details = next(
-            (
-                s
-                for s in library.get("components", {}).get("transformerSheets", [])
-                if s.get("templateProductInformation", {}).get("name")
-                == comp.get("name")
-            ),
-            None,
-        )
-        if sheet_details:
-            materials.add(
-                sheet_details.get("specificProductInformation", {})
-                .get("geometry", {})
-                .get("material", "M-36 Steel")
-            )
-
+    materials = {"Air", "Copper", "M-36 Steel"}
     for mat_name in materials:
         if "steel" in mat_name.lower():
             femm.mi_addmaterial(mat_name, core_perm, core_perm, 0)
         else:
             femm.mi_getmaterial(mat_name)
 
-    # Stromkreisdefinition
     for phase in step_config["electricalSystem"]:
         inst_current = calculate_instantaneous_current(
             phase["peakCurrentA"], phase["phaseShiftDeg"], angle_deg
         )
         femm.mi_addcircprop(phase["name"], inst_current, 1)
 
-    # Geometrieaufbau
     sim_raum = step_config["simulation_meta"]["simulationsraum"]
     sim_length, sim_breadth = float(sim_raum["Laenge"]), float(sim_raum["Breite"])
     femm.mi_drawrectangle(
         -sim_length / 2, -sim_breadth / 2, sim_length / 2, sim_breadth / 2
     )
 
-    # Baugruppen zeichnen
     for i, asm in enumerate(step_config["assemblies"]):
         pos = asm["position"]
-        rail_name = asm["copperRailName"]
         rail = next(
             r
             for r in library["components"]["copperRails"]
-            if r["templateProductInformation"]["name"] == rail_name
+            if r["templateProductInformation"]["name"] == asm["copperRailName"]
         )
         trans = asm["transformer_details"]
-
         r_geo = rail["specificProductInformation"]["geometry"]
         t_geo = trans["specificProductInformation"]["geometry"]
 
-        # Geometrie explizit mit Nodes und Segments zeichnen
-        def draw_rect_explicitly(center_x, center_y, width, height):
-            x1, y1 = center_x - width / 2, center_y - height / 2
-            x2, y2 = center_x + width / 2, center_y + height / 2
-            femm.mi_addnode(x1, y1)
-            femm.mi_addnode(x2, y1)
-            femm.mi_addnode(x2, y2)
-            femm.mi_addnode(x1, y2)
-            femm.mi_addsegment(x1, y1, x2, y1)
-            femm.mi_addsegment(x2, y1, x2, y2)
-            femm.mi_addsegment(x2, y2, x1, y2)
-            femm.mi_addsegment(x1, y2, x1, y1)
-
-        draw_rect_explicitly(pos["x"], pos["y"], r_geo["width"], r_geo["height"])
         draw_rect_explicitly(
             pos["x"], pos["y"], t_geo["coreOuterWidth"], t_geo["coreOuterHeight"]
         )
         draw_rect_explicitly(
             pos["x"], pos["y"], t_geo["coreInnerWidth"], t_geo["coreInnerHeight"]
         )
+        draw_rect_explicitly(pos["x"], pos["y"], r_geo["width"], r_geo["height"])
 
-        # Labels platzieren
         group_num_rail = i * 10 + 1
         group_num_core = i * 10 + 2
 
+        copper_material = r_geo.get("material", "Copper")
         femm.mi_addblocklabel(pos["x"], pos["y"])
         femm.mi_selectlabel(pos["x"], pos["y"])
         femm.mi_setblockprop(
-            r_geo["material"], 1, 0, asm["phaseName"], 0, group_num_rail, 0
+            copper_material, 1, 0, asm["phaseName"], 0, group_num_rail, 0
         )
+        femm.mi_clearselected()
 
+        steel_material = t_geo.get("coreMaterial", "M-36 Steel")
         label_x_core = (
             pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
         )
         femm.mi_addblocklabel(label_x_core, pos["y"])
         femm.mi_selectlabel(label_x_core, pos["y"])
-        femm.mi_setblockprop(
-            t_geo.get("material", "M-36 Steel"), 1, 0, "<None>", 0, group_num_core, 0
-        )
+        femm.mi_setblockprop(steel_material, 1, 0, "<None>", 0, group_num_core, 0)
+        femm.mi_clearselected()
 
         label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
         femm.mi_addblocklabel(label_x_air_gap, pos["y"])
@@ -144,7 +114,6 @@ def run_single_simulation(
         femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
         femm.mi_clearselected()
 
-    # Eigenständige Bauteile (mit Rotations-Logik)
     for i, comp in enumerate(step_config.get("standAloneComponents", [])):
         sheet = next(
             s
@@ -180,14 +149,19 @@ def run_single_simulation(
         femm.mi_setblockprop(s_geo["material"], 1, 0, "<None>", 0, 100 + i, 0)
         femm.mi_clearselected()
 
-    # Label für die umgebende Luft
-    femm.mi_addblocklabel(0, sim_breadth / 2 - 1)
-    femm.mi_selectlabel(0, sim_breadth / 2 - 1)
+    femm.mi_addblocklabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
+    femm.mi_selectlabel(sim_length / 2 - 10, sim_breadth / 2 - 10)
     femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
     femm.mi_clearselected()
 
-    # Randbedingung und Analyse
     femm.mi_makeABC(7, max(sim_length, sim_breadth) * 1.5, 0, 0, 0)
+
+    label_x_outer = sim_length / 2 + 10
+    femm.mi_addblocklabel(label_x_outer, 0)
+    femm.mi_selectlabel(label_x_outer, 0)
+    femm.mi_setblockprop("Air", 1, 0, "<None>", 0, 0, 0)
+    femm.mi_clearselected()
+
     femm.mi_zoomnatural()
 
     fem_file = os.path.join(femm_path, f"{run_identifier}.fem")
@@ -195,27 +169,22 @@ def run_single_simulation(
     femm.mi_analyze(1)
     femm.mi_loadsolution()
 
-    # Ergebnisse berechnen
     results = []
     for i, asm in enumerate(step_config["assemblies"]):
         phase_name = asm["phaseName"]
         circuit_props = femm.mo_getcircuitproperties(phase_name)
         i_sec_complex = circuit_props[0] + 1j * circuit_props[1]
-
         group_num_core = i * 10 + 2
         femm.mo_groupselectblock(group_num_core)
-
         b_avg = femm.mo_blockintegral(18)
         h_avg = femm.mo_blockintegral(19)
         femm.mo_clearblock()
-
         phase_data = next(
             p for p in step_config["electricalSystem"] if p["name"] == phase_name
         )
         i_prim = calculate_instantaneous_current(
             phase_data["peakCurrentA"], phase_data["phaseShiftDeg"], angle_deg
         )
-
         results.append(
             {
                 "phaseAngle": angle_deg,
@@ -301,7 +270,7 @@ def main():
                         }
                     )
                 master_results.extend(single_run_results)
-            except Exception as e:
+            except (RuntimeError, OSError, FileNotFoundError) as e:
                 print(f"!!!! Fehler bei der Simulation für Winkel {angle}°: {e}")
                 femm.closefemm()
 

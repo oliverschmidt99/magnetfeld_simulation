@@ -1,80 +1,197 @@
 document.addEventListener("DOMContentLoaded", () => {
   const runSelector = document.getElementById("run-selector");
-  const csvSelector = document.getElementById("csv-selector");
+  const positionSelector = document.getElementById("position-selector");
+  const currentSelector = document.getElementById("current-selector");
   const yAxisSelector = document.getElementById("y-axis-selector");
   const conductorSelector = document.getElementById("conductor-selector");
   const plotImg = document.getElementById("plot-img");
   const loadingMessage = document.getElementById("loading-message");
+  const previewSvg = document.getElementById("results-preview-svg");
+  const previewLoadingMessage = document.getElementById(
+    "preview-loading-message"
+  );
 
   let simulationRuns = [];
+  const storageKey = "resultsSelection";
 
-  // Lädt die Liste der Simulationsläufe beim Start
+  // Hilfsfunktion zum Speichern der Auswahl
+  const saveSelection = () => {
+    const selection = {
+      run: runSelector.value,
+      position: positionSelector.value,
+      current: currentSelector.value,
+      yAxis: yAxisSelector.value,
+    };
+    localStorage.setItem(storageKey, JSON.stringify(selection));
+  };
+
+  // Hilfsfunktion zum Laden der Auswahl
+  const loadSelection = () => {
+    return JSON.parse(localStorage.getItem(storageKey)) || {};
+  };
+
+  // Initiales Laden der Simulationsläufe
   fetch("/api/analysis/runs")
     .then((response) => response.json())
     .then((runs) => {
       simulationRuns = runs;
+      runSelector.innerHTML = '<option value="">Bitte wählen...</option>';
       if (runs.length === 0) {
         runSelector.add(new Option("Keine Simulationsläufe gefunden.", ""));
-      } else {
-        runs.forEach((run, index) => {
-          const [date, time] = run.name.split("/");
-          const formattedName = `${date.slice(0, 4)}-${date.slice(
-            4,
-            6
-          )}-${date.slice(6, 8)} ${time.slice(0, 2)}:${time.slice(
-            2,
-            4
-          )}:${time.slice(4, 6)}`;
-          runSelector.add(new Option(formattedName, index));
-        });
+        return;
       }
+      runs.forEach((run, index) => {
+        const [date, time] = run.name.split("/");
+        const formattedName = `${date.slice(0, 4)}-${date.slice(
+          4,
+          6
+        )}-${date.slice(6, 8)} ${time.slice(0, 2)}:${time.slice(
+          2,
+          4
+        )}:${time.slice(4, 6)}`;
+        runSelector.add(new Option(formattedName, index));
+      });
+
+      const lastSelection = loadSelection();
+      if (
+        lastSelection.run &&
+        runSelector.options[parseInt(lastSelection.run) + 1]
+      ) {
+        runSelector.value = lastSelection.run;
+      }
+      handleRunChange();
     });
 
-  // Funktion zum Abrufen und Anzeigen der Plots
-  const fetchAndDisplayPlot = () => {
+  // Event Listeners
+  runSelector.addEventListener("change", handleRunChange);
+  positionSelector.addEventListener("change", handlePositionChange);
+  currentSelector.addEventListener("change", handleCurrentChange);
+  yAxisSelector.addEventListener("change", () => fetchPlotData(false));
+  conductorSelector.addEventListener("change", () => fetchPlotData(false));
+
+  function handleRunChange() {
     const runIndex = runSelector.value;
-    if (runIndex === "") return;
+    const lastSelection = loadSelection();
 
+    positionSelector.innerHTML = '<option value="">--</option>';
+    if (runIndex !== "") {
+      const selectedRun = simulationRuns[runIndex];
+      selectedRun.positions.forEach((posGroup) => {
+        positionSelector.add(new Option(posGroup.replace("_", " "), posGroup));
+      });
+      positionSelector.disabled = false;
+      if (
+        lastSelection.position &&
+        Array.from(positionSelector.options).some(
+          (o) => o.value === lastSelection.position
+        )
+      ) {
+        positionSelector.value = lastSelection.position;
+      }
+    } else {
+      positionSelector.disabled = true;
+    }
+    handlePositionChange();
+  }
+
+  function handlePositionChange() {
+    const runIndex = runSelector.value;
+    const selectedPos = positionSelector.value;
+    const lastSelection = loadSelection();
+
+    currentSelector.innerHTML = '<option value="">--</option>';
+    if (runIndex !== "" && selectedPos !== "") {
+      const selectedRun = simulationRuns[runIndex];
+      Object.entries(selectedRun.currents).forEach(([key, value]) => {
+        currentSelector.add(new Option(`${key} (${value}A)`, key));
+      });
+      currentSelector.disabled = false;
+      if (
+        lastSelection.current &&
+        Array.from(currentSelector.options).some(
+          (o) => o.value === lastSelection.current
+        )
+      ) {
+        currentSelector.value = lastSelection.current;
+      }
+    } else {
+      currentSelector.disabled = true;
+    }
+    handleCurrentChange();
+  }
+
+  function handleCurrentChange() {
+    fetchPlotData(true);
+    fetchPreviewData();
+  }
+
+  function fetchPlotData(isInitialLoad = false) {
+    const runIndex = runSelector.value;
+    const posGroup = positionSelector.value;
+    const currentGroup = currentSelector.value;
+
+    if (runIndex === "" || posGroup === "" || currentGroup === "") {
+      plotImg.style.visibility = "hidden";
+      yAxisSelector.disabled = true;
+      yAxisSelector.innerHTML = '<option value="">--</option>';
+      conductorSelector.innerHTML = "";
+      return;
+    }
+
+    saveSelection();
+    const lastSelection = loadSelection();
     const selectedRun = simulationRuns[runIndex];
-    const selectedCsv = csvSelector.value;
-    if (!selectedCsv) return;
-
-    const selectedYAxis = yAxisSelector.value || "iSecAbs_A";
+    const selectedYAxis = yAxisSelector.value;
     const selectedConductors = Array.from(
       conductorSelector.querySelectorAll("input:checked")
     ).map((cb) => cb.value);
 
-    const queryParams = new URLSearchParams();
-    queryParams.append("y_axis", selectedYAxis);
+    const queryParams = new URLSearchParams({
+      run_folder: selectedRun.name,
+      pos_group: posGroup,
+      current_group: currentGroup,
+    });
+
+    if (selectedYAxis) {
+      queryParams.append("y_axis", selectedYAxis);
+    }
     selectedConductors.forEach((c) => queryParams.append("conductors[]", c));
 
     plotImg.style.visibility = "hidden";
     loadingMessage.style.display = "block";
 
-    fetch(
-      `/api/analysis/pandas_plots/${
-        selectedRun.name
-      }/${selectedCsv}?${queryParams.toString()}`
-    )
+    fetch(`/api/analysis/plot?${queryParams.toString()}`)
       .then((response) => response.json())
       .then((data) => {
         loadingMessage.style.display = "none";
         if (data.error) {
-          plotImg.style.display = "none";
-          document.getElementById(
-            "results-content"
-          ).innerHTML = `<p style="color: red;">Fehler: ${data.error}</p>`;
+          plotImg.src = "";
+          console.error("Fehler vom Server:", data.error);
           return;
         }
 
-        const isYAxisEmpty = yAxisSelector.options.length <= 1;
-        if (isYAxisEmpty) {
+        if (isInitialLoad) {
+          const currentYAxis = yAxisSelector.value;
           yAxisSelector.innerHTML = "";
           data.columns.forEach((col) => {
             yAxisSelector.add(new Option(col.name, col.value));
           });
-          yAxisSelector.disabled = false;
+          if (
+            Array.from(yAxisSelector.options).some(
+              (o) => o.value === currentYAxis
+            )
+          ) {
+            yAxisSelector.value = currentYAxis;
+          } else if (
+            lastSelection.yAxis &&
+            Array.from(yAxisSelector.options).some(
+              (o) => o.value === lastSelection.yAxis
+            )
+          ) {
+            yAxisSelector.value = lastSelection.yAxis;
+          }
         }
+        yAxisSelector.disabled = false;
 
         conductorSelector.innerHTML = "";
         data.conductors.forEach((conductor) => {
@@ -83,7 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
           checkbox.type = "checkbox";
           checkbox.value = conductor;
           checkbox.checked = true;
-          checkbox.addEventListener("change", fetchAndDisplayPlot);
+          checkbox.addEventListener("change", () => fetchPlotData(false));
           label.appendChild(checkbox);
           label.appendChild(document.createTextNode(conductor));
           conductorSelector.appendChild(label);
@@ -91,46 +208,156 @@ document.addEventListener("DOMContentLoaded", () => {
 
         plotImg.src = "data:image/png;base64," + data.plot;
         plotImg.style.visibility = "visible";
+      });
+  }
+
+  function fetchPreviewData() {
+    const runIndex = runSelector.value;
+    const posGroup = positionSelector.value;
+
+    if (runIndex === "" || posGroup === "") {
+      previewSvg.innerHTML = "";
+      return;
+    }
+
+    const selectedRun = simulationRuns[runIndex];
+    previewSvg.innerHTML = "";
+    previewLoadingMessage.style.display = "block";
+
+    fetch(`/api/analysis/preview/${selectedRun.name}/${posGroup}`)
+      .then((response) => response.json())
+      .then((data) => {
+        previewLoadingMessage.style.display = "none";
+        if (data.error) {
+          previewSvg.innerHTML = `<text x="50%" y="50%" fill="red" dominant-baseline="middle" text-anchor="middle">${data.error}</text>`;
+          return;
+        }
+        renderPreview(previewSvg, data.scene, data.room);
       })
       .catch((error) => {
-        loadingMessage.style.display = "none";
-        document.getElementById(
-          "results-content"
-        ).innerHTML = `<p style="color: red;">Ein unerwarteter Fehler ist aufgetreten: ${error}</p>`;
+        previewLoadingMessage.style.display = "none";
+        console.error("Fehler beim Laden der Vorschau:", error);
       });
-  };
+  }
 
-  runSelector.addEventListener("change", () => {
-    const runIndex = runSelector.value;
-    csvSelector.innerHTML =
-      '<option value="">Bitte zuerst einen Lauf wählen...</option>';
-    csvSelector.disabled = true;
-    yAxisSelector.innerHTML =
-      '<option value="">Bitte zuerst eine Datei wählen...</option>';
-    yAxisSelector.disabled = true;
-    conductorSelector.innerHTML = "";
-    plotImg.style.visibility = "hidden";
+  function renderPreview(svgElement, scene, room) {
+    const roomWidth = parseFloat(room.Laenge || room.Länge);
+    const roomHeight = parseFloat(room.Breite);
+    if (isNaN(roomWidth) || isNaN(roomHeight)) return;
 
-    if (runIndex !== "") {
-      const selectedRun = simulationRuns[runIndex];
-      csvSelector.innerHTML = "";
-      selectedRun.csv_files.forEach((file) => {
-        csvSelector.add(new Option(file, file));
-      });
-      csvSelector.disabled = false;
-      // Automatisch das erste CSV-File und die Plots laden
-      fetchAndDisplayPlot();
-    }
-  });
+    const padding = 50;
+    const viewBox = `${-roomWidth / 2 - padding} ${-roomHeight / 2 - padding} ${
+      roomWidth + 2 * padding
+    } ${roomHeight + 2 * padding}`;
+    svgElement.setAttribute("viewBox", viewBox);
 
-  csvSelector.addEventListener("change", () => {
-    // Setzt nur die Y-Achse und die Leiter zurück, wenn eine neue CSV gewählt wird
-    yAxisSelector.innerHTML =
-      '<option value="">Bitte zuerst eine Datei wählen...</option>';
-    yAxisSelector.disabled = true;
-    conductorSelector.innerHTML = "";
-    fetchAndDisplayPlot();
-  });
+    const createSvgElement = (tag, attrs, textContent = null) => {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const key in attrs) el.setAttribute(key, attrs[key]);
+      if (textContent) el.textContent = textContent;
+      return el;
+    };
 
-  yAxisSelector.addEventListener("change", fetchAndDisplayPlot);
+    const mainGroup = createSvgElement("g", { transform: "scale(1, -1)" });
+    svgElement.innerHTML = ""; // Clear previous preview
+    svgElement.appendChild(mainGroup);
+
+    mainGroup.appendChild(
+      createSvgElement("rect", {
+        x: -roomWidth / 2,
+        y: -roomHeight / 2,
+        width: roomWidth,
+        height: roomHeight,
+        class: "simulation-room-border",
+      })
+    );
+
+    (scene.elements || []).forEach((elData) => {
+      let el;
+      if (elData.type === "rect") {
+        el = createSvgElement("rect", {
+          x: elData.x,
+          y: elData.y,
+          width: elData.width,
+          height: elData.height,
+          fill: elData.fill,
+          stroke: "#343a40",
+          "stroke-width": 1,
+          transform: elData.transform || "",
+        });
+      } else if (elData.type === "text") {
+        el = createSvgElement(
+          "text",
+          {
+            x: elData.x,
+            y: -elData.y,
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            transform: "scale(1, -1)",
+          },
+          elData.text
+        );
+      }
+      if (el) mainGroup.appendChild(el);
+    });
+
+    enablePanZoom(svgElement);
+  }
+
+  function enablePanZoom(svg) {
+    let pan = false;
+    let point = { x: 0, y: 0 };
+    let viewbox = { x: 0, y: 0, w: svg.clientWidth, h: svg.clientHeight };
+    const updateViewBox = () => {
+      const parts = (svg.getAttribute("viewBox") || "0 0 1 1")
+        .split(" ")
+        .map(Number);
+      [viewbox.x, viewbox.y, viewbox.w, viewbox.h] = parts;
+    };
+
+    svg.addEventListener("mousedown", (e) => {
+      pan = true;
+      point.x = e.clientX;
+      point.y = e.clientY;
+      updateViewBox();
+    });
+
+    svg.addEventListener("mousemove", (e) => {
+      if (!pan) return;
+      const dx = e.clientX - point.x;
+      const dy = e.clientY - point.y;
+      viewbox.x -= dx * (viewbox.w / svg.clientWidth);
+      viewbox.y -= dy * (viewbox.h / svg.clientHeight);
+      svg.setAttribute(
+        "viewBox",
+        `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
+      );
+      point.x = e.clientX;
+      point.y = e.clientY;
+    });
+
+    const stopPan = () => {
+      pan = false;
+    };
+    svg.addEventListener("mouseup", stopPan);
+    svg.addEventListener("mouseleave", stopPan);
+
+    svg.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      updateViewBox();
+      const w = viewbox.w;
+      const h = viewbox.h;
+      const mx = e.offsetX;
+      const my = e.offsetY;
+      const dw = w * Math.sign(e.deltaY) * 0.1;
+      const dh = h * Math.sign(e.deltaY) * 0.1;
+      const dx = (dw * mx) / svg.clientWidth;
+      const dy = (dh * my) / svg.clientHeight;
+      viewbox = { x: viewbox.x + dx, y: viewbox.y + dy, w: w - dw, h: h - dh };
+      svg.setAttribute(
+        "viewBox",
+        `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
+      );
+    });
+  }
 });

@@ -12,39 +12,51 @@
         <h2>Simulationsergebnisse</h2>
     </div>
 
-    <div class="filter-bar results-filter-bar">
-        <div class="form-group">
-            <label for="run-selector">Wähle einen Simulationslauf:</label>
+    <div class="results-grid-container">
+        <div class="form-group grid-col-span-3">
+            <label for="run-selector">1. Wähle einen Simulationslauf:</label>
             <select id="run-selector">
                 <option value="">Bitte wählen...</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="csv-selector">Wähle eine Ergebnis-Datei:</label>
-            <select id="csv-selector" disabled>
-                <option value="">Bitte zuerst einen Lauf wählen...</option>
+            <label for="position-selector">2. Wähle einen Positionsschritt:</label>
+            <select id="position-selector" disabled>
+                <option value="">--</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="y-axis-selector">Anzuzeigender Wert (Y-Achse):</label>
+            <label for="current-selector">3. Wähle einen Primärstrom:</label>
+            <select id="current-selector" disabled>
+                <option value="">--</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="y-axis-selector">4. Anzuzeigender Wert (Y-Achse):</label>
             <select id="y-axis-selector" disabled>
-                <option value="">Bitte zuerst eine Datei wählen...</option>
+                <option value="">--</option>
             </select>
         </div>
     </div>
 
-    <div id="conductor-selector" class="conductor-selector"></div>
+    <div id="conductor-selector" class="conductor-selector">
+    </div>
 
-    <div id="results-content">
-        <p id="loading-message" class="loading-message">Lade Diagramme...</p>
+    <div id="results-content" class="results-content-grid">
         <div class="plot-container">
+            <p id="loading-message" class="loading-message">Lade Diagramm...</p>
             <img id="plot-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
                 alt="Diagramm der Simulationsergebnisse">
+        </div>
+        <div class="plot-container component-preview">
+            <p id="preview-loading-message" class="loading-message">Lade Vorschau...</p>
+            <svg id="results-preview-svg"></svg>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/results.js') }}"></script>
+<script src="{{ url_for('static', filename='js/preview.js', v=timestamp) }}"></script>
+<script src="{{ url_for('static', filename='js/results.js', v=timestamp) }}"></script>
 {% endblock %}

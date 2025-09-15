@@ -16,8 +16,6 @@ class FEMMSession:
         Args:
             visible (bool): Ob das FEMM-GUI-Fenster angezeigt werden soll.
         """
-        # Der Parameter für die Sichtbarkeit ist ein boolscher Wert (True/False),
-        # der anstelle von (1/0) übergeben wird.
         femm.openfemm(visible)
 
     def close(self):
@@ -58,6 +56,11 @@ class FEMMSession:
     def add_segment(self, x1, y1, x2, y2):
         """Fügt ein Liniensegment hinzu."""
         femm.mi_addsegment(x1, y1, x2, y2)
+
+    # NEU: Hinzugefügt für Linienintegrale
+    def add_arc(self, x1, y1, x2, y2, angle, max_seg):
+        """Fügt einen Bogen hinzu."""
+        femm.mi_addarc(x1, y1, x2, y2, angle, max_seg)
 
     def add_block_label(self, x, y):
         """Setzt ein Material-Label."""
@@ -108,8 +111,6 @@ class FEMMSession:
         if group_id is not None:
             femm.mo_groupselectblock(group_id)
         else:
-            # Fallback, um sicherzustellen, dass immer etwas ausgewählt ist,
-            # um Fehler bei block_integral zu vermeiden.
             femm.mo_selectblock(0, 0)
 
     def block_integral(self, integral_type):
@@ -119,3 +120,16 @@ class FEMMSession:
     def clear_block_selection(self):
         """Hebt die Auswahl der Blöcke auf."""
         femm.mo_clearblock()
+
+    # NEU: Hinzugefügt für Linienintegrale
+    def add_contour(self, x, y):
+        """Fügt einen Punkt zu einem Konturpfad hinzu."""
+        femm.mo_addcontour(x, y)
+
+    def line_integral(self, integral_type):
+        """Berechnet ein Integral entlang des definierten Konturpfades."""
+        return femm.mo_lineintegral(integral_type)
+
+    def clear_contour(self):
+        """Löscht den aktuellen Konturpfad."""
+        femm.mo_clearcontour()

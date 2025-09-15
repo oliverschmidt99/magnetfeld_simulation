@@ -5,6 +5,7 @@ Hauptanwendung für den FEMM-Simulationskonfigurator.
 import json
 import os
 import math
+import time  # Hinzugefügt für den Cache-Buster
 
 from flask import Flask, jsonify, render_template, request
 
@@ -64,20 +65,26 @@ def simulation():
         schrittweiten_data=schrittweiten_data,
         startpos_data=startpos_data,
         direction_options=direction_options,
+        # KORREKTUR: Zeitstempel für Cache-Busting
+        timestamp=int(time.time()),
     )
 
 
 @app.route("/results")
 def results():
     """Zeigt die Ergebnisseite."""
-    return render_template("ergebnisse.html")
+    # KORREKTUR: Zeitstempel für Cache-Busting
+    return render_template("ergebnisse.html", timestamp=int(time.time()))
 
 
 @app.route("/library")
 def library():
     """Zeigt die kombinierte Bibliotheks- und Stammdaten-Verwaltung."""
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
-    return render_template("library.html", library=library_data)
+    # KORREKTUR: Zeitstempel für Cache-Busting
+    return render_template(
+        "library.html", library=library_data, timestamp=int(time.time())
+    )
 
 
 @app.route("/settings")
@@ -92,7 +99,6 @@ def generate_simulation():
     data = request.json
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
 
-    # KORREKTUR: Deaktivierte Bauteile werden hier herausgefiltert
     active_assemblies = [
         asm for asm in data.get("assemblies", []) if asm.get("enabled", True)
     ]
@@ -105,7 +111,6 @@ def generate_simulation():
     sim_params = data.get("simulationParams", {})
     nennstrom_str = sim_params.get("ratedCurrent")
     sim_params["type"] = "none"
-    # NEU: Permeabilität als Standardwert hinzufügen
     sim_params["coreRelPermeability"] = sim_params.get("coreRelPermeability", 2500)
 
     try:
@@ -133,7 +138,7 @@ def generate_simulation():
     )
 
     assemblies_with_details = []
-    for assembly_data in active_assemblies:  # Verwendet die gefilterte Liste
+    for assembly_data in active_assemblies:
         transformer_details = next(
             (
                 t
@@ -159,7 +164,7 @@ def generate_simulation():
         assemblies_with_details.append(assembly_data)
 
     standalone_with_details = []
-    for component_data in active_standalone:  # Verwendet die gefilterte Liste
+    for component_data in active_standalone:
         component_details = next(
             (
                 s
@@ -194,20 +199,19 @@ def generate_simulation():
             ]
             final_assemblies.append(assembly_data)
 
-    # NEU: Materialdefinitionen werden hier erstellt
     materials = {
         "air": {"name": "Air"},
         "copper": {"name": "Copper"},
         "steel": {
             "name": "M-36 Steel",
-            "is_steel": True,  # Ein Flag, um die Permeabilität zu setzen
+            "is_steel": True,
         },
     }
 
     simulation_data = {
         "description": "Konfiguration erstellt via Web-UI",
         "scenarioParams": sim_params,
-        "materials": materials,  # NEU
+        "materials": materials,
         "electricalSystem": electrical_system,
         "assemblies": final_assemblies,
         "standAloneComponents": standalone_with_details,
@@ -241,7 +245,6 @@ def visualize_configuration():
     data = request.json
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
 
-    # KORREKTUR: Deaktivierte Bauteile werden auch hier herausgefiltert
     active_assemblies = [
         asm for asm in data.get("assemblies", []) if asm.get("enabled", True)
     ]
@@ -261,7 +264,7 @@ def visualize_configuration():
         startpositionen, bewegungs_richtungen, schrittweiten
     )
 
-    assemblies = active_assemblies  # Verwendet die gefilterte Liste
+    assemblies = active_assemblies
     for asm in assemblies:
         asm["transformer_details"] = next(
             (
@@ -282,7 +285,7 @@ def visualize_configuration():
             None,
         )
 
-    standalone_components = active_standalone  # Verwendet die gefilterte Liste
+    standalone_components = active_standalone
     for comp in standalone_components:
         comp["component_details"] = next(
             (

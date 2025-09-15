@@ -26,7 +26,6 @@ def run_simulation_script(app):
         command = [python_executable, "-m", "src.simulation_runner"]
 
         try:
-            # Stellt sicher, dass bei einem Neustart eine saubere Statusdatei existiert
             if os.path.exists(STATUS_FILE):
                 os.remove(STATUS_FILE)
 
@@ -55,7 +54,8 @@ def run_simulation_script(app):
 
         except FileNotFoundError:
             print(
-                f"Fehler: '{python_executable}' oder Modul 'src.simulation_runner' nicht gefunden."
+                f"Fehler: '{python_executable}' oder "
+                f"Modul 'src.simulation_runner' nicht gefunden."
             )
         except (subprocess.SubprocessError, OSError) as e:
             print(f"Ein Fehler im Subprozess ist aufgetreten: {e}")
@@ -89,7 +89,6 @@ def start_simulation():
     )
 
 
-# NEUER ENDPUNKT für den Fortschritt
 @simulation_bp.route("/simulation_progress")
 def simulation_progress():
     """
@@ -100,7 +99,6 @@ def simulation_progress():
             data = json.load(f)
         return jsonify(data)
     except (FileNotFoundError, json.JSONDecodeError):
-        # Wenn die Datei nicht existiert, ist die Simulation entweder noch nicht gestartet oder schon lange fertig
         simulation_thread = current_app.config.get("SIMULATION_THREAD")
         if simulation_thread and simulation_thread.is_alive():
             return jsonify({"status": "starting"})

@@ -9,6 +9,7 @@ import os
 import shutil
 import multiprocessing
 import logging
+import time
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -20,6 +21,9 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler()],
 )
+
+# NEU: Pfad zur Status-Datei
+STATUS_FILE = "simulation_status.json"
 
 
 class SimulationRunner:
@@ -38,8 +42,18 @@ class SimulationRunner:
         shutil.copy(
             config_path, os.path.join(self.base_results_path, "simulation_run.json")
         )
-        # KORREKTUR: Umstellung auf %-Formatierung
         logging.info("Ergebnisse werden in '%s' gespeichert.", self.base_results_path)
+
+    def _update_status(self, status, completed=0, total=0, duration=None):
+        """Schreibt den aktuellen Status in die JSON-Datei."""
+        status_data = {
+            "status": status,
+            "completed": completed,
+            "total": total,
+            "duration": duration,
+        }
+        with open(STATUS_FILE, "w", encoding="utf-8") as f:
+            json.dump(status_data, f)
 
     def _load_config(self, path):
         """Lädt die JSON-Konfigurationsdatei."""
@@ -47,7 +61,6 @@ class SimulationRunner:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            # KORREKTUR: Umstellung auf %-Formatierung
             logging.error("Fehler beim Laden der Konfigurationsdatei: %s", e)
             return None
 
@@ -72,55 +85,60 @@ class SimulationRunner:
     def run(self):
         """Startet und verwaltet den gesamten Simulationsprozess."""
         logging.info("--- Starte parallelen Python-Simulations-Workflow ---")
+        start_time = time.time()
 
+        tasks = self._prepare_all_tasks()
+        total_tasks = len(tasks)
+
+        if total_tasks == 0:
+            logging.warning(
+                "Keine Simulationsaufgaben gefunden. Workflow wird beendet."
+            )
+            self._update_status("complete", 0, 0, 0)
+            return
+
+        logging.info("Insgesamt %d Simulationsaufgaben zu erledigen.", total_tasks)
+        self._update_status("running", 0, total_tasks)
+
+        num_processes = os.cpu_count()
+        logging.info("Nutze %d Prozessorkerne für die Parallelisierung.", num_processes)
+
+        all_results = []
+        completed_tasks = 0
+
+        with multiprocessing.Pool(processes=num_processes) as pool:
+            for result_chunk in pool.imap_unordered(run_single_simulation, tasks):
+                completed_tasks += 1
+                all_results.extend(result_chunk)
+
+                if (
+                    completed_tasks % (max(1, total_tasks // 20)) == 0
+                    or completed_tasks == total_tasks
+                ):
+                    self._update_status("running", completed_tasks, total_tasks)
+
+        if all_results:
+            self._save_results_to_csv(all_results)
+
+        end_time = time.time()
+        duration = round(end_time - start_time, 2)
+        logging.info(
+            "--- Simulations-Workflow nach %.2f Sekunden erfolgreich abgeschlossen. ---",
+            duration,
+        )
+        self._update_status("complete", total_tasks, total_tasks, duration)
+
+    def _prepare_all_tasks(self):
+        """Erstellt eine flache Liste aller zu erledigenden Simulationsaufgaben."""
+        all_tasks = []
         position_steps = self.run_data["simulation_meta"]["bewegungspfade_alle_leiter"][
             "schritte_details"
         ]
-        measured_currents = self.run_data["scenarioParams"].get("measuredCurrents", {})
-
-        num_processes = os.cpu_count()
-        # KORREKTUR: Umstellung auf %-Formatierung
-        logging.info("Nutze %d Prozessorkerne für die Parallelisierung.", num_processes)
-
-        for i, step in enumerate(position_steps):
-            pos_name = f"pos_{i+1}"
-            # KORREKTUR: Umstellung auf %-Formatierung
-            logging.info(">> Verarbeite %s", pos_name)
-
-            for current_name, current_value in measured_currents.items():
-                if current_value == 0:
-                    continue
-
-                # KORREKTUR: Umstellung auf %-Formatierung
-                logging.info(
-                    "--> Bereite Simulation für %s = %sA vor...",
-                    current_name,
-                    current_value,
-                )
-
-                tasks = self._prepare_tasks_for_step(
-                    step, pos_name, current_name, current_value
-                )
-
-                if not tasks:
-                    continue
-
-                with multiprocessing.Pool(processes=num_processes) as pool:
-                    results_list = pool.map(run_single_simulation, tasks)
-
-                master_results = [item for sublist in results_list for item in sublist]
-                if master_results:
-                    self._save_results_to_csv(master_results, pos_name, current_name)
-
-        logging.info("--- Simulations-Workflow erfolgreich abgeschlossen. ---")
-
-    def _prepare_tasks_for_step(self, step, pos_name, current_name, current_value):
-        """Erstellt die Liste der Simulationsaufgaben für einen Positionsschritt."""
-        femm_files_path = os.path.join(
-            self.base_results_path, "femm_files", f"{pos_name}_{current_name}"
-        )
-        os.makedirs(femm_files_path, exist_ok=True)
-
+        measured_currents = {
+            "I_1_mes": float(self.run_data["scenarioParams"].get("I_1_mes", 0)),
+            "I_2_mes": float(self.run_data["scenarioParams"].get("I_2_mes", 0)),
+            "I_3_mes": float(self.run_data["scenarioParams"].get("I_3_mes", 0)),
+        }
         phase_sweep = self.run_data["scenarioParams"]["phaseSweep"]
         phase_angles = np.arange(
             float(phase_sweep["start"]),
@@ -128,44 +146,60 @@ class SimulationRunner:
             float(phase_sweep["step"]),
         )
 
-        tasks = []
-        for angle in phase_angles:
-            run_identifier = f"{pos_name}_{current_name}_angle{int(angle)}"
+        for i, step in enumerate(position_steps):
+            pos_name = f"pos_{i+1}"
+            for current_name, current_value in measured_currents.items():
+                if current_value == 0:
+                    continue
 
-            step_config = self.run_data.copy()
-            step_config["electricalSystem"] = [
-                p.copy() for p in self.run_data["electricalSystem"]
-            ]
-            for phase in step_config["electricalSystem"]:
-                phase["peakCurrentA"] = current_value * np.sqrt(2)
+                femm_files_path = os.path.join(
+                    self.base_results_path, "femm_files", f"{pos_name}_{current_name}"
+                )
+                os.makedirs(femm_files_path, exist_ok=True)
 
-            step_config["assemblies"] = [
-                asm.copy() for asm in self.run_data["assemblies"]
-            ]
-            for asm_cfg in step_config["assemblies"]:
-                phase_name = asm_cfg["phaseName"]
-                if phase_name in step:
-                    asm_cfg["position"] = step[phase_name]
+                for angle in phase_angles:
+                    run_identifier = f"{pos_name}_{current_name}_angle{int(angle)}"
 
-            task = (
-                femm_files_path,
-                step_config,
-                self.run_data,
-                angle,
-                run_identifier,
-                step,
-            )
-            tasks.append(task)
-        return tasks
+                    step_config = self.run_data.copy()
+                    step_config["electricalSystem"] = [
+                        p.copy() for p in self.run_data["electricalSystem"]
+                    ]
+                    for phase in step_config["electricalSystem"]:
+                        phase["peakCurrentA"] = current_value * np.sqrt(2)
 
-    def _save_results_to_csv(self, results, pos_name, current_name):
-        """Speichert eine Liste von Ergebnis-Dictionaries in einer CSV-Datei."""
+                    step_config["assemblies"] = [
+                        asm.copy() for asm in self.run_data["assemblies"]
+                    ]
+                    for asm_cfg in step_config["assemblies"]:
+                        phase_name = asm_cfg["phaseName"]
+                        if phase_name in step:
+                            asm_cfg["position"] = step[phase_name]
+
+                    task = (
+                        femm_files_path,
+                        step_config,
+                        self.run_data,
+                        angle,
+                        run_identifier,
+                        step,
+                    )
+                    all_tasks.append(task)
+        return all_tasks
+
+    def _save_results_to_csv(self, results):
+        """Speichert eine Liste von Ergebnis-Dictionaries in gruppierten CSV-Dateien."""
         df = pd.DataFrame(results)
-        csv_filename = f"{pos_name}_{current_name}_summary.csv"
-        csv_path = os.path.join(self.base_results_path, csv_filename)
-        df.to_csv(csv_path, index=False)
-        # KORREKTUR: Umstellung auf %-Formatierung
-        logging.info("   -> Ergebnisse in '%s' gespeichert.", csv_filename)
+        df[["pos_name", "current_name", "angle"]] = df["run_identifier"].str.split(
+            "_", expand=True
+        )[:, [0, 2, 4]]
+
+        for (pos, current), group in df.groupby(["pos_name", "current_name"]):
+            csv_filename = f"{pos}_{current}_summary.csv"
+            csv_path = os.path.join(self.base_results_path, csv_filename)
+            group.drop(columns=["pos_name", "current_name", "angle"]).to_csv(
+                csv_path, index=False
+            )
+            logging.info("   -> Ergebnisse in '%s' gespeichert.", csv_filename)
 
 
 # ###################################################################
@@ -195,7 +229,7 @@ def run_single_simulation(task_params):
         fem_file = os.path.join(femm_files_dir, f"{run_identifier}.fem")
         femm.save_as(fem_file)
         results = run_analysis_and_collect_results(
-            femm, step_config, angle_deg, step_positions
+            femm, step_config, angle_deg, step_positions, run_identifier
         )
     finally:
         femm.close()
@@ -307,10 +341,17 @@ def build_femm_geometry(femm, step_config):
     femm.set_block_prop(air, 1, 0, "<None>", 0, 0, 0)
     femm.clear_selected()
 
+    femm.add_block_label(sim_length / 2 + 5, 0)
+    femm.select_label(sim_length / 2 + 5, 0)
+    femm.set_block_prop(air, 1, 0, "<None>", 0, 0, 0)
+    femm.clear_selected()
+
     femm.make_abc(7, max(sim_length, sim_breadth) * 1.5, 0, 0, 0)
 
 
-def run_analysis_and_collect_results(femm, step_config, angle_deg, step_positions):
+def run_analysis_and_collect_results(
+    femm, step_config, angle_deg, step_positions, run_identifier
+):
     """
     Führt die Analyse durch und sammelt die Ergebnisse.
     """
@@ -335,6 +376,7 @@ def run_analysis_and_collect_results(femm, step_config, angle_deg, step_position
         )
 
         res = {
+            "run_identifier": run_identifier,
             "phaseAngle": angle_deg,
             "conductor": phase_name,
             "iPrimA": i_prim,

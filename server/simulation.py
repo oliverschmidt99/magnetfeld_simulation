@@ -3,13 +3,15 @@
 Blueprint für die Steuerung von Simulationsläufen.
 Startet das Python-Simulationsskript im Hintergrund.
 """
-
+import json
+import os
 import subprocess
 import sys
 import threading
 from flask import Blueprint, jsonify, current_app
 
 simulation_bp = Blueprint("simulation_bp", __name__)
+STATUS_FILE = "simulation_status.json"
 
 
 def run_simulation_script(app):
@@ -24,6 +26,10 @@ def run_simulation_script(app):
         command = [python_executable, "-m", "src.simulation_runner"]
 
         try:
+            # Stellt sicher, dass bei einem Neustart eine saubere Statusdatei existiert
+            if os.path.exists(STATUS_FILE):
+                os.remove(STATUS_FILE)
+
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
@@ -36,7 +42,10 @@ def run_simulation_script(app):
 
             if process.returncode == 0:
                 print("Python-Simulationsskript erfolgreich ausgeführt.")
-                print("Ausgabe:", stdout)
+                if stdout:
+                    print("Ausgabe (stdout):", stdout)
+                if stderr:
+                    print("Log-Ausgabe (stderr):", stderr)
             else:
                 print(
                     f"Fehler bei der Ausführung des Python-Skripts "
@@ -65,8 +74,6 @@ def start_simulation():
             409,
         )
 
-    # KORREKTUR: Deaktiviert die Pylint-Warnung für den Zugriff auf das App-Objekt,
-    # was für Hintergrund-Threads ein übliches Vorgehen ist.
     # pylint: disable=protected-access
     app_context = current_app._get_current_object()
     new_thread = threading.Thread(target=run_simulation_script, args=(app_context,))
@@ -82,12 +89,19 @@ def start_simulation():
     )
 
 
-@simulation_bp.route("/simulation_status")
-def simulation_status():
+# NEUER ENDPUNKT für den Fortschritt
+@simulation_bp.route("/simulation_progress")
+def simulation_progress():
     """
-    Gibt den aktuellen Status des Simulations-Threads zurück.
+    Gibt den aktuellen Fortschritt der Simulation aus der Status-Datei zurück.
     """
-    simulation_thread = current_app.config.get("SIMULATION_THREAD")
-    if simulation_thread and simulation_thread.is_alive():
-        return jsonify({"status": "running"})
-    return jsonify({"status": "idle"})
+    try:
+        with open(STATUS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return jsonify(data)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Wenn die Datei nicht existiert, ist die Simulation entweder noch nicht gestartet oder schon lange fertig
+        simulation_thread = current_app.config.get("SIMULATION_THREAD")
+        if simulation_thread and simulation_thread.is_alive():
+            return jsonify({"status": "starting"})
+        return jsonify({"status": "idle"})

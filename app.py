@@ -92,6 +92,16 @@ def generate_simulation():
     data = request.json
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
 
+    # KORREKTUR: Deaktivierte Bauteile werden hier herausgefiltert
+    active_assemblies = [
+        asm for asm in data.get("assemblies", []) if asm.get("enabled", True)
+    ]
+    active_standalone = [
+        comp
+        for comp in data.get("standAloneComponents", [])
+        if comp.get("enabled", True)
+    ]
+
     sim_params = data.get("simulationParams", {})
     nennstrom_str = sim_params.get("ratedCurrent")
     sim_params["type"] = "none"
@@ -123,7 +133,7 @@ def generate_simulation():
     )
 
     assemblies_with_details = []
-    for assembly_data in data.get("assemblies", []):
+    for assembly_data in active_assemblies:  # Verwendet die gefilterte Liste
         transformer_details = next(
             (
                 t
@@ -149,7 +159,7 @@ def generate_simulation():
         assemblies_with_details.append(assembly_data)
 
     standalone_with_details = []
-    for component_data in data.get("standAloneComponents", []):
+    for component_data in active_standalone:  # Verwendet die gefilterte Liste
         component_details = next(
             (
                 s
@@ -231,6 +241,16 @@ def visualize_configuration():
     data = request.json
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
 
+    # KORREKTUR: Deaktivierte Bauteile werden auch hier herausgefiltert
+    active_assemblies = [
+        asm for asm in data.get("assemblies", []) if asm.get("enabled", True)
+    ]
+    active_standalone = [
+        comp
+        for comp in data.get("standAloneComponents", [])
+        if comp.get("enabled", True)
+    ]
+
     sim_params = data.get("simulationParams", {})
     spielraum = sim_params.get("spielraum")
     startpositionen = sim_params.get("startpositionen")
@@ -241,7 +261,7 @@ def visualize_configuration():
         startpositionen, bewegungs_richtungen, schrittweiten
     )
 
-    assemblies = data.get("assemblies", [])
+    assemblies = active_assemblies  # Verwendet die gefilterte Liste
     for asm in assemblies:
         asm["transformer_details"] = next(
             (
@@ -262,7 +282,7 @@ def visualize_configuration():
             None,
         )
 
-    standalone_components = data.get("standAloneComponents", [])
+    standalone_components = active_standalone  # Verwendet die gefilterte Liste
     for comp in standalone_components:
         comp["component_details"] = next(
             (

@@ -176,6 +176,7 @@ function startSimulation() {
     });
 }
 
+// KORREKTUR: Die Funktion wird jetzt asynchron aufgerufen
 async function updateVisualization() {
   const data = gatherFormData();
   const svg = document.getElementById("config-preview-svg");
@@ -183,6 +184,9 @@ async function updateVisualization() {
 
   svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
   controls.innerHTML = "";
+
+  // NEU: Ruft die Funktion auf, um die Checkboxen zu rendern
+  renderComponentToggles(data);
 
   try {
     const response = await fetch("/visualize", {
@@ -330,6 +334,43 @@ async function updateVisualization() {
     console.error("Fehler bei der Visualisierung:", error);
     svg.innerHTML = `<text x="50%" y="50%" fill="red" dominant-baseline="middle" text-anchor="middle">Fehler: ${error.message}</text>`;
   }
+}
+
+// NEUE FUNKTION: Rendert die Checkboxen zum Aktivieren/Deaktivieren der Bauteile
+function renderComponentToggles(data) {
+  const container = document.getElementById("component-toggle-list");
+  container.innerHTML = ""; // Leert den Container
+
+  const createToggle = (item, type, index) => {
+    const name = item.name || `${type}_${index + 1}`;
+    const id = `toggle-${type}-${index}`;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "toggle-item";
+    wrapper.innerHTML = `
+      <input type="checkbox" id="${id}" data-type="${type}" data-index="${index}" ${
+      item.enabled !== false ? "checked" : ""
+    }>
+      <label for="${id}">${name} (${type})</label>
+    `;
+    return wrapper;
+  };
+
+  data.assemblies.forEach((asm, index) => {
+    container.appendChild(createToggle(asm, "assembly", index));
+  });
+
+  data.standAloneComponents.forEach((comp, index) => {
+    container.appendChild(createToggle(comp, "standalone", index));
+  });
+
+  // Event Listener hinzufügen, um die Vorschau bei Klick zu aktualisieren
+  container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      saveState(); // Speichert den neuen Zustand der Checkboxen
+      updateVisualization(); // Aktualisiert die Vorschau
+    });
+  });
 }
 
 function updateParameterSummary(data, positionSteps, coordinateSummary) {
@@ -656,23 +697,28 @@ function gatherFormData() {
       phaseShiftDeg: parseFloat(item.querySelector(".phase-shift").value) || 0,
       peakCurrentA: parseFloat(item.dataset.peakCurrent),
     })),
+    // KORREKTUR: Liest jetzt den 'enabled'-Status aus den Checkboxen aus
     assemblies: Array.from(
       form.querySelectorAll("#assemblies-list .list-item")
-    ).map((item) => ({
+    ).map((item, index) => ({
       name: item.querySelector(".assembly-name").value,
       phaseName: item.querySelector(".assembly-phase-select").value,
       copperRailName: item.querySelector(".copper-rail").value,
       transformerName: item.querySelector(".transformer").value,
+      enabled:
+        document.getElementById(`toggle-assembly-${index}`)?.checked ?? true,
     })),
     standAloneComponents: Array.from(
       form.querySelectorAll("#standalone-list .list-item")
-    ).map((item) => ({
+    ).map((item, index) => ({
       name: item.querySelector(".standalone-name").value,
       position: {
         x: parseFloat(item.querySelector(".pos-x").value) || 0,
         y: parseFloat(item.querySelector(".pos-y").value) || 0,
       },
       rotation: parseFloat(item.querySelector(".rotation").value) || 0,
+      enabled:
+        document.getElementById(`toggle-standalone-${index}`)?.checked ?? true,
     })),
   };
 }

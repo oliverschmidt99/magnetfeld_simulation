@@ -14,7 +14,8 @@ from flask import Blueprint, jsonify, request
 
 analysis_bp = Blueprint("analysis_bp", __name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(BASE_DIR, "..", "res")
+# KORREKTUR: Der Pfad wurde von 'res' auf 'simulations' geändert.
+RESULTS_DIR = os.path.join(BASE_DIR, "..", "simulations")
 
 
 @analysis_bp.route("/analysis/runs", methods=["GET"])

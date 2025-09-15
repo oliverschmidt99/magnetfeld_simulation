@@ -209,6 +209,12 @@
                     X: --, Y: --
                 </div>
                 <hr>
+                <div class="component-toggle-section">
+                    <h4>Bauteile für Vorschau &amp; Simulation aktivieren/deaktivieren</h4>
+                    <div id="component-toggle-list" class="summary-accordion">
+                    </div>
+                </div>
+                <hr>
                 <h3>Parameter-Zusammenfassung</h3>
                 <div id="parameter-summary-container">
                 </div>
@@ -222,8 +228,17 @@
         <h2>Simulation durchführen</h2>
         <p>Konfiguration wurde erfolgreich erstellt.</p>
         <button type="button" id="start-simulation-btn" class="button">2. Simulation starten</button>
-        <div id="simulation-progress">
+        <div id="simulation-progress" style="display: none;">
             <h4>Fortschritt:</h4>
+            <div class="progress-bar-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+            <div id="progress-text" class="progress-text">Initialisiere...</div>
+            <div id="progress-timer" class="progress-timer">Verstrichene Zeit: 0s</div>
+            <div id="progress-summary" class="progress-summary"></div>
+        </div>
+        <div id="simulation-output-container">
+            <h4>Log-Ausgabe:</h4>
             <pre><code id="simulation-output"></code></pre>
         </div>
     </div>

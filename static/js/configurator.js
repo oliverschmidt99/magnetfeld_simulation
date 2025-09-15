@@ -156,7 +156,12 @@ function updateParametersFromCsv() {
 
 function startSimulation() {
   const outputElement = document.getElementById("simulation-output");
-  outputElement.textContent = "Starte Simulation... Bitte warten.";
+  const progressContainer = document.getElementById("simulation-progress");
+  const startButton = document.getElementById("start-simulation-btn");
+
+  startButton.disabled = true;
+  outputElement.textContent = "Starte Simulation...";
+  progressContainer.style.display = "block";
 
   fetch("/start_simulation", {
     method: "POST",
@@ -164,19 +169,82 @@ function startSimulation() {
     .then((response) => response.json())
     .then((data) => {
       if (data.status === "success") {
-        outputElement.textContent = `Simulation erfolgreich gestartet!\nNachricht vom Server: ${data.message}`;
+        outputElement.textContent =
+          "Simulation im Hintergrund gestartet. Warte auf Fortschritt...";
+        pollProgress();
       } else {
-        outputElement.textContent = `Fehler beim Starten der Simulation:\n${data.error}`;
+        outputElement.textContent = `Fehler: ${data.error}`;
+        startButton.disabled = false;
       }
     })
     .catch((error) => {
-      console.error("Fehler beim Senden der Anfrage:", error);
-      outputElement.textContent =
-        "Ein schwerwiegender Fehler ist aufgetreten. Überprüfe die Browser-Konsole.";
+      outputElement.textContent = `Schwerwiegender Fehler: ${error}`;
+      startButton.disabled = false;
     });
 }
 
-// KORREKTUR: Die Funktion wird jetzt asynchron aufgerufen
+let progressInterval;
+
+function formatTime(seconds) {
+  if (seconds < 60) {
+    return `${Math.round(seconds)}s`;
+  }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+
+  let timeString = "";
+  if (h > 0) timeString += `${h}h `;
+  if (m > 0 || h > 0) timeString += `${m}m `;
+  timeString += `${s}s`;
+
+  return timeString.trim();
+}
+
+function pollProgress() {
+  let startTime = Date.now();
+  const timerElement = document.getElementById("progress-timer");
+
+  progressInterval = setInterval(() => {
+    fetch("/simulation_progress")
+      .then((response) => response.json())
+      .then((data) => {
+        const progressBar = document.getElementById("progress-bar");
+        const progressText = document.getElementById("progress-text");
+        const progressSummary = document.getElementById("progress-summary");
+
+        const elapsedTime = (Date.now() - startTime) / 1000;
+        timerElement.textContent = `Verstrichene Zeit: ${formatTime(
+          elapsedTime
+        )}`;
+
+        if (data.status === "running") {
+          const percent =
+            data.total > 0 ? (data.completed / data.total) * 100 : 0;
+          progressBar.style.width = `${percent}%`;
+          progressText.textContent = `${data.completed} / ${data.total} Teilschritte abgeschlossen.`;
+        } else if (data.status === "complete") {
+          progressBar.style.width = "100%";
+          progressText.textContent = `Simulation abgeschlossen!`;
+          progressSummary.textContent = `Gesamtdauer: ${formatTime(
+            data.duration
+          )}`;
+          timerElement.textContent = "";
+          clearInterval(progressInterval);
+          document.getElementById("start-simulation-btn").disabled = false;
+        } else if (data.status === "idle") {
+          clearInterval(progressInterval);
+          document.getElementById("start-simulation-btn").disabled = false;
+        }
+      })
+      .catch((error) => {
+        console.error("Fehler beim Abrufen des Fortschritts:", error);
+        clearInterval(progressInterval);
+        document.getElementById("start-simulation-btn").disabled = false;
+      });
+  }, 2000);
+}
+
 async function updateVisualization() {
   const data = gatherFormData();
   const svg = document.getElementById("config-preview-svg");
@@ -185,7 +253,6 @@ async function updateVisualization() {
   svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
   controls.innerHTML = "";
 
-  // NEU: Ruft die Funktion auf, um die Checkboxen zu rendern
   renderComponentToggles(data);
 
   try {
@@ -279,17 +346,6 @@ async function updateVisualization() {
             "stroke-width": 1,
             transform: elData.transform || "",
           });
-        } else if (elData.type === "circle") {
-          el = createSvgElement("circle", {
-            cx: elData.cx,
-            cy: elData.cy,
-            r: elData.r,
-            fill: elData.fill,
-          });
-          if (elData.material) {
-            const title = createSvgElement("title", {}, elData.material);
-            el.appendChild(title);
-          }
         } else if (elData.type === "text") {
           el = createSvgElement(
             "text",
@@ -336,10 +392,9 @@ async function updateVisualization() {
   }
 }
 
-// NEUE FUNKTION: Rendert die Checkboxen zum Aktivieren/Deaktivieren der Bauteile
 function renderComponentToggles(data) {
   const container = document.getElementById("component-toggle-list");
-  container.innerHTML = ""; // Leert den Container
+  container.innerHTML = "";
 
   const createToggle = (item, type, index) => {
     const name = item.name || `${type}_${index + 1}`;
@@ -364,11 +419,10 @@ function renderComponentToggles(data) {
     container.appendChild(createToggle(comp, "standalone", index));
   });
 
-  // Event Listener hinzufügen, um die Vorschau bei Klick zu aktualisieren
   container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
-      saveState(); // Speichert den neuen Zustand der Checkboxen
-      updateVisualization(); // Aktualisiert die Vorschau
+      saveState();
+      updateVisualization();
     });
   });
 }
@@ -557,6 +611,7 @@ function addPhase(data = {}) {
         </div>
         <button type="button" onclick="removeItem('phase-${phaseCounter}'); updateAssemblyPhaseDropdowns();">Entfernen</button>`;
   list.appendChild(item);
+  updateAssemblyPhaseDropdowns();
 }
 
 function addAssembly(data = {}) {
@@ -697,7 +752,6 @@ function gatherFormData() {
       phaseShiftDeg: parseFloat(item.querySelector(".phase-shift").value) || 0,
       peakCurrentA: parseFloat(item.dataset.peakCurrent),
     })),
-    // KORREKTUR: Liest jetzt den 'enabled'-Status aus den Checkboxen aus
     assemblies: Array.from(
       form.querySelectorAll("#assemblies-list .list-item")
     ).map((item, index) => ({

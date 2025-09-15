@@ -166,7 +166,6 @@ class SimulationRunner:
                         if phase_name in step:
                             asm_cfg["position"] = step[phase_name]
 
-                    # KORREKTUR: pos_name und current_name werden jetzt explizit übergeben
                     task = (
                         femm_files_path,
                         step_config,
@@ -181,21 +180,23 @@ class SimulationRunner:
         return all_tasks
 
     def _save_results_to_csv(self, results):
-        """Speichert eine Liste von Ergebnis-Dictionaries in gruppierten CSV-Dateien."""
+        """Speichert eine Liste von Ergebnis-Dictionaries in gruppierten und sortierten CSV-Dateien."""
         if not results:
             return
 
         df = pd.DataFrame(results)
 
-        # KORREKTUR: Gruppiert jetzt nach den explizit übergebenen Namen
         for (pos, current), group in df.groupby(["pos_name", "current_name"]):
             csv_filename = f"{pos}_{current}_summary.csv"
             csv_path = os.path.join(self.base_results_path, csv_filename)
 
+            # KORREKTUR: Sortiert die Daten vor dem Speichern
+            sorted_group = group.sort_values(by=["phaseAngle", "conductor"])
+
             # Entferne die Hilfsspalten vor dem Speichern
-            group.drop(columns=["pos_name", "current_name", "run_identifier"]).to_csv(
-                csv_path, index=False
-            )
+            sorted_group.drop(
+                columns=["pos_name", "current_name", "run_identifier"]
+            ).to_csv(csv_path, index=False)
             logging.info("   -> Ergebnisse in '%s' gespeichert.", csv_filename)
 
 

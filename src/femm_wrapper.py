@@ -57,7 +57,6 @@ class FEMMSession:
         """Fügt ein Liniensegment hinzu."""
         femm.mi_addsegment(x1, y1, x2, y2)
 
-    # NEU: Hinzugefügt für Linienintegrale
     def add_arc(self, x1, y1, x2, y2, angle, max_seg):
         """Fügt einen Bogen hinzu."""
         femm.mi_addarc(x1, y1, x2, y2, angle, max_seg)
@@ -113,15 +112,21 @@ class FEMMSession:
         else:
             femm.mo_selectblock(0, 0)
 
+    def get_group_block_integral(self, integral_type, group_id):
+        """Wählt eine Gruppe, berechnet das Integral und hebt die Auswahl wieder auf."""
+        self.group_select_block(group_id)
+        value = femm.mo_blockintegral(integral_type)
+        femm.mo_clearblock()
+        return value
+
     def block_integral(self, integral_type):
-        """Berechnet ein Integral über die ausgewählten Blöcke."""
+        """Berechnet ein Integral über die aktuell ausgewählten Blöcke."""
         return femm.mo_blockintegral(integral_type)
 
     def clear_block_selection(self):
         """Hebt die Auswahl der Blöcke auf."""
         femm.mo_clearblock()
 
-    # NEU: Hinzugefügt für Linienintegrale
     def add_contour(self, x, y):
         """Fügt einen Punkt zu einem Konturpfad hinzu."""
         femm.mo_addcontour(x, y)

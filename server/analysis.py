@@ -55,6 +55,7 @@ def get_simulation_runs():
             }
 
             csv_files = [f for f in os.listdir(run_path) if f.endswith(".csv")]
+            # KORREKTUR: Regex ist jetzt flexibler
             pos_groups = sorted(
                 list(
                     set(
@@ -81,7 +82,7 @@ def create_plot(df, x_col, y_col, title, xlabel, ylabel, selected_conductors):
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    if selected_conductors:
+    if selected_conductors and "conductor" in df.columns:
         df_filtered = df[df["conductor"].isin(selected_conductors)]
     else:
         df_filtered = df
@@ -115,7 +116,7 @@ def get_plot_data():
     file_path = os.path.join(RESULTS_DIR, run_folder, csv_file)
 
     if not os.path.exists(file_path):
-        return jsonify({"error": f"Datei '{csv_file}' nicht gefunden."})
+        return jsonify({"error": f"Datei '{csv_file}' nicht gefunden."}), 404
 
     try:
         df = pd.read_csv(file_path)
@@ -125,29 +126,33 @@ def get_plot_data():
         plot_columns = [
             col
             for col in all_columns
-            if col not in ["conductor", "phaseAngle", "run_identifier"]
+            if col
+            not in [
+                "conductor",
+                "phaseAngle",
+                "run_identifier",
+                "pos_name",
+                "current_name",
+            ]
             and "pos_" not in col
         ]
 
         columns_for_frontend = [{"value": col, "name": col} for col in plot_columns]
-
         selected_conductors = request.args.getlist("conductors[]")
-
         y_axis_variable = request.args.get("y_axis") or (
             plot_columns[0] if plot_columns else None
         )
+
         if not y_axis_variable:
             return jsonify({"error": "Keine plotbaren Spalten gefunden."})
-
-        y_axis_name = y_axis_variable
 
         plot = create_plot(
             df,
             "phaseAngle",
             y_axis_variable,
-            f"{y_axis_name} vs. Phasenwinkel für {pos_group} / {current_group}",
+            f"{y_axis_variable} vs. Phasenwinkel",
             "Phasenwinkel (°)",
-            y_axis_name,
+            y_axis_variable,
             selected_conductors,
         )
 
@@ -188,7 +193,6 @@ def get_result_preview(run_folder, pos_group):
         return jsonify({"error": "Positionsschritt existiert nicht."}), 404
 
     current_step_positions = all_pos_steps[step_index]
-
     assemblies = data.get("assemblies", [])
     for asm in assemblies:
         asm["transformer_details"] = next(

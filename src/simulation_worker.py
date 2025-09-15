@@ -3,6 +3,7 @@
 Worker-Funktionen für die parallele FEMM-Simulation.
 """
 import os
+import re
 import numpy as np
 from src.femm_wrapper import FEMMSession
 from src.utils import calculate_instantaneous_current
@@ -19,7 +20,6 @@ def run_single_simulation(task_params):
         angle_deg,
         run_identifier,
         step_positions,
-        # KORREKTUR: Neue Parameter werden hier empfangen
         pos_name,
         current_name,
     ) = task_params
@@ -32,7 +32,6 @@ def run_single_simulation(task_params):
         build_femm_geometry(femm, step_config)
         fem_file = os.path.join(femm_files_dir, f"{run_identifier}.fem")
         femm.save_as(fem_file)
-        # KORREKTUR: Neue Parameter werden weitergereicht
         results = run_analysis_and_collect_results(
             femm,
             step_config,
@@ -167,24 +166,35 @@ def run_analysis_and_collect_results(
     for i, asm in enumerate(step_config["assemblies"]):
         phase_name = asm["phaseName"]
 
-        i_sec_real, i_sec_imag, voltage_complex = femm.get_circuit_properties(
-            phase_name
-        )
-        i_sec_complex = i_sec_real + 1j * i_sec_imag
-
         phase_data = next(
             p for p in step_config["electricalSystem"] if p["name"] == phase_name
         )
-        i_prim_abs = phase_data["peakCurrentA"] / np.sqrt(2)
+        i_prim_soll_abs = phase_data["peakCurrentA"] / np.sqrt(2)
+
+        conductor_group_id = i * 10 + 1
+        i_prim_sim_complex = femm.get_group_block_integral(19, conductor_group_id)
+        i_prim_sim_abs = abs(i_prim_sim_complex)
+
+        transformer_data = asm["transformer_details"]["specificProductInformation"][
+            "electrical"
+        ]
+        ratio_str = transformer_data.get("ratio", "1/1")
+        try:
+            prim, sec = map(float, re.split(r"[/:]", ratio_str))
+            ratio = prim / sec if sec != 0 else 1.0
+        except (ValueError, ZeroDivisionError):
+            ratio = 1.0
+
+        i_sec_abs_A = i_prim_sim_abs / ratio
+
+        _, _, circuit_voltage = femm.get_circuit_properties(phase_name)
 
         core_group_id = i * 10 + 2
-        femm.group_select_block(core_group_id)
-        b_avg_t = femm.block_integral(18)
-        p_joule_w = femm.block_integral(5)
-        w_mag_j = femm.block_integral(6)
-        flux_wb = femm.block_integral(8)
-        torque_nm = femm.block_integral(22)
-        femm.clear_block_selection()
+        b_avg_t = femm.get_group_block_integral(18, core_group_id)
+        p_joule_w = femm.get_group_block_integral(5, core_group_id)
+        w_mag_j = femm.get_group_block_integral(6, core_group_id)
+        flux_wb = femm.get_group_block_integral(8, core_group_id)
+        torque_nm = femm.get_group_block_integral(22, core_group_id)
 
         pos = asm["position"]
         rail_geo = asm["copperRail_details"]["specificProductInformation"]["geometry"]
@@ -198,19 +208,18 @@ def run_analysis_and_collect_results(
         v_drop_v = femm.line_integral(2)[0]
         femm.clear_contour()
 
-        l_h = flux_linkage_wb_turns / i_prim_abs if i_prim_abs > 1e-6 else 0
+        l_h = flux_linkage_wb_turns / i_prim_sim_abs if i_prim_sim_abs > 1e-9 else 0
 
         res = {
-            # KORREKTUR: Hilfsspalten für die Gruppierung
             "pos_name": pos_name,
             "current_name": current_name,
             "run_identifier": run_identifier,
-            # Ergebnisse
             "conductor": phase_name,
             "phaseAngle": angle_deg,
-            "IprimAbs_A": i_prim_abs,
-            "IsecAbs_A": abs(i_sec_complex),
-            "circuitVoltage_V": abs(voltage_complex),
+            "IprimAbs_A": i_prim_soll_abs,
+            "Iprim_sim_A": i_prim_sim_abs,
+            "IsecAbs_A": i_sec_abs_A,
+            "circuitVoltage_V": circuit_voltage,
             "B_avg_T": b_avg_t,
             "P_joule_W": p_joule_w,
             "W_mag_J": w_mag_j,

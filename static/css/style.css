@@ -698,3 +698,33 @@ button.secondary.active {
 .summary-table tbody tr:last-child td {
     border-bottom: none;
 }
+
+.summary-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* NEU: CSS für den animierten Fortschrittsbalken und die Textanzeigen */
+.progress-bar-container {
+    width: 100%;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+
+.progress-bar {
+    height: 20px;
+    width: 0%;
+    background-color: #0d6efd;
+    transition: width 0.5s ease-in-out; /* Sorgt für die flüssige Animation */
+}
+
+.progress-text, .progress-timer, .progress-summary {
+    text-align: center;
+    margin-top: 0.5rem;
+    color: #495057;
+}
+
+.progress-summary {
+    font-weight: bold;
+}

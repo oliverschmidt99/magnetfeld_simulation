@@ -191,11 +191,12 @@ class SimulationRunner:
             csv_path = os.path.join(self.base_results_path, csv_filename)
 
             # KORREKTUR: Sortiert die Daten vor dem Speichern
-            sorted_group = group.sort_values(by=["phaseAngle", "conductor"])
+            sorted_group = group.sort_values(by=["phaseAngle_deg", "conductor"])
 
             # Entferne die Hilfsspalten vor dem Speichern
             sorted_group.drop(
-                columns=["pos_name", "current_name", "run_identifier"]
+                columns=["pos_name", "current_name", "run_identifier"],
+                errors="ignore",  # Fügt Flexibilität hinzu, falls Spalten fehlen
             ).to_csv(csv_path, index=False)
             logging.info("   -> Ergebnisse in '%s' gespeichert.", csv_filename)
 

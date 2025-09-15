@@ -3,7 +3,6 @@
 Worker-Funktionen für die parallele FEMM-Simulation.
 """
 import os
-import re
 import numpy as np
 from src.femm_wrapper import FEMMSession
 from src.utils import calculate_instantaneous_current
@@ -34,7 +33,7 @@ def run_single_simulation(task_params):
         femm.save_as(fem_file)
         results = run_analysis_and_collect_results(
             femm,
-            step_config,
+            step_config["assemblies"],
             angle_deg,
             step_positions,
             run_identifier,
@@ -154,82 +153,64 @@ def build_femm_geometry(femm, step_config):
 
 
 def run_analysis_and_collect_results(
-    femm, step_config, angle_deg, step_positions, run_identifier, pos_name, current_name
+    femm,
+    assemblies,
+    angle_deg,
+    step_positions,
+    run_identifier,
+    pos_name,
+    current_name,
 ):
     """
-    Führt die Analyse durch und sammelt die Ergebnisse gemäß der Aufgabenstellung.
+    Führt die Analyse durch und sammelt die Roh-Ergebnisse aus der Simulation.
     """
     femm.analyze(1)
     femm.load_solution()
 
     results = []
-    for i, asm in enumerate(step_config["assemblies"]):
+    for i, asm in enumerate(assemblies):
         phase_name = asm["phaseName"]
 
-        phase_data = next(
-            p for p in step_config["electricalSystem"] if p["name"] == phase_name
-        )
-        i_prim_soll_abs = phase_data["peakCurrentA"] / np.sqrt(2)
+        # --- Rohdaten direkt aus FEMM extrahieren ---
 
+        # 1. Primärstrom aus dem Leiter-Block (Typ 7 für Gesamtstrom)
         conductor_group_id = i * 10 + 1
-        i_prim_sim_complex = femm.get_group_block_integral(19, conductor_group_id)
-        i_prim_sim_abs = abs(i_prim_sim_complex)
+        i_prim_sim_complex = femm.get_group_block_integral(7, conductor_group_id)
 
-        transformer_data = asm["transformer_details"]["specificProductInformation"][
-            "electrical"
-        ]
-        ratio_str = transformer_data.get("ratio", "1/1")
-        try:
-            prim, sec = map(float, re.split(r"[/:]", ratio_str))
-            ratio = prim / sec if sec != 0 else 1.0
-        except (ValueError, ZeroDivisionError):
-            ratio = 1.0
+        # 2. Sekundärstrom aus den Circuit-Eigenschaften
+        (
+            i_sec_real_a,
+            i_sec_imag_a,
+            circuit_voltage,
+        ) = femm.get_circuit_properties(phase_name)
 
-        i_sec_abs_A = i_prim_sim_abs / ratio
-
-        _, _, circuit_voltage = femm.get_circuit_properties(phase_name)
-
+        # 3. Magnetische Größen aus dem Kern-Block
         core_group_id = i * 10 + 2
         b_avg_t = femm.get_group_block_integral(18, core_group_id)
         p_joule_w = femm.get_group_block_integral(5, core_group_id)
         w_mag_j = femm.get_group_block_integral(6, core_group_id)
         flux_wb = femm.get_group_block_integral(8, core_group_id)
-        torque_nm = femm.get_group_block_integral(22, core_group_id)
 
-        pos = asm["position"]
-        rail_geo = asm["copperRail_details"]["specificProductInformation"]["geometry"]
-        radius = max(rail_geo["width"], rail_geo["height"])
-
-        femm.add_contour(pos["x"] + radius, pos["y"])
-        femm.add_arc(pos["x"] + radius, pos["y"], pos["x"] - radius, pos["y"], 180, 5)
-        femm.add_arc(pos["x"] - radius, pos["y"], pos["x"] + radius, pos["y"], 180, 5)
-
-        flux_linkage_wb_turns = femm.line_integral(1)[0]
-        v_drop_v = femm.line_integral(2)[0]
-        femm.clear_contour()
-
-        l_h = flux_linkage_wb_turns / i_prim_sim_abs if i_prim_sim_abs > 1e-9 else 0
-
+        # --- Ergebnis-Dictionary nur mit Rohdaten füllen ---
+        # KORREKTUR: i_prim_sim_complex in Real- und Imaginärteil aufgespalten
         res = {
             "pos_name": pos_name,
             "current_name": current_name,
             "run_identifier": run_identifier,
             "conductor": phase_name,
-            "phaseAngle": angle_deg,
-            "IprimAbs_A": i_prim_soll_abs,
-            "Iprim_sim_A": i_prim_sim_abs,
-            "IsecAbs_A": i_sec_abs_A,
-            "circuitVoltage_V": circuit_voltage,
+            "phaseAngle_deg": angle_deg,
+            "Iprim_sim_real_A": i_prim_sim_complex.real,
+            "Iprim_sim_imag_A": i_prim_sim_complex.imag,
+            "Isec_real_A": i_sec_real_a,
+            "Isec_imag_A": i_sec_imag_a,
+            "circuit_voltage_V": circuit_voltage,
             "B_avg_T": b_avg_t,
             "P_joule_W": p_joule_w,
             "W_mag_J": w_mag_j,
             "Flux_Wb": flux_wb,
-            "Torque_Nm": torque_nm,
-            "FluxLinkage_WbTurns": flux_linkage_wb_turns,
-            "V_drop_V": v_drop_v,
-            "L_H": l_h,
         }
 
+        # Positionen hinzufügen
         flat_positions = {
             f"pos_{p}_{ax}": val
             for p, coords in step_positions.items()

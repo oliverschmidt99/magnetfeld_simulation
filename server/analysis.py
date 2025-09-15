@@ -2,15 +2,11 @@
 """
 Dieses Modul stellt die Logik für die Analyse- und Ergebnisseite bereit.
 """
-import base64
-import io
 import os
 import re
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import plotly.express as px
 from flask import Blueprint, jsonify, request
 
 from server.utils import load_json
@@ -55,7 +51,6 @@ def get_simulation_runs():
             }
 
             csv_files = [f for f in os.listdir(run_path) if f.endswith(".csv")]
-            # KORREKTUR: Regex ist jetzt flexibler
             pos_groups = sorted(
                 list(
                     set(
@@ -77,34 +72,36 @@ def get_simulation_runs():
     return jsonify(runs)
 
 
-def create_plot(df, x_col, y_col, title, xlabel, ylabel, selected_conductors):
-    """Erstellt einen Plot und gibt ihn als Base64-String zurück."""
-    plt.style.use("seaborn-v0_8-whitegrid")
-    fig, ax = plt.subplots(figsize=(10, 5))
-
+def create_interactive_plot(
+    df, x_col, y_col, title, xlabel, ylabel, selected_conductors
+):
+    """Erstellt einen interaktiven Plotly-Plot und gibt ihn als JSON zurück."""
     if selected_conductors and "conductor" in df.columns:
         df_filtered = df[df["conductor"].isin(selected_conductors)]
     else:
         df_filtered = df
 
-    for label, group in df_filtered.groupby("conductor"):
-        ax.plot(group[x_col], group[y_col], marker="o", linestyle="-", label=label)
-
-    ax.set_title(title, fontsize=16)
-    ax.set_xlabel(xlabel, fontsize=12)
-    ax.set_ylabel(ylabel, fontsize=12)
-    ax.legend()
-    ax.grid(True)
-
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
+    fig = px.line(
+        df_filtered,
+        x=x_col,
+        y=y_col,
+        color="conductor",
+        markers=True,
+        labels={"color": "Leiter"},
+        title=title,
+    )
+    fig.update_layout(
+        xaxis_title=xlabel,
+        yaxis_title=ylabel,
+        template="plotly_white",
+        legend_title_text="Leiter",
+    )
+    return fig.to_json()
 
 
 @analysis_bp.route("/analysis/plot", methods=["GET"])
 def get_plot_data():
-    """Erstellt Plots basierend auf den Filter-Parametern."""
+    """Erstellt interaktive Plot-Daten basierend auf den Filter-Parametern."""
     run_folder = request.args.get("run_folder")
     pos_group = request.args.get("pos_group")
     current_group = request.args.get("current_group")
@@ -122,6 +119,26 @@ def get_plot_data():
         df = pd.read_csv(file_path)
         conductors = df["conductor"].unique().tolist()
 
+        # KORREKTUR: Prüfe, ob die Spalten für die Betragsberechnung existieren
+        required_real_cols = ["Iprim_sim_real_A", "Isec_real_A"]
+        if all(col in df.columns for col in required_real_cols):
+            numeric_cols = [
+                "Iprim_sim_real_A",
+                "Iprim_sim_imag_A",
+                "Isec_real_A",
+                "Isec_imag_A",
+            ]
+            for col in numeric_cols:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+            # Berechne den Betrag mit Vorzeichen für die komplexen Ströme
+            df["Iprim_sim_abs_A"] = np.sqrt(
+                df["Iprim_sim_real_A"] ** 2 + df["Iprim_sim_imag_A"] ** 2
+            ) * np.sign(df["Iprim_sim_real_A"])
+            df["Isec_abs_A"] = np.sqrt(
+                df["Isec_real_A"] ** 2 + df["Isec_imag_A"] ** 2
+            ) * np.sign(df["Isec_real_A"])
+
         all_columns = df.columns.tolist()
         plot_columns = [
             col
@@ -129,7 +146,7 @@ def get_plot_data():
             if col
             not in [
                 "conductor",
-                "phaseAngle",
+                "phaseAngle_deg",
                 "run_identifier",
                 "pos_name",
                 "current_name",
@@ -146,9 +163,9 @@ def get_plot_data():
         if not y_axis_variable:
             return jsonify({"error": "Keine plotbaren Spalten gefunden."})
 
-        plot = create_plot(
+        plot_json = create_interactive_plot(
             df,
-            "phaseAngle",
+            "phaseAngle_deg",
             y_axis_variable,
             f"{y_axis_variable} vs. Phasenwinkel",
             "Phasenwinkel (°)",
@@ -158,7 +175,7 @@ def get_plot_data():
 
         return jsonify(
             {
-                "plot": plot,
+                "plot_json": plot_json,
                 "conductors": conductors,
                 "columns": columns_for_frontend,
             }
@@ -167,6 +184,8 @@ def get_plot_data():
         return jsonify({"error": f"Fehler beim Lesen der Datei: {e}"})
     except KeyError as e:
         return jsonify({"error": f"Fehlende Spalte: {e}"})
+    except Exception as e:
+        return jsonify({"error": f"Ein unerwarteter Fehler ist aufgetreten: {e}"}), 500
 
 
 @analysis_bp.route("/analysis/preview/<path:run_folder>/<pos_group>", methods=["GET"])

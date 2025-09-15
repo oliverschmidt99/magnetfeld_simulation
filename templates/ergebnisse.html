@@ -4,6 +4,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/results.css') }}">
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -45,8 +46,7 @@
     <div id="results-content" class="results-content-grid">
         <div class="plot-container">
             <p id="loading-message" class="loading-message">Lade Diagramm...</p>
-            <img id="plot-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-                alt="Diagramm der Simulationsergebnisse">
+            <div id="plot-div"></div>
         </div>
         <div class="plot-container component-preview">
             <p id="preview-loading-message" class="loading-message">Lade Vorschau...</p>

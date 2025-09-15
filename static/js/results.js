@@ -1,10 +1,11 @@
+// static/js/results.js
 document.addEventListener("DOMContentLoaded", () => {
   const runSelector = document.getElementById("run-selector");
   const positionSelector = document.getElementById("position-selector");
   const currentSelector = document.getElementById("current-selector");
   const yAxisSelector = document.getElementById("y-axis-selector");
   const conductorSelector = document.getElementById("conductor-selector");
-  const plotImg = document.getElementById("plot-img");
+  const plotDiv = document.getElementById("plot-div"); // Geändert von plot-img zu plot-div
   const loadingMessage = document.getElementById("loading-message");
   const previewSvg = document.getElementById("results-preview-svg");
   const previewLoadingMessage = document.getElementById(
@@ -131,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentGroup = currentSelector.value;
 
     if (runIndex === "" || posGroup === "" || currentGroup === "") {
-      plotImg.style.visibility = "hidden";
+      plotDiv.style.visibility = "hidden";
       yAxisSelector.disabled = true;
       yAxisSelector.innerHTML = '<option value="">--</option>';
       conductorSelector.innerHTML = "";
@@ -157,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     selectedConductors.forEach((c) => queryParams.append("conductors[]", c));
 
-    plotImg.style.visibility = "hidden";
+    plotDiv.style.visibility = "hidden";
     loadingMessage.style.display = "block";
 
     fetch(`/api/analysis/plot?${queryParams.toString()}`)
@@ -165,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then((data) => {
         loadingMessage.style.display = "none";
         if (data.error) {
-          plotImg.src = "";
+          Plotly.purge(plotDiv); // Löscht alten Plot
           console.error("Fehler vom Server:", data.error);
           return;
         }
@@ -206,8 +207,12 @@ document.addEventListener("DOMContentLoaded", () => {
           conductorSelector.appendChild(label);
         });
 
-        plotImg.src = "data:image/png;base64," + data.plot;
-        plotImg.style.visibility = "visible";
+        // --- NEUER TEIL: Plotly-Diagramm rendern ---
+        const plotData = JSON.parse(data.plot_json);
+        Plotly.newPlot(plotDiv, plotData.data, plotData.layout, {
+          responsive: true,
+        });
+        plotDiv.style.visibility = "visible";
       });
   }
 

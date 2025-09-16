@@ -6,17 +6,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const yAxisSelector = document.getElementById("y-axis-selector");
   const conductorSelector = document.getElementById("conductor-selector");
   const plotDiv = document.getElementById("plot-div");
-  const loadingMessage = document.getElementById("loading-message");
-  const previewSvg = document.getElementById("results-preview-svg");
+  const plotLoadingMessage = document.getElementById("loading-message");
+  const previewContainer = document.getElementById("results-preview-container");
   const previewLoadingMessage = document.getElementById(
     "preview-loading-message"
   );
 
   let simulationRuns = [];
   const storageKey = "resultsSelection";
-  let myChart = null; // Globale Chart-Instanz
+  let myChart = null;
 
-  // Hilfsfunktion zum Speichern der Auswahl
   const saveSelection = () => {
     const selection = {
       run: runSelector.value,
@@ -27,12 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem(storageKey, JSON.stringify(selection));
   };
 
-  // Hilfsfunktion zum Laden der Auswahl
   const loadSelection = () => {
     return JSON.parse(localStorage.getItem(storageKey)) || {};
   };
 
-  // Initiales Laden der Simulationsläufe
   fetch("/api/analysis/runs")
     .then((response) => response.json())
     .then((runs) => {
@@ -64,10 +61,8 @@ document.addEventListener("DOMContentLoaded", () => {
       handleRunChange();
     });
 
-  // Event Listeners
   runSelector.addEventListener("change", handleRunChange);
-  positionSelector.addEventListener("change", handlePositionChange);
-  currentSelector.addEventListener("change", handleCurrentChange);
+  currentSelector.addEventListener("change", () => fetchPlotData(true));
   yAxisSelector.addEventListener("change", () => fetchPlotData(false));
   conductorSelector.addEventListener("change", () => fetchPlotData(false));
 
@@ -75,56 +70,77 @@ document.addEventListener("DOMContentLoaded", () => {
     const runIndex = runSelector.value;
     const lastSelection = loadSelection();
 
+    // Reset views
+    previewContainer.innerHTML =
+      '<p class="loading-message">Lade Vorschau...</p>';
+    if (myChart) myChart.destroy();
+    plotDiv.style.display = "none";
+
     positionSelector.innerHTML = '<option value="">--</option>';
-    if (runIndex !== "") {
-      const selectedRun = simulationRuns[runIndex];
-      selectedRun.positions.forEach((posGroup) => {
-        positionSelector.add(new Option(posGroup.replace("_", " "), posGroup));
-      });
-      positionSelector.disabled = false;
-      if (
-        lastSelection.position &&
-        Array.from(positionSelector.options).some(
-          (o) => o.value === lastSelection.position
-        )
-      ) {
-        positionSelector.value = lastSelection.position;
-      }
-    } else {
+    if (runIndex === "") {
       positionSelector.disabled = true;
-    }
-    handlePositionChange();
-  }
-
-  function handlePositionChange() {
-    const runIndex = runSelector.value;
-    const selectedPos = positionSelector.value;
-    const lastSelection = loadSelection();
-
-    currentSelector.innerHTML = '<option value="">--</option>';
-    if (runIndex !== "" && selectedPos !== "") {
-      const selectedRun = simulationRuns[runIndex];
-      Object.entries(selectedRun.currents).forEach(([key, value]) => {
-        currentSelector.add(new Option(`${key} (${value}A)`, key));
-      });
-      currentSelector.disabled = false;
-      if (
-        lastSelection.current &&
-        Array.from(currentSelector.options).some(
-          (o) => o.value === lastSelection.current
-        )
-      ) {
-        currentSelector.value = lastSelection.current;
-      }
-    } else {
       currentSelector.disabled = true;
+      return;
     }
-    handleCurrentChange();
+
+    const selectedRun = simulationRuns[runIndex];
+    selectedRun.positions.forEach((posGroup) => {
+      positionSelector.add(new Option(posGroup.replace("_", " "), posGroup));
+    });
+    positionSelector.disabled = false;
+    if (
+      lastSelection.position &&
+      Array.from(positionSelector.options).some(
+        (o) => o.value === lastSelection.position
+      )
+    ) {
+      positionSelector.value = lastSelection.position;
+    }
+
+    Object.entries(selectedRun.currents).forEach(([key, value]) => {
+      currentSelector.add(new Option(`${key} (${value}A)`, key));
+    });
+    currentSelector.disabled = false;
+    if (
+      lastSelection.current &&
+      Array.from(currentSelector.options).some(
+        (o) => o.value === lastSelection.current
+      )
+    ) {
+      currentSelector.value = lastSelection.current;
+    }
+
+    fetchFullPreview(selectedRun.name);
+    fetchPlotData(true);
   }
 
-  function handleCurrentChange() {
-    fetchPlotData(true);
-    fetchPreviewData();
+  function onStepClick(posGroup) {
+    if (positionSelector.value !== posGroup) {
+      positionSelector.value = posGroup;
+      fetchPlotData(true);
+    }
+  }
+
+  function fetchFullPreview(runFolder) {
+    previewLoadingMessage.style.display = "block";
+    fetch(`/api/analysis/full_preview/${runFolder}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.error) {
+          previewContainer.innerHTML = `<p style="color:red;">${data.error}</p>`;
+          return;
+        }
+        renderInteractivePreview(
+          "results-preview-container",
+          data.scenes,
+          data.room,
+          onStepClick
+        );
+      })
+      .catch((error) => {
+        console.error("Fehler beim Laden der Vorschau:", error);
+        previewContainer.innerHTML = `<p style="color:red;">Vorschau konnte nicht geladen werden.</p>`;
+      });
   }
 
   function fetchPlotData(isInitialLoad = false) {
@@ -160,16 +176,15 @@ document.addEventListener("DOMContentLoaded", () => {
     selectedConductors.forEach((c) => queryParams.append("conductors[]", c));
 
     plotDiv.style.display = "none";
-    loadingMessage.style.display = "block";
+    plotLoadingMessage.style.display = "block";
 
     fetch(`/api/analysis/plot?${queryParams.toString()}`)
       .then((response) => response.json())
       .then((data) => {
-        loadingMessage.style.display = "none";
+        plotLoadingMessage.style.display = "none";
         if (data.error) {
-          if (myChart && typeof myChart.destroy === "function") {
+          if (myChart && typeof myChart.destroy === "function")
             myChart.destroy();
-          }
           console.error("Fehler vom Server:", data.error);
           return;
         }
@@ -210,9 +225,8 @@ document.addEventListener("DOMContentLoaded", () => {
           conductorSelector.appendChild(label);
         });
 
-        if (myChart && typeof myChart.destroy === "function") {
-          myChart.destroy();
-        }
+        if (myChart && typeof myChart.destroy === "function") myChart.destroy();
+
         const ctx = document.getElementById("plot-canvas").getContext("2d");
         myChart = new Chart(ctx, {
           type: "line",
@@ -225,177 +239,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 display: true,
                 text: `${data.y_axis_label} vs. ${data.x_axis_label}`,
               },
-              legend: {
-                position: "top",
-              },
+              legend: { position: "top" },
             },
             scales: {
-              y: {
-                title: {
-                  display: true,
-                  text: data.y_axis_label,
-                },
-              },
-              x: {
-                title: {
-                  display: true,
-                  text: data.x_axis_label,
-                },
-              },
+              y: { title: { display: true, text: data.y_axis_label } },
+              x: { title: { display: true, text: data.x_axis_label } },
             },
           },
         });
         plotDiv.style.display = "block";
       });
-  }
-
-  function fetchPreviewData() {
-    const runIndex = runSelector.value;
-    const posGroup = positionSelector.value;
-
-    if (runIndex === "" || posGroup === "") {
-      previewSvg.innerHTML = "";
-      return;
-    }
-
-    const selectedRun = simulationRuns[runIndex];
-    previewSvg.innerHTML = "";
-    previewLoadingMessage.style.display = "block";
-
-    fetch(`/api/analysis/preview/${selectedRun.name}/${posGroup}`)
-      .then((response) => response.json())
-      .then((data) => {
-        previewLoadingMessage.style.display = "none";
-        if (data.error) {
-          previewSvg.innerHTML = `<text x="50%" y="50%" fill="red" dominant-baseline="middle" text-anchor="middle">${data.error}</text>`;
-          return;
-        }
-        renderPreview(previewSvg, data.scene, data.room);
-      })
-      .catch((error) => {
-        previewLoadingMessage.style.display = "none";
-        console.error("Fehler beim Laden der Vorschau:", error);
-      });
-  }
-
-  function renderPreview(svgElement, scene, room) {
-    const roomWidth = parseFloat(room.Laenge || room.Länge);
-    const roomHeight = parseFloat(room.Breite);
-    if (isNaN(roomWidth) || isNaN(roomHeight)) return;
-
-    const padding = 50;
-    const viewBox = `${-roomWidth / 2 - padding} ${-roomHeight / 2 - padding} ${
-      roomWidth + 2 * padding
-    } ${roomHeight + 2 * padding}`;
-    svgElement.setAttribute("viewBox", viewBox);
-
-    const createSvgElement = (tag, attrs, textContent = null) => {
-      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-      for (const key in attrs) el.setAttribute(key, attrs[key]);
-      if (textContent) el.textContent = textContent;
-      return el;
-    };
-
-    const mainGroup = createSvgElement("g", { transform: "scale(1, -1)" });
-    svgElement.innerHTML = ""; // Clear previous preview
-    svgElement.appendChild(mainGroup);
-
-    mainGroup.appendChild(
-      createSvgElement("rect", {
-        x: -roomWidth / 2,
-        y: -roomHeight / 2,
-        width: roomWidth,
-        height: roomHeight,
-        class: "simulation-room-border",
-      })
-    );
-
-    (scene.elements || []).forEach((elData) => {
-      let el;
-      if (elData.type === "rect") {
-        el = createSvgElement("rect", {
-          x: elData.x,
-          y: elData.y,
-          width: elData.width,
-          height: elData.height,
-          fill: elData.fill,
-          stroke: "#343a40",
-          "stroke-width": 1,
-          transform: elData.transform || "",
-        });
-      } else if (elData.type === "text") {
-        el = createSvgElement(
-          "text",
-          {
-            x: elData.x,
-            y: -elData.y,
-            "text-anchor": "middle",
-            "dominant-baseline": "middle",
-            transform: "scale(1, -1)",
-          },
-          elData.text
-        );
-      }
-      if (el) mainGroup.appendChild(el);
-    });
-
-    enablePanZoom(svgElement);
-  }
-
-  function enablePanZoom(svg) {
-    let pan = false;
-    let point = { x: 0, y: 0 };
-    let viewbox = { x: 0, y: 0, w: svg.clientWidth, h: svg.clientHeight };
-    const updateViewBox = () => {
-      const parts = (svg.getAttribute("viewBox") || "0 0 1 1")
-        .split(" ")
-        .map(Number);
-      [viewbox.x, viewbox.y, viewbox.w, viewbox.h] = parts;
-    };
-
-    svg.addEventListener("mousedown", (e) => {
-      pan = true;
-      point.x = e.clientX;
-      point.y = e.clientY;
-      updateViewBox();
-    });
-
-    svg.addEventListener("mousemove", (e) => {
-      if (!pan) return;
-      const dx = e.clientX - point.x;
-      const dy = e.clientY - point.y;
-      viewbox.x -= dx * (viewbox.w / svg.clientWidth);
-      viewbox.y -= dy * (viewbox.h / svg.clientHeight);
-      svg.setAttribute(
-        "viewBox",
-        `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
-      );
-      point.x = e.clientX;
-      point.y = e.clientY;
-    });
-
-    const stopPan = () => {
-      pan = false;
-    };
-    svg.addEventListener("mouseup", stopPan);
-    svg.addEventListener("mouseleave", stopPan);
-
-    svg.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      updateViewBox();
-      const w = viewbox.w;
-      const h = viewbox.h;
-      const mx = e.offsetX;
-      const my = e.offsetY;
-      const dw = w * Math.sign(e.deltaY) * 0.1;
-      const dh = h * Math.sign(e.deltaY) * 0.1;
-      const dx = (dw * mx) / svg.clientWidth;
-      const dy = (dh * my) / svg.clientHeight;
-      viewbox = { x: viewbox.x + dx, y: viewbox.y + dy, w: w - dw, h: h - dh };
-      svg.setAttribute(
-        "viewBox",
-        `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
-      );
-    });
   }
 });

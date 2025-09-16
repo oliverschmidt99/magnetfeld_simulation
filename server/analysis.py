@@ -89,15 +89,12 @@ def create_chartjs_data(df, x_col, y_col, selected_conductors):
 
     for i, conductor in enumerate(conductors):
         conductor_df = df_filtered[df_filtered["conductor"] == conductor]
-        # Sicherstellen, dass die Daten zu den Labels passen
         data_points = []
         conductor_data_map = pd.Series(
             conductor_df[y_col].values, index=conductor_df[x_col].values
         )
         for label in labels:
-            data_points.append(
-                conductor_data_map.get(label, None)
-            )  # Fügt null ein, wenn kein Wert vorhanden ist
+            data_points.append(conductor_data_map.get(label, None))
 
         dataset = {
             "label": conductor,
@@ -131,23 +128,21 @@ def get_plot_data():
         df = pd.read_csv(file_path)
         conductors = df["conductor"].unique().tolist()
 
-        required_real_cols = ["Iprim_sim_real_A", "Isec_real_A"]
-        if all(col in df.columns for col in required_real_cols):
-            numeric_cols = [
-                "Iprim_sim_real_A",
-                "Iprim_sim_imag_A",
-                "Isec_real_A",
-                "Isec_imag_A",
-            ]
-            for col in numeric_cols:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-
-            df["Iprim_sim_abs_A"] = np.sqrt(
-                df["Iprim_sim_real_A"] ** 2 + df["Iprim_sim_imag_A"] ** 2
-            ) * np.sign(df["Iprim_sim_real_A"])
-            df["Isec_abs_A"] = np.sqrt(
-                df["Isec_real_A"] ** 2 + df["Isec_imag_A"] ** 2
-            ) * np.sign(df["Isec_real_A"])
+        # Berechne Beträge nur, wenn die notwendigen Spalten existieren und numerisch sind
+        for real_col, imag_col, abs_col in [
+            ("Iprim_sim_real_A", "Iprim_sim_imag_A", "Iprim_sim_abs_A"),
+            ("Isec_real_A", "Isec_imag_A", "Isec_abs_A"),
+            (
+                "circuit_voltage_real_V",
+                "circuit_voltage_imag_V",
+                "circuit_voltage_abs_V",
+            ),
+            ("Flux_real_Wb", "Flux_imag_Wb", "Flux_abs_Wb"),
+        ]:
+            if real_col in df.columns and imag_col in df.columns:
+                real_num = pd.to_numeric(df[real_col], errors="coerce")
+                imag_num = pd.to_numeric(df[imag_col], errors="coerce")
+                df[abs_col] = np.sqrt(real_num**2 + imag_num**2)
 
         all_columns = df.columns.tolist()
         plot_columns = [
@@ -174,10 +169,7 @@ def get_plot_data():
             return jsonify({"error": "Keine plotbaren Spalten gefunden."})
 
         chart_data = create_chartjs_data(
-            df,
-            "phaseAngle_deg",
-            y_axis_variable,
-            selected_conductors,
+            df, "phaseAngle_deg", y_axis_variable, selected_conductors
         )
 
         return jsonify(
@@ -189,17 +181,16 @@ def get_plot_data():
                 "y_axis_label": y_axis_variable,
             }
         )
-    except (FileNotFoundError, pd.errors.ParserError) as e:
-        return jsonify({"error": f"Fehler beim Lesen der Datei: {e}"})
-    except KeyError as e:
-        return jsonify({"error": f"Fehlende Spalte: {e}"})
-    except (ValueError, AttributeError) as e:
-        return jsonify({"error": f"Ein unerwarteter Fehler ist aufgetreten: {e}"}), 500
+    except Exception as e:
+        return (
+            jsonify({"error": f"Ein unerwarteter Server-Fehler ist aufgetreten: {e}"}),
+            500,
+        )
 
 
-@analysis_bp.route("/analysis/preview/<path:run_folder>/<pos_group>", methods=["GET"])
-def get_result_preview(run_folder, pos_group):
-    """Erstellt eine SVG-Visualisierung für einen spezifischen Simulationslauf."""
+@analysis_bp.route("/analysis/full_preview/<path:run_folder>", methods=["GET"])
+def get_full_result_preview(run_folder):
+    """Erstellt eine vollständige SVG-Visualisierung für alle Positionsschritte eines Laufs."""
     sim_run_path = os.path.join(RESULTS_DIR, run_folder, "simulation_run.json")
     if not os.path.exists(sim_run_path):
         return jsonify({"error": "simulation_run.json nicht gefunden."}), 404
@@ -207,20 +198,13 @@ def get_result_preview(run_folder, pos_group):
     data = load_json(sim_run_path)
     library_data = load_json(LIBRARY_FILE)
 
-    try:
-        step_index = int(pos_group.split("_")[1]) - 1
-    except (IndexError, ValueError):
-        return jsonify({"error": "Ungültiger Positionsschritt."}), 400
-
-    all_pos_steps = (
+    spielraum = data.get("simulation_meta", {}).get("simulationsraum", {})
+    position_steps = (
         data.get("simulation_meta", {})
         .get("bewegungspfade_alle_leiter", {})
         .get("schritte_details", [])
     )
-    if step_index >= len(all_pos_steps):
-        return jsonify({"error": "Positionsschritt existiert nicht."}), 404
 
-    current_step_positions = all_pos_steps[step_index]
     assemblies = data.get("assemblies", [])
     for asm in assemblies:
         asm["transformer_details"] = next(
@@ -254,71 +238,77 @@ def get_result_preview(run_folder, pos_group):
             None,
         )
 
-    scene_elements = []
-    for asm in assemblies:
-        phase = asm.get("phaseName")
-        pos = current_step_positions.get(phase, {"x": 0, "y": 0})
-        trans = asm.get("transformer_details")
-        rail = asm.get("copperRail_details")
-        if trans and rail:
-            t_geo = trans["specificProductInformation"]["geometry"]
-            r_geo = rail["specificProductInformation"]["geometry"]
-            scene_elements.extend(
-                [
-                    {
-                        "type": "rect",
-                        "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
-                        "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
-                        "width": t_geo["coreOuterWidth"],
-                        "height": t_geo["coreOuterHeight"],
-                        "fill": "#808080",
-                    },
-                    {
-                        "type": "rect",
-                        "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
-                        "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
-                        "width": t_geo["coreInnerWidth"],
-                        "height": t_geo["coreInnerHeight"],
-                        "fill": "white",
-                    },
-                    {
-                        "type": "rect",
-                        "x": pos["x"] - r_geo["width"] / 2,
-                        "y": pos["y"] - r_geo["height"] / 2,
-                        "width": r_geo["width"],
-                        "height": r_geo["height"],
-                        "fill": "#b87333",
-                    },
-                    {
-                        "type": "text",
-                        "x": pos["x"],
-                        "y": pos["y"] + t_geo["coreOuterHeight"] / 2 + 10,
-                        "text": phase,
-                    },
-                ]
-            )
+    scenes = []
+    for i, step in enumerate(position_steps):
+        scene_elements = []
+        for asm in assemblies:
+            phase = asm.get("phaseName")
+            pos = step.get(phase, {"x": 0, "y": 0})
+            trans = asm.get("transformer_details")
+            rail = asm.get("copperRail_details")
 
-    for comp in standalone_components:
-        pos = comp.get("position", {"x": 0, "y": 0})
-        sheet = comp.get("component_details")
-        if sheet:
-            s_geo = sheet["specificProductInformation"]["geometry"]
-            rotation = comp.get("rotation", 0)
-            scene_elements.append(
-                {
-                    "type": "rect",
-                    "x": pos["x"] - s_geo["width"] / 2,
-                    "y": pos["y"] - s_geo["height"] / 2,
-                    "width": s_geo["width"],
-                    "height": s_geo["height"],
-                    "fill": "#a9a9a9",
-                    "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
-                }
-            )
+            if trans and rail:
+                t_geo = trans["specificProductInformation"]["geometry"]
+                r_geo = rail["specificProductInformation"]["geometry"]
+                scene_elements.extend(
+                    [
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
+                            "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
+                            "width": t_geo["coreOuterWidth"],
+                            "height": t_geo["coreOuterHeight"],
+                            "fill": "#808080",
+                        },
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
+                            "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
+                            "width": t_geo["coreInnerWidth"],
+                            "height": t_geo["coreInnerHeight"],
+                            "fill": "white",
+                        },
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - r_geo["width"] / 2,
+                            "y": pos["y"] - r_geo["height"] / 2,
+                            "width": r_geo["width"],
+                            "height": r_geo["height"],
+                            "fill": "#b87333",
+                        },
+                        {
+                            "type": "text",
+                            "x": pos["x"],
+                            "y": pos["y"] + t_geo["coreOuterHeight"] / 2 + 10,
+                            "text": phase,
+                        },
+                    ]
+                )
 
-    return jsonify(
-        {
-            "scene": {"elements": scene_elements},
-            "room": data.get("simulation_meta", {}).get("simulationsraum", {}),
-        }
-    )
+        for comp in standalone_components:
+            pos = comp.get("position", {"x": 0, "y": 0})
+            sheet = comp.get("component_details")
+            if sheet:
+                s_geo = sheet["specificProductInformation"]["geometry"]
+                rotation = comp.get("rotation", 0)
+                scene_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos["x"] - s_geo["width"] / 2,
+                        "y": pos["y"] - s_geo["height"] / 2,
+                        "width": s_geo["width"],
+                        "height": s_geo["height"],
+                        "fill": "#a9a9a9",
+                        "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                    }
+                )
+
+        scenes.append(
+            {
+                "name": f"Schritt {i}",
+                "elements": scene_elements,
+                "pos_group": f"pos_{i+1}",
+            }
+        )
+
+    return jsonify({"scenes": scenes, "room": spielraum})

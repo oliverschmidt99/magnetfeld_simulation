@@ -13,35 +13,40 @@
         <h2>Simulationsergebnisse</h2>
     </div>
 
-    <div class="results-grid-container">
-        <div class="form-group grid-col-span-3">
+    <div class="results-filter-container">
+        <div class="form-group">
             <label for="run-selector">1. Wähle einen Simulationslauf:</label>
             <select id="run-selector">
                 <option value="">Bitte wählen...</option>
             </select>
         </div>
-        <div class="form-group">
-            <label for="position-selector">2. Wähle einen Positionsschritt:</label>
+        <div class="form-group" style="display: none;">
+            <label for="position-selector">2. Positionsschritt:</label>
             <select id="position-selector" disabled>
                 <option value="">--</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="current-selector">3. Wähle einen Primärstrom:</label>
+            <label for="current-selector">2. Wähle einen Primärstrom:</label>
             <select id="current-selector" disabled>
                 <option value="">--</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="y-axis-selector">4. Anzuzeigender Wert (Y-Achse):</label>
+            <label for="y-axis-selector">3. Anzuzeigender Wert (Y-Achse):</label>
             <select id="y-axis-selector" disabled>
                 <option value="">--</option>
             </select>
         </div>
     </div>
 
-    <div id="conductor-selector" class="conductor-selector">
+    <div id="results-preview-container" class="preview-section card">
+        <p id="preview-loading-message" class="loading-message">Lade Vorschau...</p>
     </div>
+
+    <hr>
+
+    <div id="conductor-selector" class="conductor-selector"></div>
 
     <div id="results-content">
         <div class="plot-container">
@@ -50,15 +55,11 @@
                 <canvas id="plot-canvas"></canvas>
             </div>
         </div>
-        <div class="preview-container component-preview">
-            <p id="preview-loading-message" class="loading-message">Lade Vorschau...</p>
-            <svg id="results-preview-svg"></svg>
-        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/preview.js', v=timestamp) }}"></script>
+<script src="{{ url_for('static', filename='js/simulation_preview.js', v=timestamp) }}"></script>
 <script src="{{ url_for('static', filename='js/results.js', v=timestamp) }}"></script>
 {% endblock %}

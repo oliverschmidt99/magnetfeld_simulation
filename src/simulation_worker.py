@@ -171,28 +171,22 @@ def run_analysis_and_collect_results(
     for i, asm in enumerate(assemblies):
         phase_name = asm["phaseName"]
 
-        # --- Rohdaten direkt aus FEMM extrahieren ---
-
-        # 1. Primärstrom aus dem Leiter-Block (Typ 7 für Gesamtstrom)
         conductor_group_id = i * 10 + 1
         i_prim_sim_complex = femm.get_group_block_integral(7, conductor_group_id)
 
-        # 2. Sekundärstrom aus den Circuit-Eigenschaften
         (
             i_sec_real_a,
             i_sec_imag_a,
-            circuit_voltage,
+            circuit_voltage_complex,
         ) = femm.get_circuit_properties(phase_name)
 
-        # 3. Magnetische Größen aus dem Kern-Block
         core_group_id = i * 10 + 2
         b_avg_t = femm.get_group_block_integral(18, core_group_id)
         p_joule_w = femm.get_group_block_integral(5, core_group_id)
         w_mag_j = femm.get_group_block_integral(6, core_group_id)
-        flux_wb = femm.get_group_block_integral(8, core_group_id)
+        flux_wb_complex = femm.get_group_block_integral(8, core_group_id)
 
-        # --- Ergebnis-Dictionary nur mit Rohdaten füllen ---
-        # KORREKTUR: i_prim_sim_complex in Real- und Imaginärteil aufgespalten
+        # KORREKTUR: Komplexe Zahlen in Real- und Imaginärteil aufspalten
         res = {
             "pos_name": pos_name,
             "current_name": current_name,
@@ -203,14 +197,15 @@ def run_analysis_and_collect_results(
             "Iprim_sim_imag_A": i_prim_sim_complex.imag,
             "Isec_real_A": i_sec_real_a,
             "Isec_imag_A": i_sec_imag_a,
-            "circuit_voltage_V": circuit_voltage,
+            "circuit_voltage_real_V": circuit_voltage_complex.real,
+            "circuit_voltage_imag_V": circuit_voltage_complex.imag,
             "B_avg_T": b_avg_t,
             "P_joule_W": p_joule_w,
             "W_mag_J": w_mag_j,
-            "Flux_Wb": flux_wb,
+            "Flux_real_Wb": flux_wb_complex.real,
+            "Flux_imag_Wb": flux_wb_complex.imag,
         }
 
-        # Positionen hinzufügen
         flat_positions = {
             f"pos_{p}_{ax}": val
             for p, coords in step_positions.items()

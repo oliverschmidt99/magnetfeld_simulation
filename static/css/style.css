@@ -1,3 +1,9 @@
+/* static/css/style.css */
+
+/* ==========================================================================
+   1. Globale Stile & Basis-Layout
+   ========================================================================== */
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     margin: 0;
@@ -7,6 +13,31 @@ body {
     flex-direction: column;
     min-height: 100vh;
 }
+
+main {
+    flex: 1;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+}
+
+.simulation-page-container {
+    max-width: 1400px;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #dee2e6;
+    margin: 2rem 0;
+}
+
+/* ==========================================================================
+   2. Header & Navigation
+   ========================================================================== */
 
 header {
     background-color: #343a40;
@@ -36,76 +67,6 @@ header h1 {
     white-space: nowrap;
 }
 
-nav {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    height: 100%;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
-
-.nav-item {
-    position: relative;
-}
-
-nav a {
-    color: white;
-    text-decoration: none;
-    padding: 1.5rem 1.5rem;
-    font-size: 1rem;
-    transition: color 0.3s ease-in-out;
-    position: relative;
-    z-index: 10;
-    display: block;
-}
-
-nav a.active {
-    color: #343a40;
-}
-
-.dropdown-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #343a40;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    overflow: hidden;
-    min-width: 100%;
-    z-index: 100;
-}
-
-.nav-item.has-dropdown:hover .dropdown-menu {
-    display: block;
-}
-
-.dropdown-menu a {
-    white-space: nowrap;
-}
-
-.dropdown-menu a:hover {
-    background-color: #495057;
-}
-
-.nav-slider {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 3.5rem;
-    background-color: white;
-    border-radius: 8px;
-    z-index: 5;
-    transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
 .sub-nav-bar {
     background-color: #e9ecef;
     padding: 0.75rem 2rem;
@@ -121,87 +82,63 @@ nav a.active {
     text-align: center;
 }
 
-main {
-    flex: 1;
-    padding: 2rem;
-    display: flex;
-    justify-content: center;
-}
-
-.container {
-    width: 100%;
-    max-width: 1200px;
-    background-color: white;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.container form {
-    max-width: 100%;
-}
-
-.card-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.5rem;
-    margin-top: 2rem;
-}
+/* ==========================================================================
+   3. Allgemeine Komponenten (Karten, Buttons)
+   ========================================================================== */
 
 .card {
-    background-color: #f8f9fa;
+    background-color: white;
     border: 1px solid #dee2e6;
     border-radius: 8px;
     padding: 1.5rem;
-    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.card h3 {
-    margin-top: 0;
-}
-
-.button {
+button, .button {
     display: inline-block;
     background-color: #0d6efd;
     color: white;
-    padding: 10px 20px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
     text-decoration: none;
-    border-radius: 5px;
     transition: background-color 0.2s;
+    margin-top: 0;
 }
 
-.button:hover {
+button:hover, .button:hover {
     background-color: #0b5ed7;
 }
 
-footer {
-    text-align: center;
-    padding: 1rem;
-    background-color: #343a40;
-    color: white;
-    margin-top: auto;
+button.secondary {
+    background-color: #6c757d;
+}
+button.secondary:hover {
+    background-color: #5a6268;
 }
 
-footer p {
-    margin: 0;
+.large-button {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
 }
 
-/* Form Styles */
+/* ==========================================================================
+   4. Formulare
+   ========================================================================== */
+
 .form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group-wrapper {
-    max-width: 700px;
-    margin: 0 auto;
+    margin-bottom: 1.25rem;
 }
 
 .form-row {
     display: flex;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
-.form-row>div {
+.form-row > div {
     flex: 1;
 }
 
@@ -209,6 +146,8 @@ label {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: bold;
+    font-size: 0.9rem;
+    color: #495057;
 }
 
 input[type="text"],
@@ -224,51 +163,82 @@ textarea {
     font-size: 1rem;
 }
 
-button {
-    background-color: #0d6efd;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    margin-top: 10px;
+.button-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    justify-content: flex-end;
 }
 
-button:hover {
-    background-color: #0b5ed7;
+/* ==========================================================================
+   5. Seiten-spezifische Layouts (Simulation)
+   ========================================================================== */
+
+.preview-section {
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+.preview-section h3 {
+    text-align: center;
+    margin-top: 0;
 }
 
-hr {
-    border: 0;
-    border-top: 1px solid #dee2e6;
-    margin: 2rem 0;
+.two-column-layout.vertical-nav-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr; /* Feste Breite für die linke Navigation */
+    gap: 2rem;
+    align-items: flex-start;
 }
 
-.card-container .card {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 2px solid transparent;
+.side-column-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-.card-container .card:hover {
-    border-color: #0d6efd;
-    transform: translateY(-3px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+.nav-link {
+    padding: 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #343a40;
+    border: 1px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
 }
-
-.card-container .card.active {
+.nav-link:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+.nav-link.active {
     background-color: #e7f1ff;
     border-color: #0d6efd;
     color: #0d6efd;
 }
+.nav-link h4 {
+    margin: 0 0 0.25rem 0;
+}
+.nav-link p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.main-column {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #dee2e6;
+}
+
+.action-box {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
 
 .config-section {
     display: none;
-    margin-top: 2rem;
     animation: fadeIn 0.5s;
 }
-
 .config-section.active {
     display: block;
 }
@@ -278,25 +248,60 @@ hr {
     to { opacity: 1; }
 }
 
-/* Bauteil-Editor Styles */
-.component-form {
+.parameter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.param-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.param-card h4 {
+    margin-top: 0;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    color: #343a40;
+}
+
+.param-card .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+}
+
+.param-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.config-management-section {
+    background-color: #f8f9fa;
     padding: 1.5rem;
     border: 1px solid #dee2e6;
     border-radius: 8px;
 }
+
+/* ==========================================================================
+   6. Vorschau & Simulations-Status
+   ========================================================================== */
 
 .component-preview {
     background: #f8f9fa;
     border: 1px solid #ddd;
     padding: 1rem;
     text-align: center;
-    height: 540px; 
+    min-height: 400px; 
     display: flex; 
     align-items: center;
     justify-content: center;
     overflow: hidden; 
     position: relative;
     box-sizing: border-box;
+    border-radius: 4px;
 }
 
 #config-preview-svg {
@@ -304,273 +309,17 @@ hr {
     height: 100%;
 }
 
-.filter-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    max-width: 900px;
-    margin: 1rem auto;
-    padding: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-}
-
-.filter-bar .form-group {
-    margin-bottom: 0;
-}
-
-.component-list-accordion {
-    max-width: 900px;
-    margin: 2rem auto;
-}
-
-.component-list-accordion .accordion-item {
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    overflow: hidden;
-    background-color: #fff;
-}
-
-.component-accordion-btn {
-    display: grid;
-    grid-template-areas:
-        "tags tags"
-        "name manufacturer"
-        "dims dims";
-    gap: 0.5rem 1rem;
-    width: 100%;
-    padding: 1rem 1.5rem;
-    background-color: #f8f9fa;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    color: #343a40;
-}
-
-.component-accordion-btn:hover {
-    background-color: #e9ecef;
-}
-
-.component-accordion-btn .tags-display {
-    grid-area: tags;
-    margin-bottom: 0.5rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.component-accordion-btn .component-item-name {
-    grid-area: name;
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-.component-accordion-btn .component-item-manufacturer {
-    grid-area: manufacturer;
-    justify-self: end;
-    font-style: italic;
-    color: #6c757d;
-}
-
-.component-accordion-btn .component-item-dims {
-    grid-area: dims;
-    font-size: 0.9rem;
-    color: #6c757d;
-}
-
-.component-list-accordion .accordion-content {
-    padding: 1rem;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
-}
-
-/* Tag-System Styles */
-.tags-input-container {
-    background-color: #fff;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    padding: 5px;
-    min-height: 40px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.add-tags-btn {
-    background: none;
-    border: 1px dashed #6c757d;
-    color: #6c757d;
-    border-radius: 4px;
-    padding: 0.3rem 0.6rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-.add-tags-btn:hover {
-    background-color: #e9ecef;
-    color: #343a40;
-}
-
-.tag-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    margin: 0.2rem;
-}
-
-.tag-badge .remove-tag {
-    margin-left: 0.5rem;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
-}
-
-/* Modal Styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 900px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    max-height: 90vh; /* KORREKTUR: Maximalhöhe hinzugefügt */
-    overflow-y: auto;   /* KORREKTUR: Internes Scrollen bei Überlauf hinzugefügt */
-}
-
-.search-container input {
-    width: 100%;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-}
-
-.modal-tag-list {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #dee2e6;
-    padding: 0.5rem;
-    border-radius: 4px;
-}
-
-.modal-tag-list .tag-group {
-    margin-bottom: 1rem;
-}
-
-.modal-tag-list .tag-badge {
-    cursor: pointer;
-}
-
-.modal-tag-list .tag-badge.selected {
-    border: 2px solid #0d6efd;
-    padding: calc(0.3rem - 2px) calc(0.6rem - 2px);
-}
-
-.button-group {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-end;
-    justify-content: flex-end;
-    margin-top: 1.5rem;
-}
-
-button.secondary {
-    background-color: #6c757d;
-}
-button.secondary:hover {
-    background-color: #5a6268;
-}
-button.secondary.active {
-    background-color: #0d6efd;
-}
-
-.editor-layout {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.component-preview-container {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #dee2e6;
-    padding: 1rem;
-    border-radius: 4px;
-}
-
-#editor-preview-svg {
-    width: 100%;
-    height: 100%;
-    max-height: 350px;
-}
-
-/* Stile für die Parameter-Zusammenfassung */
-#parameter-summary-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    padding: 1.5rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-    margin-top: 1rem;
-}
-
-.summary-column h4 {
-    border-bottom: 2px solid #0d6efd;
-    padding-bottom: 0.5rem;
-    margin-top: 0;
-    color: #0d6efd;
-}
-
-.summary-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.summary-item:last-child {
-    border-bottom: none;
-}
-
-.summary-label {
-    font-weight: bold;
-    color: #495057;
-}
-
-.summary-value {
-    color: #6c757d;
-}
-
-/* Stile für die visuelle Vorschau */
 #preview-controls.button-group {
     justify-content: center;
     margin-bottom: 1rem;
     margin-top: 0;
+    gap: 1rem;
 }
 
 .simulation-room-border {
-    stroke: #343a40 !important;
-    stroke-width: 4px !important;
-    fill: white !important;
+    stroke: #343a40;
+    stroke-width: 2px;
+    fill: white;
 }
 
 .simulation-room-label {
@@ -580,130 +329,6 @@ button.secondary.active {
     text-anchor: middle;
 }
 
-.material-label {
-    font-size: 10px;
-    font-family: monospace;
-}
-
-.initially-hidden {
-    display: none;
-}
-
-/* Stile für die Parameter-Zusammenfassung */
-#parameter-summary-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    padding: 1.5rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-    margin-top: 1rem;
-}
-
-.summary-column h4 {
-    border-bottom: 2px solid #0d6efd;
-    padding-bottom: 0.5rem;
-    margin-top: 0;
-    color: #0d6efd;
-}
-
-.summary-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.summary-item:last-child {
-    border-bottom: none;
-}
-
-.summary-label {
-    font-weight: bold;
-    color: #495057;
-}
-
-.summary-value {
-    color: #6c757d;
-}
-
-/* --- NEUE STILE FÜR DIE PARAMETER-ZUSAMMENFASSUNG --- */
-
-/* Container für die allgemeinen Parameter */
-.summary-general {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 0.5rem 1.5rem;
-    padding: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    border: 1px solid #dee2e6;
-}
-
-.summary-general .summary-label {
-    font-weight: bold;
-    color: #495057;
-}
-
-/* Akkordeon-Stile */
-.summary-accordion details {
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-    overflow: hidden; /* Verhindert, dass die Tabelle über den Radius hinausgeht */
-}
-
-.summary-accordion summary {
-    font-weight: bold;
-    padding: 0.75rem 1.25rem;
-    background-color: #f8f9fa;
-    cursor: pointer;
-    outline: none;
-    transition: background-color 0.2s;
-}
-
-.summary-accordion summary:hover {
-    background-color: #e9ecef;
-}
-
-.summary-accordion details[open] summary {
-    background-color: #e7f1ff;
-    border-bottom: 1px solid #dee2e6;
-}
-
-/* Tabellen-Stile */
-.summary-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: -1px; /* Korrigiert den Abstand nach dem summary-Rand */
-}
-
-.summary-table th,
-.summary-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.summary-table th {
-    background-color: #f8f9fa;
-}
-
-.summary-table tbody tr:nth-child(even) {
-    background-color: #f8f9fa;
-}
-
-.summary-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.summary-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-/* NEU: CSS für den animierten Fortschrittsbalken und die Textanzeigen */
 .progress-bar-container {
     width: 100%;
     background-color: #e9ecef;
@@ -716,7 +341,7 @@ button.secondary.active {
     height: 20px;
     width: 0%;
     background-color: #0d6efd;
-    transition: width 0.5s ease-in-out; /* Sorgt für die flüssige Animation */
+    transition: width 0.5s ease-in-out;
 }
 
 .progress-text, .progress-timer, .progress-summary {
@@ -727,4 +352,24 @@ button.secondary.active {
 
 .progress-summary {
     font-weight: bold;
+}
+
+.initially-hidden {
+    display: none;
+}
+
+/* ==========================================================================
+   7. Footer
+   ========================================================================== */
+
+footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: #343a40;
+    color: white;
+    margin-top: auto;
+}
+
+footer p {
+    margin: 0;
 }

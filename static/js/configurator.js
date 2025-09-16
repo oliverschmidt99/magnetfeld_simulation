@@ -20,6 +20,18 @@ const startposData = JSON.parse(
   document.getElementById("startpos-data").textContent
 );
 
+const directionOptions = [
+  { value: "Keine Bewegung", text: "Keine Bewegung" },
+  { value: "Norden", text: "⬆️ Norden" },
+  { value: "Osten", text: "➡️ Osten" },
+  { value: "Süden", text: "⬇️ Süden" },
+  { value: "Westen", text: "⬅️ Westen" },
+  { value: "Nordosten", text: "↗️ Nordosten" },
+  { value: "Nordwesten", text: "↖️ Nordwesten" },
+  { value: "Südosten", text: "↘️ Südosten" },
+  { value: "Südwesten", text: "↙️ Südwesten" },
+];
+
 const directionVectors = {
   "Keine Bewegung": { x: 0, y: 0 },
   Norden: { x: 0, y: 1 },
@@ -38,6 +50,16 @@ let phaseCounter = 0;
 let assemblyCounter = 0;
 let standaloneCounter = 0;
 
+// Hilfsfunktion, um eine Funktion nur nach einer kurzen Pause auszuführen
+function debounce(func, delay) {
+  let timeout;
+  return function (...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), delay);
+  };
+}
+
 function updateDirectionInputs(selectElement) {
   const selectedDirection = selectElement.value;
   const vector = directionVectors[selectedDirection];
@@ -48,32 +70,46 @@ function updateDirectionInputs(selectElement) {
     targetXInput.value = vector.x;
     targetYInput.value = vector.y;
   }
-
-  const isDisabled = cardinalDirections.includes(selectedDirection);
-  targetXInput.disabled = isDisabled;
-  targetYInput.disabled = isDisabled;
 }
 
 function initializeConfigurator() {
-  initializeCardNavigation("config-nav", "config-sections");
+  // HTML-Templates in die Seite laden
+  document.getElementById("config-params").innerHTML =
+    getParamsHtml(directionOptions);
+  document.getElementById("config-phases").innerHTML = getPhasesHtml();
+  document.getElementById("config-assemblies").innerHTML = getAssembliesHtml();
+  document.getElementById("config-standalone").innerHTML = getStandaloneHtml();
+  document.getElementById("config-summary").innerHTML = getSummaryHtml();
+
+  initializeVerticalNavigation("config-nav", "config-sections");
 
   const form = document.getElementById("simulation-form");
-  form.addEventListener("input", saveState);
+  const debouncedUpdate = debounce(updateVisualization, 400);
+
+  form.addEventListener("input", () => {
+    saveState();
+    debouncedUpdate();
+  });
+
   form.addEventListener("click", (e) => {
     if (e.target.tagName === "BUTTON" && e.target.type === "button") {
-      setTimeout(saveState, 50);
+      setTimeout(() => {
+        saveState();
+        updateVisualization();
+      }, 50);
     }
   });
 
   document.getElementById("ratedCurrent").addEventListener("change", () => {
+    updateParametersFromCsv();
+    updatePhaseCurrents();
+    // Baugruppen-Dropdowns müssen auch aktualisiert werden
     const data = gatherFormData();
     const asmList = document.getElementById("assemblies-list");
     asmList.innerHTML = "";
     assemblyCounter = 0;
     (data.assemblies || []).forEach((asm) => addAssembly(asm));
     updateAssemblyPhaseDropdowns();
-    updatePhaseCurrents();
-    updateParametersFromCsv();
   });
 
   form.addEventListener("submit", function (event) {
@@ -90,21 +126,22 @@ function initializeConfigurator() {
           alert(`Fehler: ${result.error}`);
         } else {
           alert(result.message);
-          const runner = document.getElementById("simulation-runner");
-          runner.classList.remove("initially-hidden");
+          document
+            .getElementById("simulation-runner")
+            .classList.remove("initially-hidden");
         }
       });
   });
 
-  const startBtn = document.getElementById("start-simulation-btn");
-  if (startBtn) {
-    startBtn.addEventListener("click", startSimulation);
-  }
-
-  const summaryCard = document.querySelector('[data-target="config-summary"]');
-  if (summaryCard) {
-    summaryCard.addEventListener("click", updateVisualization);
-  }
+  document
+    .getElementById("start-simulation-btn")
+    ?.addEventListener("click", startSimulation);
+  document
+    .getElementById("save-config-btn")
+    .addEventListener("click", saveConfiguration);
+  document
+    .getElementById("load-config-btn")
+    .addEventListener("click", loadConfiguration);
 
   const svg = document.getElementById("config-preview-svg");
   if (svg) {
@@ -118,6 +155,92 @@ function initializeConfigurator() {
   });
 
   loadState();
+  populateLoadOptions();
+}
+
+// Angepasste Navigations-Funktion
+function initializeVerticalNavigation(navId, sectionContainerId) {
+  const links = document.querySelectorAll(`#${navId} .nav-link`);
+  const sections = document.querySelectorAll(
+    `#${sectionContainerId} .config-section`
+  );
+
+  links.forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      sections.forEach((s) => s.classList.remove("active"));
+      links.forEach((l) => l.classList.remove("active"));
+
+      const targetId = link.dataset.target;
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        targetElement.classList.add("active");
+      }
+      link.classList.add("active");
+    });
+  });
+}
+
+// --- Speichern & Laden ---
+
+async function populateLoadOptions() {
+  const select = document.getElementById("load-config-select");
+  try {
+    const response = await fetch("/api/configurations");
+    const configs = await response.json();
+    select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+    configs.forEach((name) => {
+      select.add(new Option(name, name));
+    });
+  } catch (error) {
+    console.error("Fehler beim Laden der Konfigurationen:", error);
+  }
+}
+
+async function saveConfiguration() {
+  const name = document.getElementById("simulationName").value;
+  if (!name) {
+    alert("Bitte geben Sie einen Namen für die Konfiguration an.");
+    return;
+  }
+  const data = gatherFormData();
+
+  try {
+    const response = await fetch("/api/configurations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, data }),
+    });
+    const result = await response.json();
+    alert(result.message || result.error);
+    if (!result.error) {
+      populateLoadOptions();
+    }
+  } catch (error) {
+    alert("Ein Fehler ist aufgetreten: " + error);
+  }
+}
+
+async function loadConfiguration() {
+  const name = document.getElementById("load-config-select").value;
+  if (!name) {
+    alert("Bitte wählen Sie eine Konfiguration zum Laden aus.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/configurations/${name}`);
+    const data = await response.json();
+    if (data.error) {
+      alert("Fehler: " + data.error);
+    } else {
+      loadState(data);
+      document.getElementById("simulationName").value = name;
+      alert(`Konfiguration '${name}' geladen.`);
+    }
+  } catch (error) {
+    alert("Ein Fehler ist aufgetreten: " + error);
+  }
 }
 
 function updateParametersFromCsv() {
@@ -253,7 +376,11 @@ async function updateVisualization() {
   svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
   controls.innerHTML = "";
 
-  renderComponentToggles(data);
+  // Diese Funktion muss auf der Übersichtsseite bleiben
+  const toggleContainer = document.getElementById("component-toggle-list");
+  if (toggleContainer) {
+    renderComponentToggles(data);
+  }
 
   try {
     const response = await fetch("/visualize", {
@@ -264,10 +391,19 @@ async function updateVisualization() {
     if (!response.ok)
       throw new Error("Visualisierungs-Daten konnten nicht geladen werden.");
 
-    const { scenes, room, position_steps, coordinate_summary } =
-      await response.json();
+    const { scenes, room } = await response.json();
 
-    updateParameterSummary(data, position_steps, coordinate_summary);
+    // Parameter-Zusammenfassung nur auf der Übersichts-Seite aktualisieren
+    const summaryContainer = document.getElementById(
+      "parameter-summary-container"
+    );
+    if (summaryContainer) {
+      updateParameterSummary(
+        data,
+        scenes.length,
+        await response.json().coordinate_summary
+      );
+    }
 
     svg.innerHTML = "";
 
@@ -368,7 +504,7 @@ async function updateVisualization() {
     scenes.forEach((scene, index) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "button secondary";
+      button.className = "button"; // secondary-Klasse entfernt für blaue Buttons
       button.textContent = scene.name;
       button.onclick = () => {
         mainGroup
@@ -394,6 +530,8 @@ async function updateVisualization() {
 
 function renderComponentToggles(data) {
   const container = document.getElementById("component-toggle-list");
+  if (!container) return; // Abbrechen, wenn der Container nicht da ist
+
   container.innerHTML = "";
 
   const createToggle = (item, type, index) => {
@@ -786,9 +924,12 @@ function loadState(data = null) {
   const configData =
     data || JSON.parse(localStorage.getItem("latestSimConfig"));
 
-  updateParametersFromCsv();
-
-  if (!configData) return;
+  if (!configData) {
+    // Wenn keine Daten vorhanden sind, initialisiere trotzdem die Ansicht
+    updateParametersFromCsv();
+    updateVisualization();
+    return;
+  }
 
   const {
     simulationParams,
@@ -798,6 +939,8 @@ function loadState(data = null) {
   } = configData;
   document.getElementById("ratedCurrent").value =
     simulationParams.ratedCurrent || "600";
+
+  updateParametersFromCsv();
 
   if (simulationParams.startpositionen) {
     document.getElementById("startX_L1").value =
@@ -880,4 +1023,7 @@ function loadState(data = null) {
     );
     if (select) select.value = assembly.phaseName;
   });
+
+  // Vorschau nach dem Laden des Zustands initialisieren
+  updateVisualization();
 }

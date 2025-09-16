@@ -5,13 +5,14 @@ Hauptanwendung für den FEMM-Simulationskonfigurator.
 import json
 import os
 import math
-import time  # Hinzugefügt für den Cache-Buster
+import time
 
 from flask import Flask, jsonify, render_template, request
 
 from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
+from server.configurations import configurations_bp
 from server.utils import (
     load_json,
     load_csv,
@@ -28,6 +29,7 @@ app = Flask(__name__)
 app.register_blueprint(api_bp)
 app.register_blueprint(analysis_bp, url_prefix="/api")
 app.register_blueprint(simulation_bp)
+app.register_blueprint(configurations_bp, url_prefix="/api")
 
 
 @app.route("/")
@@ -65,7 +67,6 @@ def simulation():
         schrittweiten_data=schrittweiten_data,
         startpos_data=startpos_data,
         direction_options=direction_options,
-        # KORREKTUR: Zeitstempel für Cache-Busting
         timestamp=int(time.time()),
     )
 
@@ -73,7 +74,6 @@ def simulation():
 @app.route("/results")
 def results():
     """Zeigt die Ergebnisseite."""
-    # KORREKTUR: Zeitstempel für Cache-Busting
     return render_template("ergebnisse.html", timestamp=int(time.time()))
 
 
@@ -81,7 +81,6 @@ def results():
 def library():
     """Zeigt die kombinierte Bibliotheks- und Stammdaten-Verwaltung."""
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
-    # KORREKTUR: Zeitstempel für Cache-Busting
     return render_template(
         "library.html", library=library_data, timestamp=int(time.time())
     )

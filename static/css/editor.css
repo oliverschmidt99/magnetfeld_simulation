@@ -30,7 +30,25 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
 }
+
+.accordion-button-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-grow: 1;
+}
+
+.component-icon {
+    flex-shrink: 0;
+    color: #6c757d;
+}
+
+.tags-display {
+    flex-shrink: 0;
+}
+
 
 .accordion-button:hover, .accordion-button.active {
     background-color: #e9ecef;
@@ -46,6 +64,11 @@
 
 .modal-content {
     max-width: 900px; /* Breiter für die Vorschau */
+}
+
+.modal-button-group-centered {
+    justify-content: center;
+    margin-top: 2rem;
 }
 
 .editor-layout {
@@ -145,4 +168,28 @@
 }
 .danger:hover {
     background-color: #c82333;
+}
+
+.checkbox-container {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ced4da;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.checkbox-container div {
+    display: flex;
+    align-items: center;
+    padding: 2px 0;
+}
+
+.checkbox-container input {
+    margin-right: 8px;
+    width: auto; /* Stellt sicher, dass Checkboxen nicht die volle Breite einnehmen */
+}
+
+.checkbox-container label {
+    margin-bottom: 0; /* Setzt den Standard-Margin von Labels zurück */
+    font-weight: normal;
 }

@@ -184,7 +184,7 @@ def get_plot_data():
         return jsonify({"error": f"Fehler beim Lesen der Datei: {e}"})
     except KeyError as e:
         return jsonify({"error": f"Fehlende Spalte: {e}"})
-    except Exception as e:
+    except (ValueError, AttributeError) as e:
         return jsonify({"error": f"Ein unerwarteter Fehler ist aufgetreten: {e}"}), 500
 
 

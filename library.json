@@ -2,33 +2,39 @@
     "components": {
         "copperRails": [
             {
-                "templateProductInformation": {
-                    "name": "RJ_40x10_600A",
-                    "productName": "Kupferschiene 40x10",
-                    "manufacturer": "Rolf Janssen",
-                    "manufacturerNumber": "4411",
-                    "companyNumber": "",
-                    "eanNumber": "",
-                    "additionalInfo": "",
-                    "sellingPrice": "",
-                    "purchasePrice": "",
-                    "condition": "new",
-                    "tags": [],
-                    "uniqueNumber": "3921e"
-                },
                 "specificProductInformation": {
                     "electricInformation": {
-                        "voltage": "",
                         "current": "",
-                        "power": ""
+                        "power": "",
+                        "voltage": ""
                     },
                     "geometry": {
-                        "type": "Rectangle",
-                        "material": "Copper",
+                        "height": 10,
                         "length": null,
-                        "width": 40,
-                        "height": 10
-                    }
+                        "material": "Copper",
+                        "type": "Rectangle",
+                        "width": 40
+                    },
+                    "electrical": {
+                        "ratedCurrentA": 600
+                    },
+                    "copperRailDimensions": "1x100x12"
+                },
+                "templateProductInformation": {
+                    "additionalInfo": "",
+                    "companyNumber": "",
+                    "condition": "new",
+                    "eanNumber": "",
+                    "manufacturer": "Rolf Janssen",
+                    "manufacturerNumber": "4411",
+                    "name": "RJ_40x10_600A",
+                    "productName": "Kupferschiene 40x10",
+                    "purchasePrice": "",
+                    "sellingPrice": "",
+                    "tags": [
+                        "600 A"
+                    ],
+                    "uniqueNumber": "3921e"
                 }
             },
             {

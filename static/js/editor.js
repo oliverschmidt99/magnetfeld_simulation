@@ -9,6 +9,7 @@ let libraryData = {};
 let tagsData = {};
 let currentEditorComponent = null; // Speichert das Bauteil, das gerade bearbeitet wird
 let currentEditorComponentType = null; // Speichert den Typ des Bauteils (z.B. 'transformers')
+let currentComponentTags = []; // Speichert die Tags des aktuellen Bauteils
 
 /**
  * Initialisiert den gesamten Editor. Wird von library.js aufgerufen.
@@ -21,7 +22,7 @@ async function initializeEditor(library) {
   renderComponentList();
   document
     .getElementById("add-new-component-btn")
-    .addEventListener("click", () => openEditor());
+    .addEventListener("click", showComponentTypeSelectionModal);
 }
 
 /**
@@ -59,7 +60,19 @@ function renderComponentList() {
     .getElementById("search-filter")
     .value.toLowerCase();
 
-  // Iteriert durch alle Bauteil-Typen in der Bibliothek (transformers, copperRails, etc.)
+  const getIconForType = (type) => {
+    switch (type) {
+      case "transformers":
+        return `<svg width="24" height="24" viewBox="0 0 24 24" class="component-icon"><rect x="3" y="3" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2"/><rect x="7" y="7" width="10" height="10" stroke="currentColor" fill="none" stroke-width="2"/></svg>`;
+      case "copperRails":
+        return `<svg width="24" height="24" viewBox="0 0 24 24" class="component-icon"><rect x="2" y="9" width="20" height="6" fill="currentColor"/></svg>`;
+      case "transformerSheets":
+        return `<svg width="24" height="24" viewBox="0 0 24 24" class="component-icon"><rect x="2" y="11" width="20" height="2" fill="currentColor"/></svg>`;
+      default:
+        return '<svg width="24" height="24" class="component-icon"></svg>';
+    }
+  };
+
   for (const type in libraryData.components) {
     if (typeFilter !== "all" && type !== typeFilter) continue;
 
@@ -67,11 +80,15 @@ function renderComponentList() {
       const name = component.templateProductInformation.name || "";
       if (!name.toLowerCase().includes(searchFilter)) return;
 
+      const icon = getIconForType(type);
       const item = document.createElement("div");
       item.className = "accordion-item";
       item.innerHTML = `
                 <button type="button" class="accordion-button">
-                    <span>${name} <small>(${type})</small></span>
+                    <div class="accordion-button-title">
+                        ${icon}
+                        <span>${name} <small>(${type})</small></span>
+                    </div>
                     <div class="tags-display">${(
                       component.templateProductInformation.tags || []
                     )
@@ -103,14 +120,33 @@ function renderComponentList() {
   }
 }
 
-/**
- * Öffnet das Editor-Fenster (Modal) für ein neues oder bestehendes Bauteil.
- * @param {object} [component=null] - Das zu bearbeitende Bauteil. Wenn null, wird ein neues erstellt.
- * @param {string} [type='transformers'] - Der Typ des Bauteils.
- */
+function showComponentTypeSelectionModal() {
+  const modal = document.getElementById("component-type-modal");
+  modal.style.display = "flex";
+
+  document.getElementById("select-transformer").onclick = () => {
+    openEditor(null, "transformers");
+    modal.style.display = "none";
+  };
+  document.getElementById("select-copperRail").onclick = () => {
+    openEditor(null, "copperRails");
+    modal.style.display = "none";
+  };
+  document.getElementById("select-transformerSheet").onclick = () => {
+    openEditor(null, "transformerSheets");
+    modal.style.display = "none";
+  };
+  document.getElementById("cancel-type-selection").onclick = () => {
+    modal.style.display = "none";
+  };
+}
+
 function openEditor(component = null, type = "transformers") {
   currentEditorComponent = component;
   currentEditorComponentType = type;
+  currentComponentTags = component
+    ? [...component.templateProductInformation.tags]
+    : [];
 
   const modal = document.getElementById("component-editor-modal");
   const form = document.getElementById("component-editor-form");
@@ -118,7 +154,7 @@ function openEditor(component = null, type = "transformers") {
 
   title.textContent = component
     ? `Bauteil bearbeiten: ${component.templateProductInformation.name}`
-    : "Neues Bauteil erstellen";
+    : `Neues Bauteil erstellen: ${type}`;
 
   const data = component || {
     templateProductInformation: { name: "", manufacturer: "", tags: [] },
@@ -128,18 +164,20 @@ function openEditor(component = null, type = "transformers") {
     },
   };
 
-  // Wählt das passende Formular basierend auf dem Bauteiltyp
   if (type === "transformers") {
     form.innerHTML = getTransformerFormHtml(data);
   } else {
     form.innerHTML = getSimpleComponentFormHtml(data, type);
   }
 
-  // Event-Listener für Live-Vorschau hinzufügen
+  form
+    .querySelector(".add-tags-btn")
+    .addEventListener("click", openTagSelectionModal);
+  renderCurrentTags();
+
   form.addEventListener("input", () => updateEditorPreview(type));
   updateEditorPreview(type);
 
-  // Button-Events zuweisen
   document.getElementById("save-component-btn").onclick = saveComponent;
   document.getElementById("delete-component-btn").onclick = deleteComponent;
   document.getElementById("cancel-edit-btn").onclick = () =>
@@ -148,11 +186,6 @@ function openEditor(component = null, type = "transformers") {
   modal.style.display = "flex";
 }
 
-/**
- * Erstellt das HTML für das Formular eines Transformators.
- * @param {object} data - Die Daten des Bauteils.
- * @returns {string} - Der HTML-String für das Formular.
- */
 function getTransformerFormHtml(data) {
   const tpi = data.templateProductInformation;
   const spi = data.specificProductInformation;
@@ -170,28 +203,125 @@ function getTransformerFormHtml(data) {
     )
     .join("");
 
+  const burdenOptions = [1.0, 2.5, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
+    .map(
+      (val) =>
+        `<option value="${val}" ${ele.burdenVA === val ? "selected" : ""}>${val
+          .toFixed(1)
+          .replace(".", ",")} VA</option>`
+    )
+    .join("");
+
+  const railDimensions = [
+    "1x100x12",
+    "1x50x10",
+    "1x100x15",
+    "1x100x55",
+    "1x150x10",
+    "1x150x20",
+    "1x40x10",
+    "1x40x12",
+    "1x50x12",
+    "1x60x10",
+    "1x60x12",
+    "1x60x30",
+    "1x70x10",
+    "1x70x12",
+    "1x80x12",
+    "1x80x15",
+    "1x90x10",
+    "1x90x15",
+    "2x100x10",
+    "2x120x10",
+    "2x120x15",
+    "2x150x10",
+    "2x150x20",
+    "2x40x10",
+    "2x50x10",
+    "2x60x10",
+    "2x70x10",
+    "2x80x10",
+    "2x80x12",
+    "2x90x10",
+    "3x100x10",
+    "3x150x10",
+    "3x160x10",
+    "3x200x10",
+    "3x50x10",
+    "3x80x10",
+    "3x140x10",
+    "4x100x10",
+    "4x120x10",
+    "4x150x15",
+    "4x200x10",
+    "4x250x10",
+    "4x60x10",
+    "4x80x10",
+    "5x120x10",
+    "5x150x10",
+  ];
+
+  const railCheckboxes = railDimensions
+    .map((d) => {
+      const checked = (spi.copperRailDimensions || []).includes(d)
+        ? "checked"
+        : "";
+      return `<div><input type="checkbox" id="rail-${d}" name="copperRail" value="${d}" ${checked}><label for="rail-${d}">${d}</label></div>`;
+    })
+    .join("");
+
+  const [ratioPrimary, ratioSecondary] = (ele.ratio || "/").split("/");
+
   return `
         <div class="form-section">
             <h3>Allgemeine Informationen</h3>
             <div class="form-group"><label>Name</label><input type="text" id="edit-name" value="${
               tpi.name || ""
             }" required></div>
+            <div class="form-group"><label>Produktname</label><input type="text" id="edit-productName" value="${
+              tpi.productName || ""
+            }"></div>
             <div class="form-group"><label>Hersteller</label><input type="text" id="edit-manufacturer" value="${
               tpi.manufacturer || ""
             }"></div>
+            <div class="form-group"><label>Art.-Nr. (Herst.)</label><input type="text" id="edit-manufacturerNumber" value="${
+              tpi.manufacturerNumber || ""
+            }"></div>
+            <div class="form-group"><label>Art.-Nr. (RJ)</label><input type="text" id="edit-companyNumber" value="${
+              tpi.companyNumber || ""
+            }"></div>
+            <div class="form-group"><label>Eindeutige Nr. / Wandler Nr.</label><input type="text" id="edit-uniqueNumber" value="${
+              tpi.uniqueNumber || ""
+            }"></div>
+            <div class="form-group">
+                <label>Tags</label>
+                <div id="tags-input-container" class="tags-input-container">
+                    <button type="button" class="add-tags-btn">+ Tags hinzufügen</button>
+                </div>
+            </div>
         </div>
         <div class="form-section">
             <h3>Elektrische Daten</h3>
             <div class="form-group"><label>Nennstrom</label><select id="edit-primaryRatedCurrentA">${stromOptions}</select></div>
-            <div class="form-group"><label>Bürde (VA)</label><input type="number" step="0.1" id="edit-burdenVA" value="${
-              ele.burdenVA || 0
-            }"></div>
-            <div class="form-group"><label>Übersetzung</label><input type="text" id="edit-ratio" placeholder="z.B. 800/1A" value="${
-              ele.ratio || ""
-            }"></div>
+            <div class="form-group"><label>Bürde (VA)</label><select id="edit-burdenVA">${burdenOptions}</select></div>
+            <div class="form-group">
+                <label>Übersetzung</label>
+                <div class="form-row">
+                    <input type="number" id="edit-ratio-primary" placeholder="Primär" value="${
+                      ratioPrimary || ""
+                    }">
+                    <input type="number" id="edit-ratio-secondary" placeholder="Sekundär" value="${
+                      ratioSecondary || ""
+                    }">
+                </div>
+            </div>
             <div class="form-group"><label>Klasse</label><input type="text" id="edit-accuracyClass" placeholder="z.B. 0.5" value="${
               ele.accuracyClass || ""
             }"></div>
+            <div class="form-group">
+                <label>Passende Kupferschiene(n)</label>
+                <div class="checkbox-container" id="edit-copperRail">${railCheckboxes}</div>
+            </div>
         </div>
         <div class="form-section">
             <h3>Geometrie (Rechteck-Wandler)</h3>
@@ -213,16 +343,65 @@ function getTransformerFormHtml(data) {
     `;
 }
 
-/**
- * Erstellt das HTML für ein einfaches Bauteil (Kupferschiene, Blech).
- * @param {object} data - Die Daten des Bauteils.
- * @param {string} type - Der Typ des Bauteils.
- * @returns {string} - Der HTML-String für das Formular.
- */
 function getSimpleComponentFormHtml(data, type) {
   const tpi = data.templateProductInformation;
-  const geo = data.specificProductInformation.geometry || {};
-  const ele = data.specificProductInformation.electrical || {};
+  const spi = data.specificProductInformation;
+  const geo = spi.geometry || {};
+  const ele = spi.electrical || {};
+
+  const railDimensions = [
+    "1x100x12",
+    "1x50x10",
+    "1x100x15",
+    "1x100x55",
+    "1x150x10",
+    "1x150x20",
+    "1x40x10",
+    "1x40x12",
+    "1x50x12",
+    "1x60x10",
+    "1x60x12",
+    "1x60x30",
+    "1x70x10",
+    "1x70x12",
+    "1x80x12",
+    "1x80x15",
+    "1x90x10",
+    "1x90x15",
+    "2x100x10",
+    "2x120x10",
+    "2x120x15",
+    "2x150x10",
+    "2x150x20",
+    "2x40x10",
+    "2x50x10",
+    "2x60x10",
+    "2x70x10",
+    "2x80x10",
+    "2x80x12",
+    "2x90x10",
+    "3x100x10",
+    "3x150x10",
+    "3x160x10",
+    "3x200x10",
+    "3x50x10",
+    "3x80x10",
+    "3x140x10",
+    "4x100x10",
+    "4x120x10",
+    "4x150x15",
+    "4x200x10",
+    "4x250x10",
+    "4x60x10",
+    "4x80x10",
+    "5x120x10",
+    "5x150x10",
+  ]
+    .map((d) => {
+      const selected = spi.copperRailDimensions === d ? "selected" : "";
+      return `<option value="${d}" ${selected}>${d}</option>`;
+    })
+    .join("");
 
   const stromOptions = [
     600, 800, 1000, 1250, 1600, 2000, 2500, 3000, 4000, 5000,
@@ -241,6 +420,27 @@ function getSimpleComponentFormHtml(data, type) {
             <div class="form-group"><label>Name</label><input type="text" id="edit-name" value="${
               tpi.name || ""
             }" required></div>
+            <div class="form-group"><label>Produktname</label><input type="text" id="edit-productName" value="${
+              tpi.productName || ""
+            }"></div>
+            <div class="form-group"><label>Hersteller</label><input type="text" id="edit-manufacturer" value="${
+              tpi.manufacturer || ""
+            }"></div>
+            <div class="form-group"><label>Art.-Nr. (Herst.)</label><input type="text" id="edit-manufacturerNumber" value="${
+              tpi.manufacturerNumber || ""
+            }"></div>
+            <div class="form-group"><label>Art.-Nr. (RJ)</label><input type="text" id="edit-companyNumber" value="${
+              tpi.companyNumber || ""
+            }"></div>
+            <div class="form-group"><label>Eindeutige Nr.</label><input type="text" id="edit-uniqueNumber" value="${
+              tpi.uniqueNumber || ""
+            }"></div>
+             <div class="form-group">
+                <label>Tags</label>
+                <div id="tags-input-container" class="tags-input-container">
+                    <button type="button" class="add-tags-btn">+ Tags hinzufügen</button>
+                </div>
+            </div>
         </div>
         ${
           type === "copperRails"
@@ -248,6 +448,7 @@ function getSimpleComponentFormHtml(data, type) {
         <div class="form-section">
             <h3>Elektrische Daten</h3>
             <div class="form-group"><label>Nennstrom</label><select id="edit-ratedCurrentA">${stromOptions}</select></div>
+            <div class="form-group"><label>Passende Kupferschiene</label><select id="edit-copperRail">${railDimensions}</select></div>
         </div>`
             : ""
         }
@@ -264,16 +465,15 @@ function getSimpleComponentFormHtml(data, type) {
      `;
 }
 
-/**
- * Sammelt die Geometrie-Daten aus dem aktuell offenen Formular.
- * @param {string} type - Der Typ des Bauteils.
- * @returns {object} - Ein Objekt mit den Geometrie-Daten.
- */
 function gatherComponentDataFromForm(type) {
   const form = document.getElementById("component-editor-form");
   const data = {};
 
   if (type === "transformers") {
+    const ratioPrimary = form.querySelector("#edit-ratio-primary")?.value || "";
+    const ratioSecondary =
+      form.querySelector("#edit-ratio-secondary")?.value || "";
+
     data.geometry = {
       type: "Rectangle",
       coreOuterWidth:
@@ -289,9 +489,12 @@ function gatherComponentDataFromForm(type) {
       primaryRatedCurrentA:
         parseInt(form.querySelector("#edit-primaryRatedCurrentA")?.value) || 0,
       burdenVA: parseFloat(form.querySelector("#edit-burdenVA")?.value) || 0,
-      ratio: form.querySelector("#edit-ratio")?.value || "",
+      ratio: `${ratioPrimary}/${ratioSecondary}`,
       accuracyClass: form.querySelector("#edit-accuracyClass")?.value || "",
     };
+    data.copperRailDimensions = Array.from(
+      form.querySelectorAll("#edit-copperRail input[type=checkbox]:checked")
+    ).map((cb) => cb.value);
   } else {
     data.geometry = {
       type: "Rectangle",
@@ -304,15 +507,13 @@ function gatherComponentDataFromForm(type) {
         ratedCurrentA:
           parseInt(form.querySelector("#edit-ratedCurrentA")?.value) || 0,
       };
+      data.copperRailDimensions =
+        form.querySelector("#edit-copperRail")?.value || "";
     }
   }
   return data;
 }
 
-/**
- * Aktualisiert die visuelle Vorschau des Bauteils.
- * @param {string} type - Der Typ des Bauteils.
- */
 function updateEditorPreview(type) {
   const componentData = gatherComponentDataFromForm(type);
   if (componentData) {
@@ -332,9 +533,6 @@ function updateEditorPreview(type) {
   }
 }
 
-/**
- * Speichert das aktuell bearbeitete Bauteil (neu oder geändert).
- */
 function saveComponent() {
   const form = document.getElementById("component-editor-form");
   const newName = form.querySelector("#edit-name").value;
@@ -345,14 +543,12 @@ function saveComponent() {
 
   const isNew = !currentEditorComponent;
   const componentToSave = isNew
-    ? // Erstellt eine leere Vorlage für ein neues Bauteil
-      {
+    ? {
         templateProductInformation: { tags: [] },
         specificProductInformation: { geometry: {}, electrical: {} },
       }
     : JSON.parse(JSON.stringify(currentEditorComponent));
 
-  // KORREKTUR: Stellt sicher, dass die verschachtelten Objekte existieren, bevor darauf zugegriffen wird.
   if (!componentToSave.specificProductInformation) {
     componentToSave.specificProductInformation = {};
   }
@@ -362,16 +558,21 @@ function saveComponent() {
   if (!componentToSave.specificProductInformation.geometry) {
     componentToSave.specificProductInformation.geometry = {};
   }
-  if (!componentToSave.templateProductInformation.tags) {
-    componentToSave.templateProductInformation.tags = [];
-  }
 
-  // Allgemeine Infos aktualisieren
+  componentToSave.templateProductInformation.tags = [...currentComponentTags];
+
   componentToSave.templateProductInformation.name = newName;
+  componentToSave.templateProductInformation.productName =
+    form.querySelector("#edit-productName")?.value || "";
   componentToSave.templateProductInformation.manufacturer =
     form.querySelector("#edit-manufacturer")?.value || "";
+  componentToSave.templateProductInformation.manufacturerNumber =
+    form.querySelector("#edit-manufacturerNumber")?.value || "";
+  componentToSave.templateProductInformation.companyNumber =
+    form.querySelector("#edit-companyNumber")?.value || "";
+  componentToSave.templateProductInformation.uniqueNumber =
+    form.querySelector("#edit-uniqueNumber")?.value || "";
 
-  // Geometrie & Elektrische Daten aktualisieren
   const updatedData = gatherComponentDataFromForm(currentEditorComponentType);
   componentToSave.specificProductInformation.geometry = {
     ...componentToSave.specificProductInformation.geometry,
@@ -382,7 +583,14 @@ function saveComponent() {
     ...updatedData.electrical,
   };
 
-  // Nennstrom als Tag hinzufügen, um die Filterung zu ermöglichen
+  if (
+    currentEditorComponentType === "transformers" ||
+    currentEditorComponentType === "copperRails"
+  ) {
+    componentToSave.specificProductInformation.copperRailDimensions =
+      updatedData.copperRailDimensions;
+  }
+
   const stromTag = `${
     updatedData.electrical.primaryRatedCurrentA ||
     updatedData.electrical.ratedCurrentA
@@ -413,7 +621,6 @@ function saveComponent() {
       if (result.message.includes("erfolgreich")) {
         document.getElementById("component-editor-modal").style.display =
           "none";
-        // Bibliothek neu laden und Ansicht aktualisieren
         const libResponse = await fetch("/api/library");
         libraryData = await libResponse.json();
         renderComponentList();
@@ -421,9 +628,6 @@ function saveComponent() {
     });
 }
 
-/**
- * Löscht das aktuell ausgewählte Bauteil.
- */
 function deleteComponent() {
   if (
     !currentEditorComponent ||
@@ -454,4 +658,90 @@ function deleteComponent() {
         renderComponentList();
       }
     });
+}
+
+// --- TAG MANAGEMENT ---
+
+function renderCurrentTags() {
+  const container = document.getElementById("tags-input-container");
+  container.innerHTML = "";
+  currentComponentTags.forEach((tagName) => {
+    const tagBadge = document.createElement("span");
+    tagBadge.innerHTML = getTagBadge(tagName);
+    const removeBtn = document.createElement("span");
+    removeBtn.className = "remove-tag";
+    removeBtn.innerHTML = "&times;";
+    removeBtn.onclick = () => {
+      currentComponentTags = currentComponentTags.filter((t) => t !== tagName);
+      renderCurrentTags();
+    };
+    tagBadge.querySelector(".tag-badge").appendChild(removeBtn);
+    container.appendChild(tagBadge);
+  });
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "add-tags-btn";
+  addButton.textContent = "+ Tags hinzufügen";
+  addButton.onclick = openTagSelectionModal;
+  container.appendChild(addButton);
+}
+
+function openTagSelectionModal() {
+  const modal = document.getElementById("tag-selection-modal");
+  const tagBackup = [...currentComponentTags]; // Backup für "Abbrechen"
+  renderTagSelectionModal();
+  modal.style.display = "flex";
+
+  document.getElementById("save-tags-btn").onclick = () => {
+    // Die `currentComponentTags` sind bereits aktuell durch das Live-Update
+    modal.style.display = "none";
+  };
+
+  document.getElementById("cancel-tags-btn").onclick = () => {
+    currentComponentTags = tagBackup; // Backup wiederherstellen
+    renderCurrentTags();
+    modal.style.display = "none";
+  };
+}
+
+function renderTagSelectionModal() {
+  const list = document.getElementById("modal-tag-list");
+  list.innerHTML = "";
+  (tagsData.categories || []).forEach((category) => {
+    const group = document.createElement("div");
+    group.className = "tag-group";
+    let tagsHtml = `<h4>${category.name}</h4>`;
+    tagsHtml += (category.tags || [])
+      .map((tag) => {
+        const isSelected = currentComponentTags.includes(tag.name)
+          ? "selected"
+          : "";
+        return `<span class="tag-badge ${isSelected}" data-tag-name="${
+          tag.name
+        }" style="background-color: ${tag.color}; color: ${getTextColor(
+          tag.color
+        )};">${tag.name}</span>`;
+      })
+      .join("");
+    group.innerHTML = tagsHtml;
+    list.appendChild(group);
+  });
+
+  list.querySelectorAll(".tag-badge").forEach((badge) => {
+    badge.addEventListener("click", () => {
+      badge.classList.toggle("selected");
+      const tagName = badge.dataset.tagName;
+      if (badge.classList.contains("selected")) {
+        if (!currentComponentTags.includes(tagName)) {
+          currentComponentTags.push(tagName);
+        }
+      } else {
+        currentComponentTags = currentComponentTags.filter(
+          (t) => t !== tagName
+        );
+      }
+      // Live-Update der Tag-Anzeige im Hauptformular
+      renderCurrentTags();
+    });
+  });
 }

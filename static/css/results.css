@@ -48,7 +48,18 @@
     width: 100%;
 }
 
-/* KORREKTUR: Buttons in der Vorschau zentrieren */
+/* KORREKTUR: Vorschau verkleinert und zentriert */
+#results-preview-container {
+    max-width: 900px; /* Gleiche Breite wie das Diagramm */
+    margin: 1rem auto; /* Zentriert und mit Abstand */
+}
+
+/* Stellt sicher, dass das SVG in der Vorschau nicht zu hoch wird */
+#results-preview-container .component-preview {
+    max-height: 450px;
+    min-height: 300px; /* Etwas kleiner als vorher */
+}
+
 #results-preview-container .button-group {
     justify-content: center;
 }

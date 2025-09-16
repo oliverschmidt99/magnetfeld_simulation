@@ -67,6 +67,77 @@ header h1 {
     white-space: nowrap;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    position: relative;
+}
+
+.nav-item {
+    position: relative;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    padding: 1.5rem;
+    font-size: 1rem;
+    transition: color 0.3s ease-in-out;
+    display: block;
+    position: relative;
+    z-index: 10;
+}
+
+nav a.active {
+    color: #343a40; /* Farbe für aktiven Link, wenn Slider drüber ist */
+}
+
+.nav-slider {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 3.5rem;
+    background-color: white;
+    border-radius: 8px;
+    z-index: 5;
+    transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #343a40;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    overflow: hidden;
+    min-width: 100%;
+    z-index: 100;
+}
+
+.nav-item.has-dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu a {
+    white-space: nowrap;
+    padding: 0.75rem 1.5rem; /* Angepasstes Padding für Dropdown */
+}
+
+.dropdown-menu a:hover {
+    background-color: #495057;
+}
+
 .sub-nav-bar {
     background-color: #e9ecef;
     padding: 0.75rem 2rem;
@@ -92,6 +163,34 @@ header h1 {
     border-radius: 8px;
     padding: 1.5rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Stile für eine Gruppe von auswählbaren Karten */
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.card-container .card {
+    background-color: #f8f9fa; /* Hintergrund aus altem Stil */
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.card-container .card:hover {
+    border-color: #0d6efd;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.card-container .card.active {
+    background-color: #e7f1ff;
+    border-color: #0d6efd;
+    color: #0d6efd;
 }
 
 button, .button {
@@ -171,18 +270,10 @@ textarea {
 }
 
 /* ==========================================================================
-   5. Seiten-spezifische Layouts (Simulation)
+   5. Seiten-spezifische Layouts (Simulation, Editor)
    ========================================================================== */
 
-.preview-section {
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-}
-.preview-section h3 {
-    text-align: center;
-    margin-top: 0;
-}
-
+/* Layout für die Simulations-Konfigurationsseite */
 .two-column-layout.vertical-nav-layout {
     display: grid;
     grid-template-columns: 280px 1fr; /* Feste Breite für die linke Navigation */
@@ -191,6 +282,8 @@ textarea {
 }
 
 .side-column-nav {
+    position: sticky;
+    top: 2rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -201,12 +294,12 @@ textarea {
     border-radius: 6px;
     text-decoration: none;
     color: #343a40;
-    border: 1px solid transparent;
+    border: 1px solid #dee2e6;
+    background-color: #f8f9fa;
     transition: background-color 0.2s, border-color 0.2s;
 }
 .nav-link:hover {
-    background-color: #f8f9fa;
-    border-color: #dee2e6;
+    background-color: #e9ecef;
 }
 .nav-link.active {
     background-color: #e7f1ff;
@@ -285,6 +378,37 @@ textarea {
     border-radius: 8px;
 }
 
+/* Layout für den Bauteil-Editor */
+.editor-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.component-form {
+    padding: 1.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+/* Filterleiste für Bauteil-Listen */
+.filter-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    max-width: 900px;
+    margin: 1rem auto;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.filter-bar .form-group {
+    margin-bottom: 0;
+}
+
+
 /* ==========================================================================
    6. Vorschau & Simulations-Status
    ========================================================================== */
@@ -294,17 +418,17 @@ textarea {
     border: 1px solid #ddd;
     padding: 1rem;
     text-align: center;
-    min-height: 400px; 
-    display: flex; 
+    min-height: 400px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden; 
+    overflow: hidden;
     position: relative;
     box-sizing: border-box;
     border-radius: 4px;
 }
 
-#config-preview-svg {
+#config-preview-svg, #editor-preview-svg {
     width: 100%;
     height: 100%;
 }
@@ -317,9 +441,9 @@ textarea {
 }
 
 .simulation-room-border {
-    stroke: #343a40;
-    stroke-width: 2px;
-    fill: white;
+    stroke: #343a40 !important;
+    stroke-width: 4px !important;
+    fill: white !important;
 }
 
 .simulation-room-label {
@@ -327,6 +451,11 @@ textarea {
     font-family: sans-serif;
     fill: #6c757d;
     text-anchor: middle;
+}
+
+.material-label {
+    font-size: 10px;
+    font-family: monospace;
 }
 
 .progress-bar-container {
@@ -359,7 +488,274 @@ textarea {
 }
 
 /* ==========================================================================
-   7. Footer
+   7. Akkordeon & Listen
+   ========================================================================== */
+
+.component-list-accordion {
+    max-width: 900px;
+    margin: 2rem auto;
+}
+
+.component-list-accordion .accordion-item {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.component-accordion-btn {
+    display: grid;
+    grid-template-areas:
+        "tags tags"
+        "name manufacturer"
+        "dims dims";
+    gap: 0.5rem 1rem;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background-color: #f8f9fa;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: #343a40;
+}
+
+.component-accordion-btn:hover {
+    background-color: #e9ecef;
+}
+
+.component-accordion-btn .tags-display {
+    grid-area: tags;
+    margin-bottom: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.component-accordion-btn .component-item-name {
+    grid-area: name;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.component-accordion-btn .component-item-manufacturer {
+    grid-area: manufacturer;
+    justify-self: end;
+    font-style: italic;
+    color: #6c757d;
+}
+
+.component-accordion-btn .component-item-dims {
+    grid-area: dims;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.component-list-accordion .accordion-content {
+    padding: 1rem;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+/* ==========================================================================
+   8. Tag System & Modal
+   ========================================================================== */
+
+.tags-input-container {
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 5px;
+    min-height: 40px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.add-tags-btn {
+    background: none;
+    border: 1px dashed #6c757d;
+    color: #6c757d;
+    border-radius: 4px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.add-tags-btn:hover {
+    background-color: #e9ecef;
+    color: #343a40;
+}
+
+.tag-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin: 0.2rem;
+}
+
+.tag-badge .remove-tag {
+    margin-left: 0.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 900px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.search-container input {
+    width: 100%;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.modal-tag-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.modal-tag-list .tag-group {
+    margin-bottom: 1rem;
+}
+
+.modal-tag-list .tag-badge {
+    cursor: pointer;
+}
+
+.modal-tag-list .tag-badge.selected {
+    border: 2px solid #0d6efd;
+    padding: calc(0.3rem - 2px) calc(0.6rem - 2px);
+}
+
+/* ==========================================================================
+   9. Parameter-Zusammenfassung
+   ========================================================================== */
+
+.summary-general {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0.5rem 1.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    border: 1px solid #dee2e6;
+}
+
+.summary-general .summary-label {
+    font-weight: bold;
+    color: #495057;
+}
+
+.summary-accordion details {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.summary-accordion summary {
+    font-weight: bold;
+    padding: 0.75rem 1.25rem;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.2s;
+}
+
+.summary-accordion summary:hover {
+    background-color: #e9ecef;
+}
+
+.summary-accordion details[open] summary {
+    background-color: #e7f1ff;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.summary-table th,
+.summary-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.summary-table th {
+    background-color: #f8f9fa;
+}
+
+.summary-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.summary-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   10. Drag & Drop Zone
+   ========================================================================== */
+
+.drop-zone {
+    border: 2px dashed #0d6efd;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    font-size: 1.1rem;
+    color: #6c757d;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    position: relative; /* Wichtig für das Input-Feld */
+}
+
+.drop-zone--over {
+    background-color: #e7f1ff;
+    border-style: solid;
+}
+
+.drop-zone__input {
+    display: none; /* Das eigentliche Input-Feld ist unsichtbar */
+}
+
+.drop-zone__prompt {
+    pointer-events: none; /* Stellt sicher, dass Klicks durch den Text gehen */
+}
+
+/* ==========================================================================
+   11. Footer
    ========================================================================== */
 
 footer {

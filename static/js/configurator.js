@@ -143,6 +143,14 @@ function initializeConfigurator() {
     .getElementById("load-config-btn")
     .addEventListener("click", loadConfiguration);
 
+  // NEU: Event Listener für die neuen Lade-Buttons
+  document
+    .getElementById("load-sim-run-btn")
+    .addEventListener("click", loadSimulationRun);
+
+  // NEU: Drag & Drop und File-Input Logik
+  setupDragAndDrop();
+
   const svg = document.getElementById("config-preview-svg");
   if (svg) {
     enableSvgZoom(svg);
@@ -156,6 +164,7 @@ function initializeConfigurator() {
 
   loadState();
   populateLoadOptions();
+  populateSimulationRunOptions(); // NEU
 }
 
 // Angepasste Navigations-Funktion
@@ -197,6 +206,21 @@ async function populateLoadOptions() {
   }
 }
 
+// NEUE FUNKTION: Füllt das Dropdown für die Simulationsläufe
+async function populateSimulationRunOptions() {
+  const select = document.getElementById("load-sim-run-select");
+  try {
+    const response = await fetch("/api/simulation_runs");
+    const runs = await response.json();
+    select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+    runs.forEach((run) => {
+      select.add(new Option(run.name, run.path));
+    });
+  } catch (error) {
+    console.error("Fehler beim Laden der Simulationsläufe:", error);
+  }
+}
+
 async function saveConfiguration() {
   const name = document.getElementById("simulationName").value;
   if (!name) {
@@ -234,13 +258,101 @@ async function loadConfiguration() {
     if (data.error) {
       alert("Fehler: " + data.error);
     } else {
-      loadState(data);
+      // Wichtig: simulation_run.json enthält die Daten in einem 'data'-Objekt,
+      // gespeicherte Konfigurationen nicht. Wir prüfen das hier.
+      const configData = data.data ? data.data : data;
+      loadState(configData);
       document.getElementById("simulationName").value = name;
       alert(`Konfiguration '${name}' geladen.`);
     }
   } catch (error) {
     alert("Ein Fehler ist aufgetreten: " + error);
   }
+}
+
+// NEUE FUNKTION: Lädt eine Konfiguration aus dem 'simulations'-Ordner
+async function loadSimulationRun() {
+  const path = document.getElementById("load-sim-run-select").value;
+  if (!path) {
+    alert("Bitte wählen Sie einen Simulationslauf zum Laden aus.");
+    return;
+  }
+  try {
+    const response = await fetch(`/api/simulation_runs/${path}`);
+    const data = await response.json();
+    if (data.error) {
+      alert("Fehler: " + data.error);
+    } else {
+      loadState(data);
+      alert(`Konfiguration aus Lauf '${path}' geladen.`);
+    }
+  } catch (error) {
+    alert("Ein Fehler ist aufgetreten: " + error);
+  }
+}
+
+// NEUE FUNKTION: Richtet alle Events für Drag & Drop und den Datei-Button ein
+function setupDragAndDrop() {
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("file-input");
+
+  // Klick auf die Zone öffnet den Datei-Dialog
+  dropZone.addEventListener("click", () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files.length) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  // Visuelles Feedback beim Drag-Over
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("drop-zone--over");
+  });
+
+  // Visuelles Feedback entfernen
+  ["dragleave", "dragend"].forEach((type) => {
+    dropZone.addEventListener(type, () => {
+      dropZone.classList.remove("drop-zone--over");
+    });
+  });
+
+  // Datei-Drop verarbeiten
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+    dropZone.classList.remove("drop-zone--over");
+  });
+}
+
+// NEUE FUNKTION: Verarbeitet die hochgeladene Datei
+function handleFile(file) {
+  if (file.type !== "application/json") {
+    alert("Bitte nur JSON-Dateien hochladen.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const jsonData = JSON.parse(event.target.result);
+      // Eine 'simulation_run.json' hat eine andere Struktur als eine gespeicherte Konfig.
+      // Wir prüfen, ob die benötigten Daten direkt vorhanden sind oder in einem 'data'-Feld.
+      const configData = jsonData.simulationParams ? jsonData : jsonData.data;
+      if (!configData || !configData.simulationParams) {
+        throw new Error("Die JSON-Datei hat nicht die erwartete Struktur.");
+      }
+      loadState(configData);
+      alert(`Konfiguration '${file.name}' erfolgreich geladen.`);
+    } catch (e) {
+      alert(`Fehler beim Verarbeiten der Datei: ${e.message}`);
+    }
+  };
+  reader.readAsText(file);
 }
 
 function updateParametersFromCsv() {

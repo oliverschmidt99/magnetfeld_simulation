@@ -126,14 +126,47 @@ function getStandaloneHtml() {
 function getSummaryHtml() {
   return `
         <div class="config-management-section">
-            <h3>Konfiguration Verwalten</h3>
+            <h3>Konfiguration Speichern</h3>
             <div class="form-row">
-                <div class="form-group"><label for="load-config-select">Gespeicherte Konfiguration laden</label><select id="load-config-select"><option value="">-- Bitte wählen --</option></select></div>
-                <div class="form-group button-group"><button type="button" id="load-config-btn" class="button secondary">Laden</button></div>
+                <div class="form-group">
+                    <label for="simulationName">Aktueller Konfigurations-Name</label>
+                    <input type="text" id="simulationName" placeholder="z.B. Testaufbau_Standard">
+                </div>
+                <div class="form-group button-group">
+                    <button type="button" id="save-config-btn" class="button">Speichern</button>
+                </div>
             </div>
+        </div>
+        <hr>
+        <div class="config-management-section">
+            <h3>Konfiguration Laden</h3>
+            
+            <h4>Gespeicherte Konfigurationen</h4>
             <div class="form-row">
-                <div class="form-group"><label for="simulationName">Aktueller Konfigurations-Name</label><input type="text" id="simulationName" placeholder="z.B. Testaufbau_Standard"></div>
-                <div class="form-group button-group"><button type="button" id="save-config-btn" class="button">Speichern</button></div>
+                <div class="form-group">
+                    <label for="load-config-select">Gespeicherte Konfigurationen</label>
+                    <select id="load-config-select"><option value="">-- Bitte wählen --</option></select>
+                </div>
+                <div class="form-group button-group">
+                    <button type="button" id="load-config-btn" class="button secondary">Laden</button>
+                </div>
+            </div>
+
+            <h4>Abgeschlossene Simulationsläufe</h4>
+             <div class="form-row">
+                <div class="form-group">
+                    <label for="load-sim-run-select">Aus 'simulations'-Ordner laden</label>
+                    <select id="load-sim-run-select"><option value="">-- Bitte wählen --</option></select>
+                </div>
+                <div class="form-group button-group">
+                    <button type="button" id="load-sim-run-btn" class="button secondary">Laden</button>
+                </div>
+            </div>
+
+            <h4>Manuell hochladen</h4>
+            <div id="drop-zone" class="drop-zone">
+                <span class="drop-zone__prompt">JSON-Datei hierher ziehen oder klicken zum Auswählen</span>
+                <input type="file" id="file-input" class="drop-zone__input" accept=".json">
             </div>
         </div>
         <hr>

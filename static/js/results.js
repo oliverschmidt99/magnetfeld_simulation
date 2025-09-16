@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentSelector = document.getElementById("current-selector");
   const yAxisSelector = document.getElementById("y-axis-selector");
   const conductorSelector = document.getElementById("conductor-selector");
-  const plotDiv = document.getElementById("plot-div"); // Geändert von plot-img zu plot-div
+  const plotDiv = document.getElementById("plot-div");
   const loadingMessage = document.getElementById("loading-message");
   const previewSvg = document.getElementById("results-preview-svg");
   const previewLoadingMessage = document.getElementById(
@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let simulationRuns = [];
   const storageKey = "resultsSelection";
+  let myChart = null; // Globale Chart-Instanz
 
   // Hilfsfunktion zum Speichern der Auswahl
   const saveSelection = () => {
@@ -132,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentGroup = currentSelector.value;
 
     if (runIndex === "" || posGroup === "" || currentGroup === "") {
-      plotDiv.style.visibility = "hidden";
+      plotDiv.style.display = "none";
       yAxisSelector.disabled = true;
       yAxisSelector.innerHTML = '<option value="">--</option>';
       conductorSelector.innerHTML = "";
@@ -158,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     selectedConductors.forEach((c) => queryParams.append("conductors[]", c));
 
-    plotDiv.style.visibility = "hidden";
+    plotDiv.style.display = "none";
     loadingMessage.style.display = "block";
 
     fetch(`/api/analysis/plot?${queryParams.toString()}`)
@@ -166,7 +167,9 @@ document.addEventListener("DOMContentLoaded", () => {
       .then((data) => {
         loadingMessage.style.display = "none";
         if (data.error) {
-          Plotly.purge(plotDiv); // Löscht alten Plot
+          if (myChart && typeof myChart.destroy === "function") {
+            myChart.destroy();
+          }
           console.error("Fehler vom Server:", data.error);
           return;
         }
@@ -207,12 +210,42 @@ document.addEventListener("DOMContentLoaded", () => {
           conductorSelector.appendChild(label);
         });
 
-        // --- NEUER TEIL: Plotly-Diagramm rendern ---
-        const plotData = JSON.parse(data.plot_json);
-        Plotly.newPlot(plotDiv, plotData.data, plotData.layout, {
-          responsive: true,
+        if (myChart && typeof myChart.destroy === "function") {
+          myChart.destroy();
+        }
+        const ctx = document.getElementById("plot-canvas").getContext("2d");
+        myChart = new Chart(ctx, {
+          type: "line",
+          data: data.chart_data,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: `${data.y_axis_label} vs. ${data.x_axis_label}`,
+              },
+              legend: {
+                position: "top",
+              },
+            },
+            scales: {
+              y: {
+                title: {
+                  display: true,
+                  text: data.y_axis_label,
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: data.x_axis_label,
+                },
+              },
+            },
+          },
         });
-        plotDiv.style.visibility = "visible";
+        plotDiv.style.display = "block";
       });
   }
 

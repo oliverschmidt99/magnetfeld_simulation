@@ -6,7 +6,6 @@ import os
 import re
 import numpy as np
 import pandas as pd
-import plotly.express as px
 from flask import Blueprint, jsonify, request
 
 from server.utils import load_json
@@ -72,36 +71,49 @@ def get_simulation_runs():
     return jsonify(runs)
 
 
-def create_interactive_plot(
-    df, x_col, y_col, title, xlabel, ylabel, selected_conductors
-):
-    """Erstellt einen interaktiven Plotly-Plot und gibt ihn als JSON zurück."""
+def create_chartjs_data(df, x_col, y_col, selected_conductors):
+    """Erstellt Daten im Chart.js-Format aus einem DataFrame."""
     if selected_conductors and "conductor" in df.columns:
         df_filtered = df[df["conductor"].isin(selected_conductors)]
     else:
         df_filtered = df
 
-    fig = px.line(
-        df_filtered,
-        x=x_col,
-        y=y_col,
-        color="conductor",
-        markers=True,
-        labels={"color": "Leiter"},
-        title=title,
-    )
-    fig.update_layout(
-        xaxis_title=xlabel,
-        yaxis_title=ylabel,
-        template="plotly_white",
-        legend_title_text="Leiter",
-    )
-    return fig.to_json()
+    df_filtered = df_filtered.sort_values(by=x_col)
+
+    labels = df_filtered[x_col].unique().tolist()
+    datasets = []
+
+    colors = ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"]
+
+    conductors = df_filtered["conductor"].unique().tolist()
+
+    for i, conductor in enumerate(conductors):
+        conductor_df = df_filtered[df_filtered["conductor"] == conductor]
+        # Sicherstellen, dass die Daten zu den Labels passen
+        data_points = []
+        conductor_data_map = pd.Series(
+            conductor_df[y_col].values, index=conductor_df[x_col].values
+        )
+        for label in labels:
+            data_points.append(
+                conductor_data_map.get(label, None)
+            )  # Fügt null ein, wenn kein Wert vorhanden ist
+
+        dataset = {
+            "label": conductor,
+            "data": data_points,
+            "borderColor": colors[i % len(colors)],
+            "fill": False,
+            "tension": 0.1,
+        }
+        datasets.append(dataset)
+
+    return {"labels": labels, "datasets": datasets}
 
 
 @analysis_bp.route("/analysis/plot", methods=["GET"])
 def get_plot_data():
-    """Erstellt interaktive Plot-Daten basierend auf den Filter-Parametern."""
+    """Erstellt Chart.js-Daten basierend auf den Filter-Parametern."""
     run_folder = request.args.get("run_folder")
     pos_group = request.args.get("pos_group")
     current_group = request.args.get("current_group")
@@ -119,7 +131,6 @@ def get_plot_data():
         df = pd.read_csv(file_path)
         conductors = df["conductor"].unique().tolist()
 
-        # KORREKTUR: Prüfe, ob die Spalten für die Betragsberechnung existieren
         required_real_cols = ["Iprim_sim_real_A", "Isec_real_A"]
         if all(col in df.columns for col in required_real_cols):
             numeric_cols = [
@@ -131,7 +142,6 @@ def get_plot_data():
             for col in numeric_cols:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-            # Berechne den Betrag mit Vorzeichen für die komplexen Ströme
             df["Iprim_sim_abs_A"] = np.sqrt(
                 df["Iprim_sim_real_A"] ** 2 + df["Iprim_sim_imag_A"] ** 2
             ) * np.sign(df["Iprim_sim_real_A"])
@@ -163,21 +173,20 @@ def get_plot_data():
         if not y_axis_variable:
             return jsonify({"error": "Keine plotbaren Spalten gefunden."})
 
-        plot_json = create_interactive_plot(
+        chart_data = create_chartjs_data(
             df,
             "phaseAngle_deg",
-            y_axis_variable,
-            f"{y_axis_variable} vs. Phasenwinkel",
-            "Phasenwinkel (°)",
             y_axis_variable,
             selected_conductors,
         )
 
         return jsonify(
             {
-                "plot_json": plot_json,
+                "chart_data": chart_data,
                 "conductors": conductors,
                 "columns": columns_for_frontend,
+                "x_axis_label": "Phasenwinkel (°)",
+                "y_axis_label": y_axis_variable,
             }
         )
     except (FileNotFoundError, pd.errors.ParserError) as e:

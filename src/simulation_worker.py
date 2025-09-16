@@ -58,6 +58,9 @@ def setup_femm_problem(femm, global_params, electrical_system, angle_deg):
     femm.new_document(0)
     femm.prob_def(freq, "millimeters", "planar", 1e-8, depth, 30)
 
+    # NEU: Kunststoff-Material hinzufügen
+    femm.add_material("Kunststoff", mu_x=1, mu_y=1)
+
     for mat_props in materials_config.values():
         mat_name = mat_props.get("name")
         if not mat_name:
@@ -126,18 +129,22 @@ def build_femm_geometry(femm, step_config):
     for i, comp in enumerate(step_config.get("standAloneComponents", [])):
         s_geo = comp["component_details"]["specificProductInformation"]["geometry"]
         s_pos = comp["position"]
-        shield_material = s_geo.get("material", steel)
-        create_standalone_object(
-            femm,
-            float(s_pos["x"]),
-            float(s_pos["y"]),
-            float(s_geo["width"]),
-            float(s_geo["height"]),
-            float(comp.get("rotation", 0)),
-            shield_material,
-            "<None>",
-            100 + i,
-        )
+
+        if s_geo.get("type") == "SheetPackage":
+            create_sheet_package(femm, s_pos, s_geo, comp.get("rotation", 0), 100 + i)
+        else:
+            shield_material = s_geo.get("material", steel)
+            create_standalone_object(
+                femm,
+                float(s_pos["x"]),
+                float(s_pos["y"]),
+                float(s_geo["width"]),
+                float(s_geo["height"]),
+                float(comp.get("rotation", 0)),
+                shield_material,
+                "<None>",
+                100 + i,
+            )
 
     femm.add_block_label(sim_length / 2 - 5, sim_breadth / 2 - 5)
     femm.select_label(sim_length / 2 - 5, sim_breadth / 2 - 5)
@@ -186,7 +193,6 @@ def run_analysis_and_collect_results(
         w_mag_j = femm.get_group_block_integral(6, core_group_id)
         flux_wb_complex = femm.get_group_block_integral(8, core_group_id)
 
-        # KORREKTUR: Komplexe Zahlen in Real- und Imaginärteil aufspalten
         res = {
             "pos_name": pos_name,
             "current_name": current_name,
@@ -231,6 +237,79 @@ def draw_rect_explicitly(femm_session, center_x, center_y, width, height):
     femm_session.add_segment(x1, y2, x1, y1)
 
 
+def create_sheet_package(femm_session, center_pos, geo, rotation_deg, group_id_start):
+    """
+    Zeichnet ein ganzes Paket aus Abschirmblechen mit optionaler Isolierung.
+    """
+    center_x, center_y = float(center_pos["x"]), float(center_pos["y"])
+    height = float(geo.get("height", 100))
+    sheet_count = int(geo.get("sheetCount", 1))
+    sheet_thickness = float(geo.get("sheetThickness", 1))
+    with_insulation = geo.get("withInsulation", False)
+    insulation_thickness = (
+        float(geo.get("insulationThickness", 0)) if with_insulation else 0
+    )
+
+    total_width = (sheet_count * sheet_thickness) + (2 * insulation_thickness)
+
+    components = []
+    current_offset = -total_width / 2
+
+    if with_insulation:
+        components.append(
+            {
+                "width": insulation_thickness,
+                "height": height,
+                "offset_x": current_offset + insulation_thickness / 2,
+                "material": "Kunststoff",
+            }
+        )
+        current_offset += insulation_thickness
+
+    for _ in range(sheet_count):
+        components.append(
+            {
+                "width": sheet_thickness,
+                "height": height,
+                "offset_x": current_offset + sheet_thickness / 2,
+                "material": geo.get("material", "M-36 Steel"),
+            }
+        )
+        current_offset += sheet_thickness
+
+    if with_insulation:
+        components.append(
+            {
+                "width": insulation_thickness,
+                "height": height,
+                "offset_x": current_offset + insulation_thickness / 2,
+                "material": "Kunststoff",
+            }
+        )
+
+    for i, comp_props in enumerate(components):
+        rad = np.deg2rad(rotation_deg)
+        cos_a, sin_a = np.cos(rad), np.sin(rad)
+
+        rotated_offset_x = comp_props["offset_x"] * cos_a
+        rotated_offset_y = comp_props["offset_x"] * sin_a
+
+        final_center_x = center_x + rotated_offset_x
+        final_center_y = center_y + rotated_offset_y
+
+        create_standalone_object(
+            femm_session,
+            final_center_x,
+            final_center_y,
+            comp_props["width"],
+            comp_props["height"],
+            rotation_deg,
+            comp_props["material"],
+            "<None>",
+            group_id_start * 10 + i,
+        )
+
+
 def create_standalone_object(
     femm_session,
     center_x,
@@ -242,7 +321,7 @@ def create_standalone_object(
     circuit,
     group_id,
 ):
-    """Zeichnet ein rotiertes Rechteck."""
+    """Zeichnet ein einzelnes, rotiertes Rechteck."""
     corners = [
         (-width / 2, -height / 2),
         (width / 2, -height / 2),
@@ -264,5 +343,6 @@ def create_standalone_object(
 
     femm_session.add_block_label(center_x, center_y)
     femm_session.select_label(center_x, center_y)
+    # KORREKTUR: Fehlendes schließendes Anführungszeichen in der nächsten Zeile.
     femm_session.set_block_prop(material, 1, 0, circuit, 0, group_id, 0)
     femm_session.clear_selected()

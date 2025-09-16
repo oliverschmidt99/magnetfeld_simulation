@@ -176,6 +176,31 @@
                         "height": 5
                     }
                 }
+            },
+            {
+                "specificProductInformation": {
+                    "electrical": {},
+                    "geometry": {
+                        "height": 200,
+                        "insulationThickness": 2,
+                        "material": "M-36 Steel",
+                        "sheetCount": 5,
+                        "sheetThickness": 2,
+                        "type": "SheetPackage",
+                        "withInsulation": true
+                    }
+                },
+                "templateProductInformation": {
+                    "companyNumber": "",
+                    "manufacturer": "Rolf Janssen",
+                    "manufacturerNumber": "",
+                    "name": "Abschirmtrafoblech",
+                    "productName": "Version 1",
+                    "tags": [
+                        "5000 A"
+                    ],
+                    "uniqueNumber": ""
+                }
             }
         ]
     }

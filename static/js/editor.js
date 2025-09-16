@@ -145,7 +145,7 @@ function openEditor(component = null, type = "transformers") {
   currentEditorComponent = component;
   currentEditorComponentType = type;
   currentComponentTags = component
-    ? [...component.templateProductInformation.tags]
+    ? [...(component.templateProductInformation.tags || [])]
     : [];
 
   const modal = document.getElementById("component-editor-modal");
@@ -154,7 +154,7 @@ function openEditor(component = null, type = "transformers") {
 
   title.textContent = component
     ? `Bauteil bearbeiten: ${component.templateProductInformation.name}`
-    : `Neues Bauteil erstellen: ${type}`;
+    : `Neues Bauteil erstellen: ${type.replace(/([A-Z])/g, " $1").trim()}`;
 
   const data = component || {
     templateProductInformation: { name: "", manufacturer: "", tags: [] },
@@ -166,13 +166,15 @@ function openEditor(component = null, type = "transformers") {
 
   if (type === "transformers") {
     form.innerHTML = getTransformerFormHtml(data);
+  } else if (type === "transformerSheets") {
+    form.innerHTML = getSheetPackageFormHtml(data);
   } else {
     form.innerHTML = getSimpleComponentFormHtml(data, type);
   }
 
   form
     .querySelector(".add-tags-btn")
-    .addEventListener("click", openTagSelectionModal);
+    ?.addEventListener("click", openTagSelectionModal);
   renderCurrentTags();
 
   form.addEventListener("input", () => updateEditorPreview(type));
@@ -349,60 +351,6 @@ function getSimpleComponentFormHtml(data, type) {
   const geo = spi.geometry || {};
   const ele = spi.electrical || {};
 
-  const railDimensions = [
-    "1x100x12",
-    "1x50x10",
-    "1x100x15",
-    "1x100x55",
-    "1x150x10",
-    "1x150x20",
-    "1x40x10",
-    "1x40x12",
-    "1x50x12",
-    "1x60x10",
-    "1x60x12",
-    "1x60x30",
-    "1x70x10",
-    "1x70x12",
-    "1x80x12",
-    "1x80x15",
-    "1x90x10",
-    "1x90x15",
-    "2x100x10",
-    "2x120x10",
-    "2x120x15",
-    "2x150x10",
-    "2x150x20",
-    "2x40x10",
-    "2x50x10",
-    "2x60x10",
-    "2x70x10",
-    "2x80x10",
-    "2x80x12",
-    "2x90x10",
-    "3x100x10",
-    "3x150x10",
-    "3x160x10",
-    "3x200x10",
-    "3x50x10",
-    "3x80x10",
-    "3x140x10",
-    "4x100x10",
-    "4x120x10",
-    "4x150x15",
-    "4x200x10",
-    "4x250x10",
-    "4x60x10",
-    "4x80x10",
-    "5x120x10",
-    "5x150x10",
-  ]
-    .map((d) => {
-      const selected = spi.copperRailDimensions === d ? "selected" : "";
-      return `<option value="${d}" ${selected}>${d}</option>`;
-    })
-    .join("");
-
   const stromOptions = [
     600, 800, 1000, 1250, 1600, 2000, 2500, 3000, 4000, 5000,
   ]
@@ -426,15 +374,6 @@ function getSimpleComponentFormHtml(data, type) {
             <div class="form-group"><label>Hersteller</label><input type="text" id="edit-manufacturer" value="${
               tpi.manufacturer || ""
             }"></div>
-            <div class="form-group"><label>Art.-Nr. (Herst.)</label><input type="text" id="edit-manufacturerNumber" value="${
-              tpi.manufacturerNumber || ""
-            }"></div>
-            <div class="form-group"><label>Art.-Nr. (RJ)</label><input type="text" id="edit-companyNumber" value="${
-              tpi.companyNumber || ""
-            }"></div>
-            <div class="form-group"><label>Eindeutige Nr.</label><input type="text" id="edit-uniqueNumber" value="${
-              tpi.uniqueNumber || ""
-            }"></div>
              <div class="form-group">
                 <label>Tags</label>
                 <div id="tags-input-container" class="tags-input-container">
@@ -448,7 +387,6 @@ function getSimpleComponentFormHtml(data, type) {
         <div class="form-section">
             <h3>Elektrische Daten</h3>
             <div class="form-group"><label>Nennstrom</label><select id="edit-ratedCurrentA">${stromOptions}</select></div>
-            <div class="form-group"><label>Passende Kupferschiene</label><select id="edit-copperRail">${railDimensions}</select></div>
         </div>`
             : ""
         }
@@ -463,6 +401,68 @@ function getSimpleComponentFormHtml(data, type) {
         </div>
         <button type="submit" style="display: none;" aria-hidden="true"></button>
      `;
+}
+
+function getSheetPackageFormHtml(data) {
+  const tpi = data.templateProductInformation;
+  const geo = data.specificProductInformation.geometry || {};
+
+  return `
+        <div class="form-section">
+            <h3>Allgemeine Informationen</h3>
+            <div class="form-group"><label>Name</label><input type="text" id="edit-name" value="${
+              tpi.name || ""
+            }" required></div>
+            <div class="form-group"><label>Produktname</label><input type="text" id="edit-productName" value="${
+              tpi.productName || ""
+            }"></div>
+            <div class="form-group"><label>Hersteller</label><input type="text" id="edit-manufacturer" value="${
+              tpi.manufacturer || ""
+            }"></div>
+            <div class="form-group">
+                <label>Tags</label>
+                <div id="tags-input-container" class="tags-input-container">
+                    <button type="button" class="add-tags-btn">+ Tags hinzufügen</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-section">
+            <h3>Geometrie (Abschirmblech-Paket)</h3>
+            <div class="form-group">
+                <label for="edit-sheetCount">Anzahl der Bleche</label>
+                <input type="number" id="edit-sheetCount" class="geo-input" min="1" step="1" value="${
+                  geo.sheetCount || 1
+                }">
+            </div>
+            <div class="form-group">
+                <label for="edit-sheetThickness">Dicke pro Blech (mm)</label>
+                <input type="number" id="edit-sheetThickness" class="geo-input" step="0.1" value="${
+                  geo.sheetThickness || 1.0
+                }">
+            </div>
+             <div class="form-group">
+                <label for="edit-height">Gesamthöhe (mm)</label>
+                <input type="number" id="edit-height" class="geo-input" step="0.1" value="${
+                  geo.height || 100
+                }">
+            </div>
+            <hr>
+            <h4>Isolierung</h4>
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="edit-withInsulation" class="geo-input" ${
+                  geo.withInsulation ? "checked" : ""
+                } style="width: auto;">
+                <label for="edit-withInsulation" style="margin-bottom: 0;">Mit Außenisolierung (Kunststoff)</label>
+            </div>
+            <div class="form-group">
+                <label for="edit-insulationThickness">Dicke der Isolierung (mm)</label>
+                <input type="number" id="edit-insulationThickness" class="geo-input" step="0.1" value="${
+                  geo.insulationThickness || 0.5
+                }">
+            </div>
+        </div>
+        <button type="submit" style="display: none;" aria-hidden="true"></button>
+    `;
 }
 
 function gatherComponentDataFromForm(type) {
@@ -495,6 +495,19 @@ function gatherComponentDataFromForm(type) {
     data.copperRailDimensions = Array.from(
       form.querySelectorAll("#edit-copperRail input[type=checkbox]:checked")
     ).map((cb) => cb.value);
+  } else if (type === "transformerSheets") {
+    data.geometry = {
+      type: "SheetPackage",
+      material: "M-36 Steel",
+      sheetCount: parseInt(form.querySelector("#edit-sheetCount")?.value) || 1,
+      sheetThickness:
+        parseFloat(form.querySelector("#edit-sheetThickness")?.value) || 0,
+      height: parseFloat(form.querySelector("#edit-height")?.value) || 0,
+      withInsulation:
+        form.querySelector("#edit-withInsulation")?.checked || false,
+      insulationThickness:
+        parseFloat(form.querySelector("#edit-insulationThickness")?.value) || 0,
+    };
   } else {
     data.geometry = {
       type: "Rectangle",
@@ -507,8 +520,6 @@ function gatherComponentDataFromForm(type) {
         ratedCurrentA:
           parseInt(form.querySelector("#edit-ratedCurrentA")?.value) || 0,
       };
-      data.copperRailDimensions =
-        form.querySelector("#edit-copperRail")?.value || "";
     }
   }
   return data;
@@ -519,6 +530,12 @@ function updateEditorPreview(type) {
   if (componentData) {
     if (type === "transformers") {
       renderTransformerPreview(
+        componentData.geometry,
+        "editor-preview-svg",
+        true
+      );
+    } else if (type === "transformerSheets") {
+      renderSheetPackagePreview(
         componentData.geometry,
         "editor-preview-svg",
         true
@@ -592,12 +609,13 @@ function saveComponent() {
   }
 
   const stromTag = `${
-    updatedData.electrical.primaryRatedCurrentA ||
-    updatedData.electrical.ratedCurrentA
+    updatedData.electrical?.primaryRatedCurrentA ||
+    updatedData.electrical?.ratedCurrentA
   } A`;
 
   if (
     stromTag &&
+    stromTag !== "undefined A" &&
     !componentToSave.templateProductInformation.tags.includes(stromTag)
   ) {
     componentToSave.templateProductInformation.tags.push(stromTag);
@@ -664,6 +682,7 @@ function deleteComponent() {
 
 function renderCurrentTags() {
   const container = document.getElementById("tags-input-container");
+  if (!container) return;
   container.innerHTML = "";
   currentComponentTags.forEach((tagName) => {
     const tagBadge = document.createElement("span");

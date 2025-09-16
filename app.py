@@ -360,17 +360,78 @@ def visualize_configuration():
             if sheet:
                 s_geo = sheet["specificProductInformation"]["geometry"]
                 rotation = comp.get("rotation", 0)
-                scene_elements.append(
-                    {
-                        "type": "rect",
-                        "x": pos["x"] - s_geo["width"] / 2,
-                        "y": pos["y"] - s_geo["height"] / 2,
-                        "width": s_geo["width"],
-                        "height": s_geo["height"],
-                        "fill": "#a9a9a9",
-                        "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
-                    }
-                )
+
+                # KORREKTUR: Abfrage für den Geometrie-Typ
+                if s_geo.get("type") == "SheetPackage":
+                    sheet_count = s_geo.get("sheetCount", 1)
+                    sheet_thickness = s_geo.get("sheetThickness", 0)
+                    insulation_thickness = (
+                        s_geo.get("insulationThickness", 0)
+                        if s_geo.get("withInsulation")
+                        else 0
+                    )
+                    total_width = (sheet_count * sheet_thickness) + (
+                        2 * insulation_thickness
+                    )
+
+                    current_offset = -total_width / 2
+
+                    # Linke Isolierung
+                    if s_geo.get("withInsulation"):
+                        scene_elements.append(
+                            {
+                                "type": "rect",
+                                "x": pos["x"] + current_offset,
+                                "y": pos["y"] - s_geo["height"] / 2,
+                                "width": insulation_thickness,
+                                "height": s_geo["height"],
+                                "fill": "#ADD8E6",  # Hellblau für Kunststoff
+                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                            }
+                        )
+                        current_offset += insulation_thickness
+
+                    # Bleche
+                    for _ in range(sheet_count):
+                        scene_elements.append(
+                            {
+                                "type": "rect",
+                                "x": pos["x"] + current_offset,
+                                "y": pos["y"] - s_geo["height"] / 2,
+                                "width": sheet_thickness,
+                                "height": s_geo["height"],
+                                "fill": "#a9a9a9",
+                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                            }
+                        )
+                        current_offset += sheet_thickness
+
+                    # Rechte Isolierung
+                    if s_geo.get("withInsulation"):
+                        scene_elements.append(
+                            {
+                                "type": "rect",
+                                "x": pos["x"] + current_offset,
+                                "y": pos["y"] - s_geo["height"] / 2,
+                                "width": insulation_thickness,
+                                "height": s_geo["height"],
+                                "fill": "#ADD8E6",
+                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                            }
+                        )
+
+                else:  # Fallback für alte, einfache Bleche
+                    scene_elements.append(
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - s_geo["width"] / 2,
+                            "y": pos["y"] - s_geo["height"] / 2,
+                            "width": s_geo["width"],
+                            "height": s_geo["height"],
+                            "fill": "#a9a9a9",
+                            "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                        }
+                    )
                 step_coords["components"].append(
                     {
                         "name": comp.get("name"),

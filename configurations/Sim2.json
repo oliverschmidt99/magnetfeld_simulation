@@ -1,0 +1,106 @@
+{
+    "simulationParams": {
+        "ratedCurrent": "5000",
+        "startpositionen": {
+            "x_L1": "-210",
+            "y_L1": "0",
+            "x_L2": "0",
+            "y_L2": "0",
+            "x_L3": "210",
+            "y_L3": "0"
+        },
+        "bewegungsRichtungen": {
+            "L1": {
+                "x": "-5",
+                "y": "1"
+            },
+            "L2": {
+                "x": "0",
+                "y": "0"
+            },
+            "L3": {
+                "x": "5",
+                "y": "-1"
+            }
+        },
+        "problemDepthM": "10",
+        "spielraum": {
+            "Laenge": "680",
+            "Breite": "232.5"
+        },
+        "schrittweiten": {
+            "Pos1": "10",
+            "Pos2": "16",
+            "Pos3": "26",
+            "Pos4": "0"
+        },
+        "I_1_mes": "4000",
+        "I_2_mes": "5000",
+        "I_3_mes": "0",
+        "phaseSweep": {
+            "start": "0",
+            "end": "360",
+            "step": "15"
+        }
+    },
+    "electricalSystem": [
+        {
+            "name": "L1",
+            "phaseShiftDeg": 0,
+            "peakCurrentA": 7071.07
+        },
+        {
+            "name": "L2",
+            "phaseShiftDeg": 120,
+            "peakCurrentA": 7071.07
+        },
+        {
+            "name": "L3",
+            "phaseShiftDeg": -120,
+            "peakCurrentA": 7071.07
+        }
+    ],
+    "assemblies": [
+        {
+            "name": "Assembly_1",
+            "phaseName": "L1",
+            "copperRailName": "RJ_50x120x10_5000",
+            "transformerName": "Test_5000",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_2",
+            "phaseName": "L2",
+            "copperRailName": "RJ_50x120x10_5000",
+            "transformerName": "Test_5000",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_3",
+            "phaseName": "L3",
+            "copperRailName": "RJ_50x120x10_5000",
+            "transformerName": "Test_5000",
+            "enabled": true
+        }
+    ],
+    "standAloneComponents": [
+        {
+            "name": "Abschirmtrafoblech",
+            "position": {
+                "x": -100,
+                "y": 0
+            },
+            "rotation": 0,
+            "enabled": true
+        },
+        {
+            "name": "Abschirmtrafoblech",
+            "position": {
+                "x": 100,
+                "y": 0
+            },
+            "rotation": 0,
+            "enabled": true
+        }
+    ]
+}

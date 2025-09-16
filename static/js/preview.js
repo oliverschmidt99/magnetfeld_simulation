@@ -55,7 +55,6 @@ function renderTransformerPreview(component, svgId, withGrid = false) {
   if (!svg) return;
   svg.innerHTML = "";
 
-  // ### ANPASSUNG: Die Größe der Ansicht basiert jetzt auf den Außenmaßen des Kerns ###
   const outerDim = parseFloat(component.coreOuterWidth) || 100;
 
   const padding = 20;
@@ -66,7 +65,6 @@ function renderTransformerPreview(component, svgId, withGrid = false) {
   const centerX = viewBoxSize / 2;
   const centerY = viewBoxSize / 2;
 
-  // ### ANPASSUNG: Es werden nur noch zwei Rechtecke gezeichnet ###
   const layers = [
     {
       w: component.coreOuterWidth || 0,
@@ -92,6 +90,87 @@ function renderTransformerPreview(component, svgId, withGrid = false) {
       );
     }
   });
+}
+
+/**
+ * Zeichnet eine Vorschau für ein Abschirmblech-Paket.
+ * @param {object} component - Das Geometrie-Objekt des Pakets.
+ * @param {string} svgId - Die ID des SVG-Elements.
+ * @param {boolean} withGrid - Ob ein Gitter gezeichnet werden soll.
+ */
+function renderSheetPackagePreview(component, svgId, withGrid = false) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  svg.innerHTML = "";
+
+  const sheetCount = component.sheetCount || 1;
+  const sheetThickness = component.sheetThickness || 0;
+  const height = component.height || 100;
+  const withInsulation = component.withInsulation || false;
+  const insulationThickness = withInsulation
+    ? component.insulationThickness || 0
+    : 0;
+
+  const totalWidth = sheetCount * sheetThickness + 2 * insulationThickness;
+
+  const padding = 20;
+  const viewWidth = (totalWidth > 0 ? totalWidth : 100) + 2 * padding;
+  const viewHeight = (height > 0 ? height : 100) + 2 * padding;
+
+  svg.setAttribute("viewBox", `0 0 ${viewWidth} ${viewHeight}`);
+  _addDefsAndGrid(svg, withGrid);
+
+  if (totalWidth <= 0 || height <= 0) return;
+
+  let currentX = (viewWidth - totalWidth) / 2;
+  const rectY = (viewHeight - height) / 2;
+
+  // Linke Isolierung
+  if (withInsulation) {
+    _drawRectangle(
+      svg,
+      currentX,
+      rectY,
+      insulationThickness,
+      height,
+      "#ADD8E6"
+    ); // Hellblau für Kunststoff
+    currentX += insulationThickness;
+  }
+
+  // Metallbleche
+  for (let i = 0; i < sheetCount; i++) {
+    _drawRectangle(svg, currentX, rectY, sheetThickness, height, "#a9a9a9"); // Dunkelgrau für Stahl
+    currentX += sheetThickness;
+  }
+
+  // Rechte Isolierung
+  if (withInsulation) {
+    _drawRectangle(
+      svg,
+      currentX,
+      rectY,
+      insulationThickness,
+      height,
+      "#ADD8E6"
+    );
+  }
+
+  // Bemaßungen
+  _createDimension(
+    svg,
+    { x: (viewWidth - totalWidth) / 2, y: rectY + height },
+    { x: (viewWidth + totalWidth) / 2, y: rectY + height },
+    25,
+    `${totalWidth.toFixed(2)} mm`
+  );
+  _createDimension(
+    svg,
+    { x: (viewWidth + totalWidth) / 2, y: rectY },
+    { x: (viewWidth + totalWidth) / 2, y: rectY + height },
+    25,
+    `${height.toFixed(2)} mm`
+  );
 }
 
 /**

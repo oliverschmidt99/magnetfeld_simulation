@@ -128,7 +128,6 @@ def get_plot_data():
         df = pd.read_csv(file_path)
         conductors = df["conductor"].unique().tolist()
 
-        # Berechne Beträge nur, wenn die notwendigen Spalten existieren und numerisch sind
         for real_col, imag_col, abs_col in [
             ("Iprim_sim_real_A", "Iprim_sim_imag_A", "Iprim_sim_abs_A"),
             ("Isec_real_A", "Isec_imag_A", "Isec_abs_A"),
@@ -291,17 +290,75 @@ def get_full_result_preview(run_folder):
             if sheet:
                 s_geo = sheet["specificProductInformation"]["geometry"]
                 rotation = comp.get("rotation", 0)
-                scene_elements.append(
-                    {
-                        "type": "rect",
-                        "x": pos["x"] - s_geo["width"] / 2,
-                        "y": pos["y"] - s_geo["height"] / 2,
-                        "width": s_geo["width"],
-                        "height": s_geo["height"],
-                        "fill": "#a9a9a9",
-                        "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
-                    }
-                )
+
+                # KORREKTUR: Abfrage für den Geometrie-Typ, um den KeyError zu verhindern
+                if s_geo.get("type") == "SheetPackage":
+                    sheet_count = s_geo.get("sheetCount", 1)
+                    sheet_thickness = s_geo.get("sheetThickness", 0)
+                    insulation_thickness = (
+                        s_geo.get("insulationThickness", 0)
+                        if s_geo.get("withInsulation")
+                        else 0
+                    )
+                    total_width = (sheet_count * sheet_thickness) + (
+                        2 * insulation_thickness
+                    )
+
+                    current_offset = -total_width / 2
+
+                    if s_geo.get("withInsulation"):
+                        scene_elements.append(
+                            {
+                                "type": "rect",
+                                "x": pos["x"] + current_offset,
+                                "y": pos["y"] - s_geo["height"] / 2,
+                                "width": insulation_thickness,
+                                "height": s_geo["height"],
+                                "fill": "#ADD8E6",
+                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                            }
+                        )
+                        current_offset += insulation_thickness
+
+                    for _ in range(sheet_count):
+                        scene_elements.append(
+                            {
+                                "type": "rect",
+                                "x": pos["x"] + current_offset,
+                                "y": pos["y"] - s_geo["height"] / 2,
+                                "width": sheet_thickness,
+                                "height": s_geo["height"],
+                                "fill": "#a9a9a9",
+                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                            }
+                        )
+                        current_offset += sheet_thickness
+
+                    if s_geo.get("withInsulation"):
+                        scene_elements.append(
+                            {
+                                "type": "rect",
+                                "x": pos["x"] + current_offset,
+                                "y": pos["y"] - s_geo["height"] / 2,
+                                "width": insulation_thickness,
+                                "height": s_geo["height"],
+                                "fill": "#ADD8E6",
+                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                            }
+                        )
+
+                else:  # Fallback für alte, einfache Bleche mit 'width' und 'height'
+                    scene_elements.append(
+                        {
+                            "type": "rect",
+                            "x": pos["x"] - s_geo.get("width", 0) / 2,
+                            "y": pos["y"] - s_geo.get("height", 0) / 2,
+                            "width": s_geo.get("width", 0),
+                            "height": s_geo.get("height", 0),
+                            "fill": "#a9a9a9",
+                            "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                        }
+                    )
 
         scenes.append(
             {

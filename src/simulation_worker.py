@@ -59,8 +59,6 @@ def setup_femm_problem(femm, global_params, electrical_system, angle_deg):
     femm.new_document(0)
     femm.prob_def(freq, "millimeters", "planar", 1e-8, depth, 30)
 
-    femm.add_material("Kunststoff", mu_x=1, mu_y=1)
-
     for mat_props in materials_config:
         mat_name = mat_props.get("name")
         if not mat_name:
@@ -94,14 +92,6 @@ def build_femm_geometry(femm, step_config):
     copper = next(
         (m.get("name") for m in materials_list if m.get("name") == "Copper"), "Copper"
     )
-    steel = next(
-        (
-            m.get("name")
-            for m in materials_list
-            if m.get("name") not in ["Air", "Copper", "Kunststoff"]
-        ),
-        "M-36 Steel",
-    )
 
     sim_raum = step_config["simulation_meta"]["simulationsraum"]
     sim_length = float(sim_raum["Laenge"])
@@ -114,6 +104,7 @@ def build_femm_geometry(femm, step_config):
         pos = asm["position"]
         t_geo = asm["transformer_details"]["specificProductInformation"]["geometry"]
         r_geo = asm["copperRail_details"]["specificProductInformation"]["geometry"]
+        core_material = t_geo.get("coreMaterial", "M-36 Steel")
 
         draw_rect_explicitly(
             femm, pos["x"], pos["y"], t_geo["coreOuterWidth"], t_geo["coreOuterHeight"]
@@ -128,7 +119,7 @@ def build_femm_geometry(femm, step_config):
         )
         femm.add_block_label(label_x_core, pos["y"])
         femm.select_label(label_x_core, pos["y"])
-        femm.set_block_prop(steel, 1, 0, "<None>", 0, i * 10 + 2, 0)
+        femm.set_block_prop(core_material, 1, 0, "<None>", 0, i * 10 + 2, 0)
         femm.clear_selected()
 
         label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
@@ -149,7 +140,7 @@ def build_femm_geometry(femm, step_config):
         if s_geo.get("type") == "SheetPackage":
             create_sheet_package(femm, s_pos, s_geo, comp.get("rotation", 0), 100 + i)
         else:
-            shield_material = s_geo.get("material", steel)
+            sheet_material = s_geo.get("material", "M-36 Steel")
             create_standalone_object(
                 femm,
                 float(s_pos["x"]),
@@ -157,7 +148,7 @@ def build_femm_geometry(femm, step_config):
                 float(s_geo["width"]),
                 float(s_geo["height"]),
                 float(comp.get("rotation", 0)),
-                shield_material,
+                sheet_material,
                 "<None>",
                 100 + i,
             )
@@ -280,6 +271,9 @@ def create_sheet_package(femm_session, center_pos, geo, rotation_deg, group_id_s
     insulation_thickness = (
         float(geo.get("insulationThickness", 0)) if with_insulation else 0
     )
+    sheet_material = geo.get("material", "M-36 Steel")
+    insulation_material = geo.get("insulationMaterial", "Kunststoff")
+
     total_width = (sheet_count * sheet_thickness) + (2 * insulation_thickness)
     components = []
     current_offset = -total_width / 2
@@ -290,29 +284,32 @@ def create_sheet_package(femm_session, center_pos, geo, rotation_deg, group_id_s
                 "width": insulation_thickness,
                 "height": height,
                 "offset_x": current_offset + insulation_thickness / 2,
-                "material": "Kunststoff",
+                "material": insulation_material,
             }
         )
         current_offset += insulation_thickness
+
     for _ in range(sheet_count):
         components.append(
             {
                 "width": sheet_thickness,
                 "height": height,
                 "offset_x": current_offset + sheet_thickness / 2,
-                "material": geo.get("material", "M-36 Steel"),
+                "material": sheet_material,
             }
         )
         current_offset += sheet_thickness
+
     if with_insulation:
         components.append(
             {
                 "width": insulation_thickness,
                 "height": height,
                 "offset_x": current_offset + insulation_thickness / 2,
-                "material": "Kunststoff",
+                "material": insulation_material,
             }
         )
+
     for i, comp_props in enumerate(components):
         rad = np.deg2rad(rotation_deg)
         cos_a, sin_a = np.cos(rad), np.sin(rad)

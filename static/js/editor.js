@@ -143,7 +143,12 @@ function openEditor(component = null, type = "transformers") {
   const data = component || {
     templateProductInformation: { name: "", manufacturer: "", tags: [] },
     specificProductInformation: {
-      geometry: { type: "Rectangle", material: "M-36 Steel" },
+      geometry: {
+        type: "Rectangle",
+        material: "M-36 Steel",
+        coreMaterial: "M-36 Steel",
+        insulationMaterial: "Kunststoff",
+      },
       electrical: {},
     },
   };
@@ -184,6 +189,15 @@ function getTransformerFormHtml(data) {
   const geo = spi.geometry || {};
   const ele = spi.electrical || {};
 
+  const materialOptions = (libraryData.materials || [])
+    .map(
+      (mat) =>
+        `<option value="${mat.name}" ${
+          geo.coreMaterial === mat.name ? "selected" : ""
+        }>${mat.name}</option>`
+    )
+    .join("");
+
   const stromOptions = [
     600, 800, 1000, 1250, 1600, 2000, 2500, 3000, 4000, 5000,
   ]
@@ -193,73 +207,6 @@ function getTransformerFormHtml(data) {
           ele.primaryRatedCurrentA === strom ? "selected" : ""
         }>${strom} A</option>`
     )
-    .join("");
-
-  const burdenOptions = [1.0, 2.5, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
-    .map(
-      (val) =>
-        `<option value="${val}" ${ele.burdenVA === val ? "selected" : ""}>${val
-          .toFixed(1)
-          .replace(".", ",")} VA</option>`
-    )
-    .join("");
-
-  const railDimensions = [
-    "1x100x12",
-    "1x50x10",
-    "1x100x15",
-    "1x100x55",
-    "1x150x10",
-    "1x150x20",
-    "1x40x10",
-    "1x40x12",
-    "1x50x12",
-    "1x60x10",
-    "1x60x12",
-    "1x60x30",
-    "1x70x10",
-    "1x70x12",
-    "1x80x12",
-    "1x80x15",
-    "1x90x10",
-    "1x90x15",
-    "2x100x10",
-    "2x120x10",
-    "2x120x15",
-    "2x150x10",
-    "2x150x20",
-    "2x40x10",
-    "2x50x10",
-    "2x60x10",
-    "2x70x10",
-    "2x80x10",
-    "2x80x12",
-    "2x90x10",
-    "3x100x10",
-    "3x150x10",
-    "3x160x10",
-    "3x200x10",
-    "3x50x10",
-    "3x80x10",
-    "3x140x10",
-    "4x100x10",
-    "4x120x10",
-    "4x150x15",
-    "4x200x10",
-    "4x250x10",
-    "4x60x10",
-    "4x80x10",
-    "5x120x10",
-    "5x150x10",
-  ];
-
-  const railCheckboxes = railDimensions
-    .map((d) => {
-      const checked = (spi.copperRailDimensions || []).includes(d)
-        ? "checked"
-        : "";
-      return `<div><input type="checkbox" id="rail-${d}" name="copperRail" value="${d}" ${checked}><label for="rail-${d}">${d}</label></div>`;
-    })
     .join("");
 
   const [ratioPrimary, ratioSecondary] = (ele.ratio || "/").split("/");
@@ -295,7 +242,6 @@ function getTransformerFormHtml(data) {
         <div class="form-section">
             <h3>Elektrische Daten</h3>
             <div class="form-group"><label>Nennstrom</label><select id="edit-primaryRatedCurrentA">${stromOptions}</select></div>
-            <div class="form-group"><label>Bürde (VA)</label><select id="edit-burdenVA">${burdenOptions}</select></div>
             <div class="form-group">
                 <label>Übersetzung</label>
                 <div class="form-row">
@@ -307,27 +253,22 @@ function getTransformerFormHtml(data) {
                     }">
                 </div>
             </div>
-            <div class="form-group"><label>Klasse</label><input type="text" id="edit-accuracyClass" placeholder="z.B. 0.5" value="${
-              ele.accuracyClass || ""
-            }"></div>
-            <div class="form-group">
-                <label>Passende Kupferschiene(n)</label>
-                <div class="checkbox-container" id="edit-copperRail">${railCheckboxes}</div>
-            </div>
         </div>
         <div class="form-section">
-            <h3>Geometrie (Rechteck-Wandler)</h3>
-            <h4>Stahlkern</h4>
-            <div class="form-group"><label>Außen-Breite (coreOuterWidth)</label><input type="number" step="0.1" class="geo-input" id="edit-coreOuterWidth" value="${
+            <h3>Geometrie & Material</h3>
+            <div class="form-group"><label>Kernmaterial</label><select id="edit-coreMaterial">${materialOptions}</select></div>
+            <hr>
+            <h4>Abmessungen (mm)</h4>
+            <div class="form-group"><label>Außen-Breite</label><input type="number" step="0.1" class="geo-input" id="edit-coreOuterWidth" value="${
               geo.coreOuterWidth || 0
             }"></div>
-            <div class="form-group"><label>Außen-Höhe (coreOuterHeight)</label><input type="number" step="0.1" class="geo-input" id="edit-coreOuterHeight" value="${
+            <div class="form-group"><label>Außen-Höhe</label><input type="number" step="0.1" class="geo-input" id="edit-coreOuterHeight" value="${
               geo.coreOuterHeight || 0
             }"></div>
-            <div class="form-group"><label>Innen-Breite (coreInnerWidth)</label><input type="number" step="0.1" class="geo-input" id="edit-coreInnerWidth" value="${
+            <div class="form-group"><label>Innen-Breite</label><input type="number" step="0.1" class="geo-input" id="edit-coreInnerWidth" value="${
               geo.coreInnerWidth || 0
             }"></div>
-            <div class="form-group"><label>Innen-Höhe (coreInnerHeight)</label><input type="number" step="0.1" class="geo-input" id="edit-coreInnerHeight" value="${
+            <div class="form-group"><label>Innen-Höhe</label><input type="number" step="0.1" class="geo-input" id="edit-coreInnerHeight" value="${
               geo.coreInnerHeight || 0
             }"></div>
         </div>
@@ -389,12 +330,14 @@ function getSimpleComponentFormHtml(data, type) {
             : ""
         }
         <div class="form-section">
-            <h3>Geometrie (Rechteck)</h3>
+            <h3>Geometrie & Material</h3>
              <div class="form-group"><label>Material</label><select id="edit-material">${materialOptions}</select></div>
-            <div class="form-group"><label>Breite (width)</label><input type="number" step="0.1" class="geo-input" id="edit-width" value="${
+            <hr>
+            <h4>Abmessungen (mm)</h4>
+            <div class="form-group"><label>Breite</label><input type="number" step="0.1" class="geo-input" id="edit-width" value="${
               geo.width || 0
             }"></div>
-            <div class="form-group"><label>Höhe (height)</label><input type="number" step="0.1" class="geo-input" id="edit-height" value="${
+            <div class="form-group"><label>Höhe</label><input type="number" step="0.1" class="geo-input" id="edit-height" value="${
               geo.height || 0
             }"></div>
         </div>
@@ -410,6 +353,15 @@ function getSheetPackageFormHtml(data) {
       (mat) =>
         `<option value="${mat.name}" ${
           geo.material === mat.name ? "selected" : ""
+        }>${mat.name}</option>`
+    )
+    .join("");
+
+  const insulationMaterialOptions = (libraryData.materials || [])
+    .map(
+      (mat) =>
+        `<option value="${mat.name}" ${
+          geo.insulationMaterial === mat.name ? "selected" : ""
         }>${mat.name}</option>`
     )
     .join("");
@@ -434,40 +386,29 @@ function getSheetPackageFormHtml(data) {
             </div>
         </div>
         <div class="form-section">
-            <h3>Geometrie (Abschirmblech-Paket)</h3>
+            <h3>Geometrie & Material</h3>
             <div class="form-group"><label>Material der Bleche</label><select id="edit-material">${materialOptions}</select></div>
-            <div class="form-group">
-                <label for="edit-sheetCount">Anzahl der Bleche</label>
-                <input type="number" id="edit-sheetCount" class="geo-input" min="1" step="1" value="${
-                  geo.sheetCount || 1
-                }">
-            </div>
-            <div class="form-group">
-                <label for="edit-sheetThickness">Dicke pro Blech (mm)</label>
-                <input type="number" id="edit-sheetThickness" class="geo-input" step="0.1" value="${
-                  geo.sheetThickness || 1.0
-                }">
-            </div>
-             <div class="form-group">
-                <label for="edit-height">Gesamthöhe (mm)</label>
-                <input type="number" id="edit-height" class="geo-input" step="0.1" value="${
-                  geo.height || 100
-                }">
-            </div>
+            <div class="form-group"><label>Anzahl der Bleche</label><input type="number" id="edit-sheetCount" class="geo-input" min="1" step="1" value="${
+              geo.sheetCount || 1
+            }"></div>
+            <div class="form-group"><label>Dicke pro Blech (mm)</label><input type="number" id="edit-sheetThickness" class="geo-input" step="0.1" value="${
+              geo.sheetThickness || 1.0
+            }"></div>
+            <div class="form-group"><label>Gesamthöhe (mm)</label><input type="number" id="edit-height" class="geo-input" step="0.1" value="${
+              geo.height || 100
+            }"></div>
             <hr>
             <h4>Isolierung</h4>
             <div class="form-group checkbox-group">
                 <input type="checkbox" id="edit-withInsulation" class="geo-input" ${
                   geo.withInsulation ? "checked" : ""
                 }>
-                <label for="edit-withInsulation">Mit Außenisolierung (Kunststoff)</label>
+                <label for="edit-withInsulation">Mit Außenisolierung</label>
             </div>
-            <div class="form-group">
-                <label for="edit-insulationThickness">Dicke der Isolierung (mm)</label>
-                <input type="number" id="edit-insulationThickness" class="geo-input" step="0.1" value="${
-                  geo.insulationThickness || 0.5
-                }">
-            </div>
+            <div class="form-group"><label>Isolationsmaterial</label><select id="edit-insulationMaterial">${insulationMaterialOptions}</select></div>
+            <div class="form-group"><label>Dicke der Isolierung (mm)</label><input type="number" id="edit-insulationThickness" class="geo-input" step="0.1" value="${
+              geo.insulationThickness || 0.5
+            }"></div>
         </div>
     `;
 }
@@ -483,6 +424,8 @@ function gatherComponentDataFromForm(type) {
 
     data.geometry = {
       type: "Rectangle",
+      coreMaterial:
+        form.querySelector("#edit-coreMaterial")?.value || "M-36 Steel",
       coreOuterWidth:
         parseFloat(form.querySelector("#edit-coreOuterWidth")?.value) || 0,
       coreOuterHeight:
@@ -495,17 +438,14 @@ function gatherComponentDataFromForm(type) {
     data.electrical = {
       primaryRatedCurrentA:
         parseInt(form.querySelector("#edit-primaryRatedCurrentA")?.value) || 0,
-      burdenVA: parseFloat(form.querySelector("#edit-burdenVA")?.value) || 0,
       ratio: `${ratioPrimary}/${ratioSecondary}`,
-      accuracyClass: form.querySelector("#edit-accuracyClass")?.value || "",
     };
-    data.copperRailDimensions = Array.from(
-      form.querySelectorAll("#edit-copperRail input[type=checkbox]:checked")
-    ).map((cb) => cb.value);
   } else if (type === "transformerSheets") {
     data.geometry = {
       type: "SheetPackage",
       material: form.querySelector("#edit-material")?.value || "M-36 Steel",
+      insulationMaterial:
+        form.querySelector("#edit-insulationMaterial")?.value || "Kunststoff",
       sheetCount: parseInt(form.querySelector("#edit-sheetCount")?.value) || 1,
       sheetThickness:
         parseFloat(form.querySelector("#edit-sheetThickness")?.value) || 0,
@@ -686,8 +626,6 @@ function deleteComponent() {
       }
     });
 }
-
-// --- TAG MANAGEMENT ---
 
 function renderCurrentTags() {
   const container = document.getElementById("tags-input-container");

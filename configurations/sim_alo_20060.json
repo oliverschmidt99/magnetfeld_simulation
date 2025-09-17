@@ -1,0 +1,106 @@
+{
+    "simulationParams": {
+        "ratedCurrent": "5000",
+        "startpositionen": {
+            "x_L1": "-300",
+            "y_L1": "0",
+            "x_L2": "0",
+            "y_L2": "0",
+            "x_L3": "300",
+            "y_L3": "0"
+        },
+        "bewegungsRichtungen": {
+            "L1": {
+                "x": "-1",
+                "y": "-1"
+            },
+            "L2": {
+                "x": "0",
+                "y": "1"
+            },
+            "L3": {
+                "x": "10",
+                "y": "-1"
+            }
+        },
+        "problemDepthM": "30",
+        "spielraum": {
+            "Laenge": "1200",
+            "Breite": "400"
+        },
+        "schrittweiten": {
+            "Pos1": "0",
+            "Pos2": "0",
+            "Pos3": "0",
+            "Pos4": "0"
+        },
+        "I_1_mes": "5000",
+        "I_2_mes": "0",
+        "I_3_mes": "0",
+        "phaseSweep": {
+            "start": "0",
+            "end": "180",
+            "step": "30"
+        }
+    },
+    "electricalSystem": [
+        {
+            "name": "L1",
+            "phaseShiftDeg": 0,
+            "peakCurrentA": 7071.07
+        },
+        {
+            "name": "L2",
+            "phaseShiftDeg": 120,
+            "peakCurrentA": 7071.07
+        },
+        {
+            "name": "L3",
+            "phaseShiftDeg": -120,
+            "peakCurrentA": 7071.07
+        }
+    ],
+    "assemblies": [
+        {
+            "name": "Assembly_1",
+            "phaseName": "L1",
+            "copperRailName": "RJ_120x50_5000A",
+            "transformerName": "ALO 20060",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_2",
+            "phaseName": "L2",
+            "copperRailName": "RJ_120x50_5000A",
+            "transformerName": "ALO 20060",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_3",
+            "phaseName": "L3",
+            "copperRailName": "RJ_120x50_5000A",
+            "transformerName": "ALO 20060",
+            "enabled": true
+        }
+    ],
+    "standAloneComponents": [
+        {
+            "name": "Abschirmtrafoblech",
+            "position": {
+                "x": -150,
+                "y": 0
+            },
+            "rotation": 0,
+            "enabled": true
+        },
+        {
+            "name": "Abschirmtrafoblech",
+            "position": {
+                "x": 150,
+                "y": 0
+            },
+            "rotation": 0,
+            "enabled": true
+        }
+    ]
+}

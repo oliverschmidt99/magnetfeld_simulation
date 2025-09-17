@@ -49,60 +49,55 @@
         },
         {
             "name": "Copper",
-            "is_nonlinear": false,
             "mu_x": 1,
             "mu_y": 1,
+            "is_nonlinear": false,
+            "bh_curve": []
+        },
+        {
+            "name": "Kunststoff",
+            "mu_x": 1,
+            "mu_y": 1,
+            "is_nonlinear": false,
             "bh_curve": []
         }
     ],
     "components": {
         "copperRails": [
             {
+                "templateProductInformation": {
+                    "name": "RJ_40x10_600A",
+                    "productName": "Kupferschiene 1x40x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "600 A"
+                    ]
+                },
                 "specificProductInformation": {
-                    "electricInformation": {
-                        "current": "",
-                        "power": "",
-                        "voltage": ""
-                    },
                     "electrical": {
                         "ratedCurrentA": 600
                     },
                     "geometry": {
-                        "height": 10,
-                        "length": null,
-                        "material": "Copper",
                         "type": "Rectangle",
-                        "width": 40
+                        "material": "Copper",
+                        "width": 40,
+                        "height": 10
                     }
-                },
-                "templateProductInformation": {
-                    "additionalInfo": "",
-                    "companyNumber": "",
-                    "condition": "new",
-                    "eanNumber": "",
-                    "manufacturer": "Rolf Janssen",
-                    "manufacturerNumber": "",
-                    "name": "RJ_40x10_600A",
-                    "productName": "Kupferschiene 40x10",
-                    "purchasePrice": "",
-                    "sellingPrice": "",
-                    "tags": [
-                        "600 A"
-                    ],
-                    "uniqueNumber": ""
                 }
             },
             {
                 "templateProductInformation": {
                     "name": "RJ_50x10_800A",
+                    "productName": "Kupferschiene 1x50x10",
                     "manufacturer": "Rolf Janssen",
-                    "productName": "Kupferschiene 50x10",
                     "tags": [
-                        "800 A",
-                        "Rolf Janssen"
+                        "800 A"
                     ]
                 },
                 "specificProductInformation": {
+                    "electrical": {
+                        "ratedCurrentA": 800
+                    },
                     "geometry": {
                         "type": "Rectangle",
                         "material": "Copper",
@@ -112,39 +107,171 @@
                 }
             },
             {
+                "templateProductInformation": {
+                    "name": "RJ_60x10_1000A",
+                    "productName": "Kupferschiene 1x60x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "1000 A"
+                    ]
+                },
                 "specificProductInformation": {
-                    "electricInformation": {
-                        "current": "",
-                        "power": "",
-                        "voltage": ""
+                    "electrical": {
+                        "ratedCurrentA": 1000
                     },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 60,
+                        "height": 10
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_40x20_1250A",
+                    "productName": "Kupferschiene 2x40x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "1250 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "ratedCurrentA": 1250
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 40,
+                        "height": 20
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_60x20_1600A",
+                    "productName": "Kupferschiene 2x60x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "1600 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "ratedCurrentA": 1600
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 60,
+                        "height": 20
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_80x20_2000A",
+                    "productName": "Kupferschiene 2x80x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "2000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "ratedCurrentA": 2000
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 80,
+                        "height": 20
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_100x20_2500A",
+                    "productName": "Kupferschiene 2x100x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "2500 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "ratedCurrentA": 2500
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 100,
+                        "height": 20
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_100x30_3200A",
+                    "productName": "Kupferschiene 3x100x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "3200 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "ratedCurrentA": 3200
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 100,
+                        "height": 30
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_100x40_4000A",
+                    "productName": "Kupferschiene 4x100x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "4000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "ratedCurrentA": 4000
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "material": "Copper",
+                        "width": 100,
+                        "height": 40
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "RJ_120x50_5000A",
+                    "productName": "Kupferschiene 5x120x10",
+                    "manufacturer": "Rolf Janssen",
+                    "tags": [
+                        "5000 A"
+                    ]
+                },
+                "specificProductInformation": {
                     "electrical": {
                         "ratedCurrentA": 5000
                     },
                     "geometry": {
-                        "height": 50,
-                        "length": null,
-                        "material": "Copper",
                         "type": "Rectangle",
-                        "width": 120
+                        "material": "Copper",
+                        "width": 120,
+                        "height": 50
                     }
-                },
-                "templateProductInformation": {
-                    "additionalInfo": "",
-                    "companyNumber": "",
-                    "condition": "new",
-                    "eanNumber": "",
-                    "manufacturer": "",
-                    "manufacturerNumber": "",
-                    "name": "RJ_50x120x10_5000",
-                    "productName": "",
-                    "purchasePrice": "",
-                    "sellingPrice": "",
-                    "tags": [
-                        "600 A",
-                        "5000 A"
-                    ],
-                    "uniqueNumber": "8e567"
                 }
             }
         ],
@@ -152,49 +279,433 @@
             {
                 "specificProductInformation": {
                     "electrical": {
-                        "accuracyClass": "1",
-                        "burdenVA": 15,
                         "primaryRatedCurrentA": 600,
                         "ratio": "600/1"
                     },
                     "geometry": {
-                        "coreInnerHeight": 75,
-                        "coreInnerWidth": 75,
-                        "coreOuterHeight": 100,
-                        "coreOuterWidth": 100,
+                        "coreInnerHeight": 12.7,
+                        "coreInnerWidth": 40.2,
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterHeight": 92,
+                        "coreOuterWidth": 70.5,
                         "type": "Rectangle"
                     }
                 },
                 "templateProductInformation": {
-                    "manufacturer": "Test",
-                    "name": "Test",
+                    "companyNumber": "54-3063",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-0391-0500",
+                    "name": "ALO 4012",
+                    "productName": "ALO 4012",
                     "tags": [
                         "600 A"
+                    ],
+                    "uniqueNumber": "3101"
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 5012",
+                    "productName": "ALO 5012",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-0580-1000",
+                    "companyNumber": "54-3065",
+                    "uniqueNumber": "3102",
+                    "tags": [
+                        "800 A"
                     ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 800,
+                        "ratio": "800/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 85.5,
+                        "coreOuterHeight": 109,
+                        "coreInnerWidth": 50.2,
+                        "coreInnerHeight": 12.7
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 6015.8",
+                    "productName": "ALO 6015.8",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-0751-0500",
+                    "companyNumber": "54-3067",
+                    "uniqueNumber": "3103",
+                    "tags": [
+                        "1000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 1000,
+                        "ratio": "1000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 85.5,
+                        "coreOuterHeight": 110,
+                        "coreInnerWidth": 63.7,
+                        "coreInnerHeight": 15.7
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 6040 (1250A)",
+                    "productName": "ALO 6040",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1100-1000",
+                    "companyNumber": "54-3137",
+                    "uniqueNumber": "3104",
+                    "tags": [
+                        "1250 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 1250,
+                        "ratio": "1250/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 97,
+                        "coreOuterHeight": 123,
+                        "coreInnerWidth": 54,
+                        "coreInnerHeight": 56
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 6040 (1600A)",
+                    "productName": "ALO 6040",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1108-1000",
+                    "companyNumber": "54-3169",
+                    "uniqueNumber": "3105",
+                    "tags": [
+                        "1600 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 1600,
+                        "ratio": "1600/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 97,
+                        "coreOuterHeight": 123,
+                        "coreInnerWidth": 64,
+                        "coreInnerHeight": 44
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 10030 (2000A)",
+                    "productName": "ALO 10030",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-0916-1000",
+                    "companyNumber": "54-3069",
+                    "uniqueNumber": "3106",
+                    "tags": [
+                        "2000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 2000,
+                        "ratio": "2000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 129.5,
+                        "coreOuterHeight": 158,
+                        "coreInnerWidth": 83.7,
+                        "coreInnerHeight": 63.7
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 10030 (2500A)",
+                    "productName": "ALO 10030",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-0938-1000",
+                    "companyNumber": "54-3071",
+                    "uniqueNumber": "3107",
+                    "tags": [
+                        "2500 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 2500,
+                        "ratio": "2500/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 129.5,
+                        "coreOuterHeight": 158,
+                        "coreInnerWidth": 100.7,
+                        "coreInnerHeight": 30.7
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 12070 (3000A)",
+                    "productName": "ALO 12070",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1528-1000",
+                    "companyNumber": "54-3170",
+                    "uniqueNumber": "3108",
+                    "tags": [
+                        "3000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 3000,
+                        "ratio": "3000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 160,
+                        "coreOuterHeight": 190,
+                        "coreInnerWidth": 122,
+                        "coreInnerHeight": 45
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 12070 (4000A)",
+                    "productName": "ALO 12070",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1533-1000",
+                    "companyNumber": "54-3171",
+                    "uniqueNumber": "3109",
+                    "tags": [
+                        "4000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 4000,
+                        "ratio": "4000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 160,
+                        "coreOuterHeight": 190,
+                        "coreInnerWidth": 122,
+                        "coreInnerHeight": 45
+                    }
                 }
             },
             {
                 "specificProductInformation": {
                     "electrical": {
-                        "accuracyClass": "1",
-                        "burdenVA": 15,
                         "primaryRatedCurrentA": 5000,
                         "ratio": "5000/1"
                     },
                     "geometry": {
-                        "coreInnerHeight": 125,
-                        "coreInnerWidth": 125,
-                        "coreOuterHeight": 150,
-                        "coreOuterWidth": 150,
+                        "coreInnerHeight": 65,
+                        "coreInnerWidth": 205,
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterHeight": 153,
+                        "coreOuterWidth": 260,
                         "type": "Rectangle"
                     }
                 },
                 "templateProductInformation": {
-                    "manufacturer": "Test",
-                    "name": "Test_5000",
+                    "companyNumber": "54-3171",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1749-1000",
+                    "name": "ALO 20060",
+                    "productName": "ALO 20060",
+                    "tags": [
+                        "5000 A"
+                    ],
+                    "uniqueNumber": "3110"
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 8030-K (1600A)",
+                    "productName": "ALO 8030-K",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1219-1000",
+                    "companyNumber": "54-3173",
+                    "uniqueNumber": "3111",
+                    "tags": [
+                        "1600 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 1600,
+                        "ratio": "1600/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 0,
+                        "coreOuterHeight": 0,
+                        "coreInnerWidth": 0,
+                        "coreInnerHeight": 0
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 8030-K (2000A)",
+                    "productName": "ALO 8030-K",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1223-1000",
+                    "companyNumber": "54-3174",
+                    "uniqueNumber": "3112",
+                    "tags": [
+                        "2000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 2000,
+                        "ratio": "2000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 0,
+                        "coreOuterHeight": 0,
+                        "coreInnerWidth": 0,
+                        "coreInnerHeight": 0
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 10050-K",
+                    "productName": "ALO 10050-K",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1321-1000",
+                    "companyNumber": "54-3155",
+                    "uniqueNumber": "3113",
+                    "tags": [
+                        "2500 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 2500,
+                        "ratio": "2500/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 0,
+                        "coreOuterHeight": 0,
+                        "coreInnerWidth": 0,
+                        "coreInnerHeight": 0
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 12070-K (3000A)",
+                    "productName": "ALO 12070-K",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1528-1500",
+                    "companyNumber": "54-3154",
+                    "uniqueNumber": "3114",
+                    "tags": [
+                        "3000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 3000,
+                        "ratio": "3000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 0,
+                        "coreOuterHeight": 0,
+                        "coreInnerWidth": 0,
+                        "coreInnerHeight": 0
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO 12070-K (4000A)",
+                    "productName": "ALO 12070-K",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-1533-1000",
+                    "companyNumber": "54-2686",
+                    "uniqueNumber": "3115",
+                    "tags": [
+                        "4000 A"
+                    ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 4000,
+                        "ratio": "4000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 0,
+                        "coreOuterHeight": 0,
+                        "coreInnerWidth": 0,
+                        "coreInnerHeight": 0
+                    }
+                }
+            },
+            {
+                "templateProductInformation": {
+                    "name": "ALO-E 16050-K",
+                    "productName": "ALO-E 16050-K",
+                    "manufacturer": "310_CELSA",
+                    "manufacturerNumber": "70142-3010-0500",
+                    "companyNumber": "54-3085",
+                    "uniqueNumber": "3116",
                     "tags": [
                         "5000 A"
                     ]
+                },
+                "specificProductInformation": {
+                    "electrical": {
+                        "primaryRatedCurrentA": 5000,
+                        "ratio": "5000/1"
+                    },
+                    "geometry": {
+                        "type": "Rectangle",
+                        "coreMaterial": "M-36 Steel",
+                        "coreOuterWidth": 0,
+                        "coreOuterHeight": 0,
+                        "coreInnerWidth": 0,
+                        "coreInnerHeight": 0
+                    }
                 }
             }
         ],
@@ -202,59 +713,22 @@
             {
                 "specificProductInformation": {
                     "geometry": {
-                        "type": "Rectangle",
-                        "width": 200,
-                        "height": 5,
-                        "material": "M-36 Steel"
-                    }
-                },
-                "templateProductInformation": {
-                    "manufacturer": "",
-                    "name": "Sheet_200x5",
-                    "productName": "Abschirmblech 200x5",
-                    "tags": []
-                }
-            },
-            {
-                "templateProductInformation": {
-                    "name": "5",
-                    "productName": "",
-                    "manufacturer": "Standard",
-                    "tags": [],
-                    "uniqueNumber": "00120"
-                },
-                "specificProductInformation": {
-                    "geometry": {
-                        "type": "Rectangle",
-                        "material": "M-36 Steel",
-                        "width": 100,
-                        "height": 5
-                    }
-                }
-            },
-            {
-                "specificProductInformation": {
-                    "electrical": {},
-                    "geometry": {
                         "height": 200,
                         "insulationThickness": 2,
                         "material": "M-36 Steel",
                         "sheetCount": 5,
                         "sheetThickness": 2,
                         "type": "SheetPackage",
-                        "withInsulation": true
+                        "withInsulation": true,
+                        "insulationMaterial": "Kunststoff"
                     }
                 },
                 "templateProductInformation": {
-                    "companyNumber": "",
-                    "manufacturer": "Rolf Janssen",
-                    "manufacturerNumber": "",
                     "name": "Abschirmtrafoblech",
                     "productName": "Version 1",
                     "tags": [
                         "5000 A"
-                    ],
-                    "uniqueNumber": ""
+                    ]
                 }
             }
         ]

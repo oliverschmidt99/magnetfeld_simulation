@@ -63,7 +63,7 @@
 }
 
 .modal-content {
-    max-width: 900px; /* Breiter für die Vorschau */
+    max-width: 1100px; /* Breiter für mehr Platz */
 }
 
 .modal-button-group-centered {
@@ -186,15 +186,14 @@
 
 .checkbox-container input {
     margin-right: 8px;
-    width: auto; /* Stellt sicher, dass Checkboxen nicht die volle Breite einnehmen */
+    width: auto;
 }
 
 .checkbox-container label {
-    margin-bottom: 0; /* Setzt den Standard-Margin von Labels zurück */
+    margin-bottom: 0;
     font-weight: normal;
 }
 
-/* Hinzugefügte Stile */
 .initially-hidden {
     display: none;
 }

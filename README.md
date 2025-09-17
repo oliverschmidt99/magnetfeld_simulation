@@ -1,59 +1,102 @@
-# Magnetfeld-Simulation für Stromwandler-Systeme
+# Magnetfeld-Simulation für Niederspannungsanwendungen
 
-Dieses Projekt dient zur Simulation und Analyse von magnetischen Feldern in 3-Phasen-Systemen, die aus Stromschienen und Stromwandlern bestehen. Die Anwendung basiert vollständig auf **Python**.
+Dieses Projekt bietet einen vollständigen, automatisierten Workflow zur Erstellung, Durchführung und Analyse von elektromagnetischen FEMM-Simulationen. Eine benutzerfreundliche, mit **Flask** erstellte Web-Oberfläche ermöglicht Ingenieuren und Studenten die effiziente Untersuchung von magnetischen Streufeldern, insbesondere in der Nähe von Stromschienen in Niederspannungssystemen.
 
-Eine benutzerfreundliche Weboberfläche, die mit **Flask** erstellt wurde, ermöglicht die einfache Konfiguration der Simulationsparameter. Das Backend steuert die Open-Source-Software **FEMM (Finite Element Method Magnetics)** für die eigentliche Feld-Berechnung.
+## Die Anwendung in Bildern
 
-## Funktionen
+Hier ist ein Überblick über die Hauptseiten der Anwendung.
 
-- **Webbasierter Konfigurator**: Erstelle und bearbeite Simulationsszenarien bequem im Browser.
-- **Dynamische Geometrie**: Definiere die Anordnung von Stromschienen, Wandlern und Abschirmblechen.
-- **Parametrische Analyse**: Führe Simulationen über einen Bereich von Phasenwinkeln und für verschiedene Positionen der Bauteile durch.
-- **Automatisierte Auswertung**: Generiert automatisch eine CSV-Datei mit den wichtigsten Ergebnissen (Sekundärströme, Flussdichten etc.).
-- **Live-Visualisierung**: Eine SVG-basierte Vorschau auf der Webseite zeigt die Anordnung der Bauteile in Echtzeit an.
+**Startseite**
+Die Startseite bietet einen schnellen Überblick und Navigation zu den Kernbereichen der Anwendung.
+_Screenshot der Startseite hier einfügen_
+
+**Simulations-Konfigurator**
+Das Herzstück der Anwendung: ein detaillierter, visueller Editor zur Konfiguration aller Simulationsparameter, inklusive einer Live-Vorschau der Bauteil-Anordnung.
+
+**Ergebnisseite**
+Nach einer Simulation können hier die Ergebnisse interaktiv analysiert und visualisiert werden.
+_Screenshot der Ergebnisseite mit einem Diagramm hier einfügen_
+
+**Bauteil-Bibliothek**
+Ein umfassender Editor zur Verwaltung aller Bauteile wie Stromwandler, Kupferschienen und Abschirmbleche.
+_Screenshot des Bibliotheks-Editors hier einfügen_
 
 ---
 
-## Voraussetzungen
+## Funktionen
+
+- **Automatisierter Simulations-Workflow**: Von der Bauteilerstellung in der Bibliothek über die Konfiguration bis zur Auswertung – alles in einer Anwendung.
+- **Visueller Konfigurator**: Erstelle und bearbeite Simulationsszenarien bequem im Browser, ohne eine einzige Zeile Code schreiben zu müssen.
+- **Interaktive Ergebnis-Visualisierung**: Analysiere Simulationsdaten direkt in der Web-Anwendung durch interaktive Diagramme, die mit **Plotly** erstellt werden.
+- **Umfassende Bauteil-Bibliothek**: Definiere und verwalte komplexe Geometrien und Materialeigenschaften für Stromwandler, Kupferschienen und Abschirmbleche.
+- **Live-Vorschau**: Überprüfe die Anordnung deiner Bauteile in Echtzeit durch eine SVG-basierte Vorschau direkt auf der Konfigurationsseite.
+
+---
+
+## Technischer Stack
+
+- **Backend**: Python, Flask
+- **Simulation**: FEMM (Finite Element Method Magnetics)
+- **Datenmanipulation**: Pandas
+- **Visualisierung**: Plotly
+- **Frontend**: HTML, CSS, JavaScript
+
+---
+
+## Erste Schritte
+
+Folge diesen Schritten, um die Anwendung lokal auszuführen.
+
+### Voraussetzungen
 
 Stelle sicher, dass die folgende Software auf deinem System installiert ist:
 
-1.  **FEMM 4.2**: Die Python-Skripte sind auf diese Version ausgelegt.
-    - Stelle sicher, dass FEMM korrekt installiert ist und über die Kommandozeile gestartet werden könnte.
-2.  **Python**: Getestet mit Version 3.9 oder neuer.
-3.  **Python-Bibliotheken**: Installiere alle benötigten Pakete mit dem folgenden Befehl in deinem Terminal:
+1.  **FEMM 4.2**: Diese Anwendung ist für die **Windows-Version** von FEMM ausgelegt. FEMM muss separat installiert werden, da es nicht über `pip` verfügbar ist.
+    - [Lade FEMM hier herunter](http://www.femm.info/wiki/HomePage)
+2.  **Python**: Version 3.9 oder neuer.
+3.  **Python-Bibliotheken**: Alle weiteren Abhängigkeiten sind in der `requirements.txt` Datei aufgeführt.
+
+### Installation & Start
+
+1.  **Klone das Repository:**
+
+    ```bash
+    git clone <repository-url>
+    cd magnetfeld_simulation
+    ```
+
+2.  **Installiere die Python-Abhängigkeiten:**
+
     ```bash
     pip install -r requirements.txt
     ```
 
----
+3.  **Starte die Web-Anwendung:**
 
-## So startest du die Simulation
-
-Der gesamte Prozess wird nun über die Weboberfläche gesteuert:
-
-### Schritt 1: Web-Anwendung starten
-
-1.  Öffne ein Terminal im Hauptverzeichnis des Projekts.
-2.  Starte die Flask-Anwendung:
     ```bash
     python app.py
     ```
-3.  Öffne deinen Webbrowser und gehe zu `http://127.0.0.1:5000`.
 
-### Schritt 2: Simulation im Browser konfigurieren
+4.  **Öffne die Anwendung im Browser:**
+    Navigiere zu `http://127.0.0.1:5000`.
 
-1.  Navigiere zur Seite **"Simulation"**.
-2.  Passe alle Parameter nach deinen Wünschen an:
-    - Allgemeine Parameter (Nennstrom, Problem-Tiefe etc.).
-    - Definiere das elektrische System (Phasen, Ströme).
-    - Stelle Baugruppen und eigenständige Bauteile zusammen und positioniere sie.
-    - Kontrolliere deine Eingaben in der visuellen Vorschau im Tab "Übersicht & Vorschau".
-3.  Wenn alles passt, klicke auf den Knopf **"1. simulation.json erstellen"**. Dies speichert deine Konfiguration und schaltet den nächsten Schritt frei.
+---
 
-### Schritt 3: Simulation aus dem Browser starten
+## Typischer Workflow
 
-1.  Nachdem die `simulation.json` erstellt wurde, erscheint der Bereich "Simulation durchführen".
-2.  Klicke auf den Knopf **"2. Simulation starten"**.
-3.  Die Web-Anwendung startet nun im Hintergrund das Python-Skript `run_simulation.py`, welches FEMM automatisch öffnet, die Modelle aufbaut, die Analyse durchführt und die Ergebnisse speichert.
-4.  Der Fortschritt wird im Ausgabefenster auf der Webseite angezeigt. Nach Abschluss findest du die Ergebnisse (CSV-Datei und FEM-Dateien) in einem neu erstellten Ordner im `res`-Verzeichnis.
+Ein typischer Arbeitsablauf in der Anwendung sieht wie folgt aus:
+
+1.  **Bibliothek füllen**: Navigiere zur **Bibliothek**, um neue Bauteile wie Stromwandler oder Kupferschienen mit ihren spezifischen geometrischen und elektrischen Eigenschaften anzulegen.
+2.  **Simulation konfigurieren**: Gehe zur Seite **Simulation**. Hier stellst du dein Szenario zusammen, wählst Bauteile aus der Bibliothek aus, positionierst sie und legst alle Simulationsparameter fest.
+3.  **Simulation starten**: Erstelle zuerst die `simulation.json` und starte anschließend die FEMM-Berechnung direkt aus dem Browser. Der Fortschritt wird live angezeigt.
+4.  **Ergebnisse ansehen**: Nach Abschluss der Simulation findest du die Ergebnisse im **simulations**-Ordner. Auf der Seite **Ergebnisse** kannst du die Daten laden, filtern und interaktiv visualisieren.
+
+---
+
+## Zukunft & Mitwirkung
+
+Dieses Projekt wird aktiv weiterentwickelt. Beiträge aus der Community sind herzlich willkommen\!
+
+### Geplante Features
+
+- **Vergleich mit Real-Messungen**: Eine neue Seite wird es ermöglichen, reale Messdaten hochzuladen und diese direkt mit den Simulationsergebnissen zu vergleichen. Dies wird durch visuelle Hilfestellungen zur Erstellung der Messungen unterstützt, inklusive der Darstellung aller Messpunkte mit den jeweiligen Strömen und Spannungen.

@@ -8,27 +8,23 @@ import os
 import subprocess
 import sys
 import threading
+from datetime import datetime
 from flask import Blueprint, jsonify, current_app
 
 simulation_bp = Blueprint("simulation_bp", __name__)
-STATUS_FILE = "simulation_status.json"
 
 
-def run_simulation_script(app):
+def run_simulation_script(app, run_path):
     """
-    Führt das Python-Simulationsskript in einem separaten Prozess aus,
-    um die Webanwendung nicht zu blockieren.
+    Führt das Python-Simulationsskript in einem separaten Prozess aus.
     """
     with app.app_context():
         project_root = app.root_path
         python_executable = sys.executable
-
-        command = [python_executable, "-m", "src.simulation_runner"]
+        # KORREKTUR: Übergibt den eindeutigen Pfad als Kommandozeilen-Argument
+        command = [python_executable, "-m", "src.simulation_runner", run_path]
 
         try:
-            if os.path.exists(STATUS_FILE):
-                os.remove(STATUS_FILE)
-
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
@@ -59,6 +55,9 @@ def run_simulation_script(app):
             )
         except (subprocess.SubprocessError, OSError) as e:
             print(f"Ein Fehler im Subprozess ist aufgetreten: {e}")
+        finally:
+            # Signalisiert, dass der Thread beendet ist
+            current_app.config["ACTIVE_SIMULATION_PATH"] = None
 
 
 @simulation_bp.route("/start_simulation", methods=["POST"])
@@ -66,17 +65,28 @@ def start_simulation():
     """
     Startet die Python-Simulation in einem Hintergrund-Thread.
     """
-    simulation_thread = current_app.config.get("SIMULATION_THREAD")
-
-    if simulation_thread and simulation_thread.is_alive():
+    if (
+        current_app.config.get("SIMULATION_THREAD")
+        and current_app.config.get("SIMULATION_THREAD").is_alive()
+    ):
         return (
             jsonify({"status": "error", "error": "Eine Simulation läuft bereits."}),
             409,
         )
 
+    # KORREKTUR: Eindeutigen Pfad vor dem Start des Threads erstellen
+    now = datetime.now()
+    date_str, time_str = now.strftime("%Y%m%d"), now.strftime("%H%M%S")
+    run_path = os.path.join("simulations", date_str, f"{time_str}_parallel_sweep")
+
+    # KORREKTUR: Speichert den Pfad des aktiven Laufs
+    current_app.config["ACTIVE_SIMULATION_PATH"] = run_path
+
     # pylint: disable=protected-access
     app_context = current_app._get_current_object()
-    new_thread = threading.Thread(target=run_simulation_script, args=(app_context,))
+    new_thread = threading.Thread(
+        target=run_simulation_script, args=(app_context, run_path)
+    )
     new_thread.start()
 
     current_app.config["SIMULATION_THREAD"] = new_thread
@@ -84,7 +94,7 @@ def start_simulation():
     return jsonify(
         {
             "status": "success",
-            "message": "Simulationsprozess (Python) wurde im Hintergrund gestartet.",
+            "message": "Simulationsprozess wurde im Hintergrund gestartet.",
         }
     )
 
@@ -92,14 +102,28 @@ def start_simulation():
 @simulation_bp.route("/simulation_progress")
 def simulation_progress():
     """
-    Gibt den aktuellen Fortschritt der Simulation aus der Status-Datei zurück.
+    Gibt den aktuellen Fortschritt der aktiven Simulation zurück.
     """
-    try:
-        with open(STATUS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return jsonify(data)
-    except (FileNotFoundError, json.JSONDecodeError):
-        simulation_thread = current_app.config.get("SIMULATION_THREAD")
-        if simulation_thread and simulation_thread.is_alive():
-            return jsonify({"status": "starting"})
+    active_run_path = current_app.config.get("ACTIVE_SIMULATION_PATH")
+
+    if not active_run_path:
         return jsonify({"status": "idle"})
+
+    try:
+        # KORREKTUR: Greift gezielt auf die Statusdatei des aktiven Laufs zu
+        status_file = os.path.join(
+            current_app.root_path, active_run_path, "simulation_status.json"
+        )
+
+        with open(status_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Wenn der Lauf abgeschlossen ist, den aktiven Pfad zurücksetzen
+        if data.get("status") == "complete":
+            current_app.config["ACTIVE_SIMULATION_PATH"] = None
+
+        return jsonify(data)
+
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Die Datei wurde noch nicht erstellt, der Prozess startet aber
+        return jsonify({"status": "starting"})

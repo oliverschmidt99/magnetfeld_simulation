@@ -45,7 +45,7 @@
     <div id="results-content">
         <div class="plot-container">
             <p id="loading-message" class="loading-message">Lade Diagramm...</p>
-            <div id="plot-div" style="display: none;">
+            <div id="plot-div" class="initially-hidden">
                 <canvas id="plot-canvas"></canvas>
             </div>
         </div>
@@ -55,6 +55,41 @@
 
     <div id="results-preview-container" class="preview-section card">
         <p id="preview-loading-message" class="loading-message">Lade Vorschau...</p>
+    </div>
+
+    <hr>
+
+    <div id="femm-plots-container" class="preview-section card initially-hidden">
+        <h3>FEMM-Analyse-Plots</h3>
+        <div class="plot-slider-container">
+            <button type="button" id="play-pause-btn" class="play-btn" disabled>▶</button>
+            <label for="angle-slider">Phasenwinkel:</label>
+            <input type="range" id="angle-slider" min="0" max="0" step="1" disabled>
+            <span id="angle-display">0°</span>
+        </div>
+        <div class="femm-plot-wrapper">
+            <div class="femm-plot">
+                <h4>Dichte-Plot (Feldstärke |H|)</h4>
+                <p id="density-plot-loading" class="loading-message">Lade Plot...</p>
+                <div id="density-plot-wrapper" class="plot-image-wrapper">
+                    <img id="density-plot-img" src="#_" alt="Dichte-Plot der Feldstärke H"
+                        class="femm-plot-image initially-hidden">
+                </div>
+            </div>
+            <div class="femm-plot">
+                <h4>Vektor-Plot (Feldstärke H, Skalierung: 2)</h4>
+                <p id="vector-plot-loading" class="loading-message">Lade Plot...</p>
+                <div id="vector-plot-wrapper" class="plot-image-wrapper">
+                    <img id="vector-plot-img" src="#_" alt="Vektor-Plot der Feldstärke H"
+                        class="femm-plot-image initially-hidden">
+                </div>
+            </div>
+        </div>
+        <div class="zoom-controls">
+            <button type="button" id="zoom-home-btn" title="Zoom zurücksetzen">⌂</button>
+            <button type="button" id="zoom-in-btn" title="Vergrößern">+</button>
+            <button type="button" id="zoom-out-btn" title="Verkleinern">-</button>
+        </div>
     </div>
 </div>
 {% endblock %}

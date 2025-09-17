@@ -8,13 +8,12 @@ import shutil
 import multiprocessing
 import logging
 import time
+import sys  # Importieren für Kommandozeilen-Argumente
 from datetime import datetime
 import numpy as np
 import pandas as pd
 
 from src.simulation_worker import run_single_simulation
-
-STATUS_FILE = "simulation_status.json"
 
 
 class SimulationRunner:
@@ -22,12 +21,21 @@ class SimulationRunner:
     Orchestriert den gesamten FEMM-Simulations-Workflow.
     """
 
-    def __init__(self, config_path="simulation_run.json"):
+    def __init__(self, config_path="simulation_run.json", base_path=None):
         self.run_data = self._load_config(config_path)
         if not self.run_data:
             raise ValueError("Konfigurationsdatei konnte nicht geladen werden.")
 
-        self.base_results_path = self._create_results_directory()
+        # KORREKTUR: Nutzt den übergebenen Pfad oder erstellt einen neuen
+        self.base_results_path = (
+            base_path if base_path else self._create_results_directory()
+        )
+        os.makedirs(self.base_results_path, exist_ok=True)
+
+        self.status_file = os.path.join(
+            self.base_results_path, "simulation_status.json"
+        )
+
         self._setup_logging_file_handler()
 
         shutil.copy(
@@ -36,14 +44,14 @@ class SimulationRunner:
         logging.info("Ergebnisse werden in '%s' gespeichert.", self.base_results_path)
 
     def _update_status(self, status, completed=0, total=0, duration=None):
-        """Schreibt den aktuellen Status in die JSON-Datei."""
+        """Schreibt den aktuellen Status in die lauf-spezifische JSON-Datei."""
         status_data = {
             "status": status,
             "completed": completed,
             "total": total,
             "duration": duration,
         }
-        with open(STATUS_FILE, "w", encoding="utf-8") as f:
+        with open(self.status_file, "w", encoding="utf-8") as f:
             json.dump(status_data, f)
 
     def _load_config(self, path):
@@ -61,7 +69,6 @@ class SimulationRunner:
         date_str, time_str = now.strftime("%Y%m%d"), now.strftime("%H%M%S")
         output_dir = "simulations"
         path = os.path.join(output_dir, date_str, f"{time_str}_parallel_sweep")
-        os.makedirs(path, exist_ok=True)
         return path
 
     def _setup_logging_file_handler(self):
@@ -190,18 +197,7 @@ class SimulationRunner:
             csv_filename = f"{pos}_{current}_summary.csv"
             csv_path = os.path.join(self.base_results_path, csv_filename)
 
-            # KORREKTUR: Sortiert die Daten vor dem Speichern
             sorted_group = group.sort_values(by=["phaseAngle_deg", "conductor"])
 
-            # Entferne die Hilfsspalten vor dem Speichern
-            sorted_group.drop(
-                columns=["pos_name", "current_name", "run_identifier"],
-                errors="ignore",  # Fügt Flexibilität hinzu, falls Spalten fehlen
-            ).to_csv(csv_path, index=False)
-            logging.info("   -> Ergebnisse in '%s' gespeichert.", csv_filename)
-
-
-if __name__ == "__main__":
-    multiprocessing.freeze_support()
-    runner = SimulationRunner()
-    runner.run()
+            columns_to_drop = ["pos_name", "current_name", "run_identifier"]
+            sorted_group.drop(columns=columns_to_drop, errors="ignore").to_

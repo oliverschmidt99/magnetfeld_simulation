@@ -180,11 +180,55 @@ def get_plot_data():
                 "y_axis_label": y_axis_variable,
             }
         )
-    except Exception as e:
+    except (IOError, pd.errors.ParserError, KeyError, ValueError) as e:
         return (
-            jsonify({"error": f"Ein unerwarteter Server-Fehler ist aufgetreten: {e}"}),
+            jsonify({"error": f"Ein Server-Fehler ist aufgetreten: {e}"}),
             500,
         )
+
+
+@analysis_bp.route("/analysis/femm_plots", methods=["GET"])
+def get_femm_plots():
+    """
+    Sucht alle FEMM-Plot-Bilder für einen Lauf und gibt eine Liste mit URLs und Winkeln zurück.
+    """
+    run_folder = request.args.get("run_folder")
+    pos_group = request.args.get("pos_group")
+    current_group = request.args.get("current_group")
+
+    if not all([run_folder, pos_group, current_group]):
+        return jsonify({"error": "Fehlende Parameter."}), 400
+
+    plots_dir = os.path.join(RESULTS_DIR, run_folder, "femm_plots")
+    if not os.path.isdir(plots_dir):
+        return jsonify({"density_plots": [], "vector_plots": []})
+
+    plot_files = os.listdir(plots_dir)
+
+    # Regex, um Winkel aus dem Dateinamen zu extrahieren
+    # z.B. aus 'pos_1_I_1_mes_angle45_density_H.png' -> '45'
+    pattern = re.compile(f"{pos_group}_{current_group}_angle(\\d+)_.*\\.png")
+
+    density_plots = []
+    vector_plots = []
+
+    for filename in plot_files:
+        match = pattern.match(filename)
+        if match:
+            angle = int(match.group(1))
+            url = f"/api/analysis/results_file/{run_folder}/femm_plots/{filename}"
+            plot_info = {"angle": angle, "url": url}
+
+            if "density" in filename:
+                density_plots.append(plot_info)
+            elif "vector" in filename:
+                vector_plots.append(plot_info)
+
+    # Sortiere die Listen nach dem Winkel
+    density_plots.sort(key=lambda p: p["angle"])
+    vector_plots.sort(key=lambda p: p["angle"])
+
+    return jsonify({"density_plots": density_plots, "vector_plots": vector_plots})
 
 
 @analysis_bp.route("/analysis/full_preview/<path:run_folder>", methods=["GET"])
@@ -291,7 +335,6 @@ def get_full_result_preview(run_folder):
                 s_geo = sheet["specificProductInformation"]["geometry"]
                 rotation = comp.get("rotation", 0)
 
-                # KORREKTUR: Abfrage für den Geometrie-Typ, um den KeyError zu verhindern
                 if s_geo.get("type") == "SheetPackage":
                     sheet_count = s_geo.get("sheetCount", 1)
                     sheet_thickness = s_geo.get("sheetThickness", 0)
@@ -303,9 +346,7 @@ def get_full_result_preview(run_folder):
                     total_width = (sheet_count * sheet_thickness) + (
                         2 * insulation_thickness
                     )
-
                     current_offset = -total_width / 2
-
                     if s_geo.get("withInsulation"):
                         scene_elements.append(
                             {
@@ -319,7 +360,6 @@ def get_full_result_preview(run_folder):
                             }
                         )
                         current_offset += insulation_thickness
-
                     for _ in range(sheet_count):
                         scene_elements.append(
                             {
@@ -333,7 +373,6 @@ def get_full_result_preview(run_folder):
                             }
                         )
                         current_offset += sheet_thickness
-
                     if s_geo.get("withInsulation"):
                         scene_elements.append(
                             {
@@ -346,8 +385,7 @@ def get_full_result_preview(run_folder):
                                 "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
                             }
                         )
-
-                else:  # Fallback für alte, einfache Bleche mit 'width' und 'height'
+                else:
                     scene_elements.append(
                         {
                             "type": "rect",
@@ -359,7 +397,6 @@ def get_full_result_preview(run_folder):
                             "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
                         }
                     )
-
         scenes.append(
             {
                 "name": f"Schritt {i}",
@@ -367,5 +404,4 @@ def get_full_result_preview(run_folder):
                 "pos_group": f"pos_{i+1}",
             }
         )
-
     return jsonify({"scenes": scenes, "room": spielraum})

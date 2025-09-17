@@ -11,10 +11,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const previewLoadingMessage = document.getElementById(
     "preview-loading-message"
   );
+  const femmPlotsContainer = document.getElementById("femm-plots-container");
+  const angleSlider = document.getElementById("angle-slider");
+  const angleDisplay = document.getElementById("angle-display");
+  const playPauseBtn = document.getElementById("play-pause-btn");
 
   let simulationRuns = [];
   const storageKey = "resultsSelection";
   let myChart = null;
+  let densityPlotList = [];
+  let vectorPlotList = [];
+  let imageTransform = { scale: 1, translateX: 0, translateY: 0 };
+  let animationInterval = null;
 
   const saveSelection = () => {
     const selection = {
@@ -65,18 +73,22 @@ document.addEventListener("DOMContentLoaded", () => {
   currentSelector.addEventListener("change", () => fetchPlotData(true));
   yAxisSelector.addEventListener("change", () => fetchPlotData(false));
   conductorSelector.addEventListener("change", () => fetchPlotData(false));
+  angleSlider.addEventListener("input", handleSliderChange);
+  playPauseBtn.addEventListener("click", toggleAnimation);
 
   function handleRunChange() {
     const runIndex = runSelector.value;
     const lastSelection = loadSelection();
+    stopAnimation();
 
-    // Reset views
     previewContainer.innerHTML =
       '<p class="loading-message">Lade Vorschau...</p>';
     if (myChart) myChart.destroy();
-    plotDiv.style.display = "none";
+    plotDiv.classList.add("initially-hidden");
 
     positionSelector.innerHTML = '<option value="">--</option>';
+    currentSelector.innerHTML = '<option value="">--</option>';
+
     if (runIndex === "") {
       positionSelector.disabled = true;
       currentSelector.disabled = true;
@@ -89,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     positionSelector.disabled = false;
     if (
+      lastSelection.run === runIndex &&
       lastSelection.position &&
       Array.from(positionSelector.options).some(
         (o) => o.value === lastSelection.position
@@ -102,6 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     currentSelector.disabled = false;
     if (
+      lastSelection.run === runIndex &&
       lastSelection.current &&
       Array.from(currentSelector.options).some(
         (o) => o.value === lastSelection.current
@@ -149,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentGroup = currentSelector.value;
 
     if (runIndex === "" || posGroup === "" || currentGroup === "") {
-      plotDiv.style.display = "none";
+      plotDiv.classList.add("initially-hidden");
       yAxisSelector.disabled = true;
       yAxisSelector.innerHTML = '<option value="">--</option>';
       conductorSelector.innerHTML = "";
@@ -175,16 +189,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     selectedConductors.forEach((c) => queryParams.append("conductors[]", c));
 
-    plotDiv.style.display = "none";
+    plotDiv.classList.add("initially-hidden");
     plotLoadingMessage.style.display = "block";
 
+    fetchFemmPlots();
+
     fetch(`/api/analysis/plot?${queryParams.toString()}`)
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            `Datei '${posGroup}_${currentGroup}_summary.csv' nicht gefunden.`
+          );
+        }
+        return response.json();
+      })
       .then((data) => {
         plotLoadingMessage.style.display = "none";
         if (data.error) {
-          if (myChart && typeof myChart.destroy === "function")
-            myChart.destroy();
+          if (myChart) myChart.destroy();
+          plotLoadingMessage.textContent = `Fehler: ${data.error}`;
+          plotLoadingMessage.style.display = "block";
           console.error("Fehler vom Server:", data.error);
           return;
         }
@@ -192,9 +216,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isInitialLoad) {
           const currentYAxis = yAxisSelector.value;
           yAxisSelector.innerHTML = "";
-          data.columns.forEach((col) => {
-            yAxisSelector.add(new Option(col.name, col.value));
-          });
+          data.columns.forEach((col) =>
+            yAxisSelector.add(new Option(col.name, col.value))
+          );
           if (
             Array.from(yAxisSelector.options).some(
               (o) => o.value === currentYAxis
@@ -225,7 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
           conductorSelector.appendChild(label);
         });
 
-        if (myChart && typeof myChart.destroy === "function") myChart.destroy();
+        if (myChart) myChart.destroy();
 
         const ctx = document.getElementById("plot-canvas").getContext("2d");
         myChart = new Chart(ctx, {
@@ -247,7 +271,202 @@ document.addEventListener("DOMContentLoaded", () => {
             },
           },
         });
-        plotDiv.style.display = "block";
+        plotDiv.classList.remove("initially-hidden");
+      })
+      .catch((error) => {
+        if (myChart) myChart.destroy();
+        plotLoadingMessage.textContent = `Fehler: ${error.message}`;
+        plotLoadingMessage.style.display = "block";
+        console.error("Fehler beim Laden der Plot-Daten:", error);
       });
   }
+
+  function fetchFemmPlots() {
+    const runIndex = runSelector.value;
+    const posGroup = positionSelector.value;
+    const currentGroup = currentSelector.value;
+
+    stopAnimation();
+    densityPlotList = [];
+    vectorPlotList = [];
+    angleSlider.disabled = true;
+    playPauseBtn.disabled = true;
+    angleSlider.value = 0;
+    angleSlider.max = 0;
+    angleDisplay.textContent = "--°";
+
+    if (runIndex === "" || posGroup === "" || currentGroup === "") {
+      femmPlotsContainer.classList.add("initially-hidden");
+      return;
+    }
+
+    const selectedRun = simulationRuns[runIndex];
+    const queryParams = new URLSearchParams({
+      run_folder: selectedRun.name,
+      pos_group: posGroup,
+      current_group: currentGroup,
+    });
+
+    const densityImg = document.getElementById("density-plot-img");
+    const vectorImg = document.getElementById("vector-plot-img");
+    const densityLoading = document.getElementById("density-plot-loading");
+    const vectorLoading = document.getElementById("vector-plot-loading");
+
+    densityImg.classList.add("initially-hidden");
+    vectorImg.classList.add("initially-hidden");
+    densityLoading.style.display = "block";
+    vectorLoading.style.display = "block";
+    femmPlotsContainer.classList.remove("initially-hidden");
+
+    fetch(`/api/analysis/femm_plots?${queryParams.toString()}`)
+      .then((response) => response.json())
+      .then((data) => {
+        densityPlotList = data.density_plots || [];
+        vectorPlotList = data.vector_plots || [];
+
+        if (densityPlotList.length > 1) {
+          angleSlider.max = densityPlotList.length - 1;
+          angleSlider.disabled = false;
+          playPauseBtn.disabled = false;
+          handleSliderChange();
+          densityLoading.style.display = "none";
+        } else if (densityPlotList.length === 1) {
+          handleSliderChange();
+          densityLoading.style.display = "none";
+        } else {
+          densityLoading.textContent = "Keine Plots verfügbar.";
+        }
+
+        if (vectorPlotList.length === 0) {
+          vectorLoading.textContent = "Keine Plots verfügbar.";
+        } else {
+          vectorLoading.style.display = "none";
+        }
+      })
+      .catch((error) => {
+        console.error("Fehler beim Laden der FEMM-Plots:", error);
+        densityLoading.textContent = "Fehler beim Laden.";
+        vectorLoading.textContent = "Fehler beim Laden.";
+      });
+  }
+
+  function handleSliderChange() {
+    const index = parseInt(angleSlider.value, 10);
+
+    if (densityPlotList[index]) {
+      const densityImg = document.getElementById("density-plot-img");
+      densityImg.src = densityPlotList[index].url;
+      densityImg.classList.remove("initially-hidden");
+      applyImageTransform(densityImg);
+      angleDisplay.textContent = `${densityPlotList[index].angle}°`;
+    }
+
+    if (vectorPlotList[index]) {
+      const vectorImg = document.getElementById("vector-plot-img");
+      vectorImg.src = vectorPlotList[index].url;
+      vectorImg.classList.remove("initially-hidden");
+      applyImageTransform(vectorImg);
+    }
+  }
+
+  function toggleAnimation() {
+    if (animationInterval) {
+      stopAnimation();
+    } else {
+      startAnimation();
+    }
+  }
+
+  function startAnimation() {
+    playPauseBtn.textContent = "❚❚";
+    animationInterval = setInterval(() => {
+      let nextValue = parseInt(angleSlider.value, 10) + 1;
+      if (nextValue > angleSlider.max) {
+        nextValue = 0;
+      }
+      angleSlider.value = nextValue;
+      handleSliderChange();
+    }, 200);
+  }
+
+  function stopAnimation() {
+    clearInterval(animationInterval);
+    animationInterval = null;
+    playPauseBtn.textContent = "▶";
+  }
+
+  function applyImageTransform(imageElement) {
+    imageElement.style.transform = `translate(${imageTransform.translateX}px, ${imageTransform.translateY}px) scale(${imageTransform.scale})`;
+    imageElement.style.transformOrigin = "center center";
+  }
+
+  function updateAllImagesTransform() {
+    applyImageTransform(document.getElementById("density-plot-img"));
+    applyImageTransform(document.getElementById("vector-plot-img"));
+  }
+
+  function setupZoomControls() {
+    const zoomInBtn = document.getElementById("zoom-in-btn");
+    const zoomOutBtn = document.getElementById("zoom-out-btn");
+    const zoomHomeBtn = document.getElementById("zoom-home-btn");
+    const scaleAmount = 0.2;
+
+    zoomInBtn.addEventListener("click", () => {
+      imageTransform.scale += scaleAmount;
+      updateAllImagesTransform();
+    });
+
+    zoomOutBtn.addEventListener("click", () => {
+      imageTransform.scale = Math.max(0.5, imageTransform.scale - scaleAmount);
+      updateAllImagesTransform();
+    });
+
+    zoomHomeBtn.addEventListener("click", () => {
+      imageTransform = { scale: 1, translateX: 0, translateY: 0 };
+      updateAllImagesTransform();
+    });
+  }
+
+  function enableImagePanZoom(wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+    let isPanning = false;
+    let startPos = { x: 0, y: 0 };
+
+    wrapper.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      isPanning = true;
+      startPos = {
+        x: e.clientX - imageTransform.translateX,
+        y: e.clientY - imageTransform.translateY,
+      };
+      wrapper.style.cursor = "grabbing";
+    });
+
+    wrapper.addEventListener("mousemove", (e) => {
+      if (!isPanning) return;
+      e.preventDefault();
+      imageTransform.translateX = e.clientX - startPos.x;
+      imageTransform.translateY = e.clientY - startPos.y;
+      updateAllImagesTransform();
+    });
+
+    const stopPan = () => {
+      isPanning = false;
+      wrapper.style.cursor = "grab";
+    };
+    wrapper.addEventListener("mouseup", stopPan);
+    wrapper.addEventListener("mouseleave", stopPan);
+
+    wrapper.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const scaleAmount = 0.02; // Zoom-Geschwindigkeit verfeinert
+      imageTransform.scale += e.deltaY * -scaleAmount;
+      imageTransform.scale = Math.max(0.2, Math.min(imageTransform.scale, 10)); // Min/Max Zoom angepasst
+      updateAllImagesTransform();
+    });
+  }
+
+  enableImagePanZoom("density-plot-wrapper");
+  enableImagePanZoom("vector-plot-wrapper");
+  setupZoomControls();
 });

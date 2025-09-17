@@ -101,6 +101,28 @@ class FEMMSession:
 
     # --- Post-processing (mo_*) Befehle ---
 
+    def save_bitmap(self, filename):
+        """Speichert die aktuelle Ansicht als Bitmap-Datei."""
+        femm.mo_savebitmap(filename)
+
+    def show_density_plot(self, legend, gscale, upper_b, lower_b, plot_type="bmag"):
+        """Zeigt einen Dichte-Plot an."""
+        femm.mo_showdensityplot(legend, gscale, upper_b, lower_b, plot_type)
+
+    def show_vector_plot(self, plot_type, scale_factor):
+        """Zeigt einen Vektor-Plot an."""
+        # Das erste Argument 'plot_type' ist in pyfemm ein integer,
+        # 0 für B (Flussdichte), 1 für H (Feldstärke)
+        femm.mo_showvectorplot(plot_type, scale_factor)
+
+    def show_contour_plot(self, num_contours, lower_bound, upper_bound, plot_type="A"):
+        """Zeigt die Kontur-Linien (Feldlinien) an."""
+        femm.mo_showcontourplot(num_contours, lower_bound, upper_bound, plot_type)
+
+    def zoom_natural(self):
+        """Zoomt auf die natürliche Größe des Problems."""
+        femm.mo_zoomnatural()
+
     def get_circuit_properties(self, circuit_name):
         """Gibt die Eigenschaften eines Stromkreises aus der Lösung zurück."""
         return femm.mo_getcircuitproperties(circuit_name)

@@ -39,6 +39,7 @@ def run_single_simulation(task_params):
             run_identifier,
             pos_name,
             current_name,
+            femm_files_dir,
         )
     finally:
         femm.close()
@@ -58,7 +59,6 @@ def setup_femm_problem(femm, global_params, electrical_system, angle_deg):
     femm.new_document(0)
     femm.prob_def(freq, "millimeters", "planar", 1e-8, depth, 30)
 
-    # NEU: Kunststoff-Material hinzufügen
     femm.add_material("Kunststoff", mu_x=1, mu_y=1)
 
     for mat_props in materials_config.values():
@@ -167,12 +167,32 @@ def run_analysis_and_collect_results(
     run_identifier,
     pos_name,
     current_name,
+    femm_files_dir,
 ):
     """
-    Führt die Analyse durch und sammelt die Roh-Ergebnisse aus der Simulation.
+    Führt die Analyse durch, sammelt die Roh-Ergebnisse und speichert Plots.
     """
+    # KORREKTUR: Die Analyse mit Flag 1 ausführen.
+    # Dies löst das Problem und öffnet die Ergebnisansicht,
+    # was für das Speichern der Bilder notwendig ist.
     femm.analyze(1)
     femm.load_solution()
+
+    run_base_dir = os.path.dirname(os.path.dirname(femm_files_dir))
+    plots_dir = os.path.join(run_base_dir, "femm_plots")
+    os.makedirs(plots_dir, exist_ok=True)
+
+    femm.zoom_natural()
+    femm.show_density_plot(legend=1, gscale=0, upper_b=0, lower_b=0, plot_type="h")
+    femm.show_contour_plot(num_contours=30, lower_bound=0, upper_bound=0, plot_type="A")
+    density_plot_path = os.path.join(plots_dir, f"{run_identifier}_density_H.png")
+    femm.save_bitmap(density_plot_path)
+
+    femm.zoom_natural()
+    femm.show_vector_plot(plot_type=1, scale_factor=2)
+    femm.show_contour_plot(num_contours=30, lower_bound=0, upper_bound=0, plot_type="A")
+    vector_plot_path = os.path.join(plots_dir, f"{run_identifier}_vector_H.png")
+    femm.save_bitmap(vector_plot_path)
 
     results = []
     for i, asm in enumerate(assemblies):
@@ -343,6 +363,5 @@ def create_standalone_object(
 
     femm_session.add_block_label(center_x, center_y)
     femm_session.select_label(center_x, center_y)
-    # KORREKTUR: Fehlendes schließendes Anführungszeichen in der nächsten Zeile.
     femm_session.set_block_prop(material, 1, 0, circuit, 0, group_id, 0)
     femm_session.clear_selected()

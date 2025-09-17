@@ -48,18 +48,132 @@
     width: 100%;
 }
 
-/* KORREKTUR: Vorschau verkleinert und zentriert */
 #results-preview-container {
-    max-width: 900px; /* Gleiche Breite wie das Diagramm */
-    margin: 1rem auto; /* Zentriert und mit Abstand */
+    max-width: 900px;
+    margin: 1rem auto;
 }
 
-/* Stellt sicher, dass das SVG in der Vorschau nicht zu hoch wird */
 #results-preview-container .component-preview {
     max-height: 450px;
-    min-height: 300px; /* Etwas kleiner als vorher */
+    min-height: 300px;
 }
 
 #results-preview-container .button-group {
     justify-content: center;
+}
+
+#femm-plots-container {
+    position: relative; /* Notwendig für die Positionierung der Zoom-Knöpfe */
+}
+
+.femm-plot-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.femm-plot {
+    text-align: center;
+}
+
+.plot-image-wrapper {
+    overflow: hidden;
+    cursor: grab;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+}
+
+.femm-plot-image {
+    max-width: 100%;
+    max-height: 100%;
+    transition: transform 0.1s ease-out;
+}
+
+.plot-slider-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+#angle-slider {
+    width: 300px;
+}
+
+#angle-display {
+    font-weight: bold;
+    min-width: 40px;
+}
+
+#play-pause-btn {
+    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none; /* Rand entfernt für sauberes Aussehen */
+    background-color: #0d6efd; /* Blau als Hintergrund */
+    color: white; /* Weiße Schrift für Kontrast */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: background-color 0.2s;
+}
+
+#play-pause-btn:hover {
+    background-color: #0b5ed7; /* Dunkleres Blau beim Hover */
+}
+
+#play-pause-btn:disabled {
+    cursor: not-allowed;
+    background-color: #6c757d; /* Grau, wenn deaktiviert */
+    opacity: 0.65;
+}
+
+.zoom-controls {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.zoom-controls button {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-radius: 50%;
+    border: 1px solid #adb5bd;
+    background-color: #e9ecef;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    color: #495057;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.zoom-controls button:hover {
+    background-color: #dee2e6;
+    border-color: #495057;
+}
+
+
+.initially-hidden {
+    display: none;
 }

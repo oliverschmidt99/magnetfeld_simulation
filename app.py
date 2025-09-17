@@ -7,7 +7,7 @@ import os
 import math
 import time
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from server.api import api_bp
 from server.analysis import analysis_bp
@@ -23,6 +23,8 @@ from server.utils import (
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LIBRARY_FILE = "library.json"
 SIMULATION_RUN_FILE = "simulation_run.json"
+SIMULATIONS_DIR = "simulations"  # Verzeichnis für alle Simulationsergebnisse
+
 
 app = Flask(__name__)
 
@@ -30,6 +32,12 @@ app.register_blueprint(api_bp)
 app.register_blueprint(analysis_bp, url_prefix="/api")
 app.register_blueprint(simulation_bp)
 app.register_blueprint(configurations_bp, url_prefix="/api")
+
+
+@app.route("/api/analysis/results_file/<path:filepath>")
+def serve_results_file(filepath):
+    """Liefert eine Datei aus dem Simulationsergebnis-Ordner sicher aus."""
+    return send_from_directory(os.path.join(app.root_path, SIMULATIONS_DIR), filepath)
 
 
 @app.route("/")

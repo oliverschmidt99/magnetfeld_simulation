@@ -193,3 +193,29 @@
     margin-bottom: 0; /* Setzt den Standard-Margin von Labels zurück */
     font-weight: normal;
 }
+
+/* Hinzugefügte Stile */
+.initially-hidden {
+    display: none;
+}
+
+.hidden {
+    display: none;
+}
+
+.checkbox-group {
+    display: flex; 
+    align-items: center; 
+    gap: 10px;
+}
+
+.checkbox-group input {
+    width: auto;
+}
+.checkbox-group label {
+    margin-bottom: 0;
+}
+
+.btn-margin-top {
+    margin-top: 1rem;
+}

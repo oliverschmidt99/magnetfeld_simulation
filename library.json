@@ -1,4 +1,60 @@
 {
+    "materials": [
+        {
+            "name": "M-36 Steel",
+            "is_nonlinear": true,
+            "mu_x": 1,
+            "mu_y": 1,
+            "bh_curve": [
+                [
+                    0,
+                    0
+                ],
+                [
+                    0.5,
+                    119.4
+                ],
+                [
+                    1,
+                    262.6
+                ],
+                [
+                    1.2,
+                    437.7
+                ],
+                [
+                    1.4,
+                    1194
+                ],
+                [
+                    1.5,
+                    2387
+                ],
+                [
+                    1.6,
+                    5570
+                ],
+                [
+                    1.7,
+                    11936
+                ]
+            ]
+        },
+        {
+            "name": "Air",
+            "mu_x": 1,
+            "mu_y": 1,
+            "is_nonlinear": false,
+            "bh_curve": []
+        },
+        {
+            "name": "Copper",
+            "is_nonlinear": false,
+            "mu_x": 1,
+            "mu_y": 1,
+            "bh_curve": []
+        }
+    ],
     "components": {
         "copperRails": [
             {
@@ -8,17 +64,16 @@
                         "power": "",
                         "voltage": ""
                     },
+                    "electrical": {
+                        "ratedCurrentA": 600
+                    },
                     "geometry": {
                         "height": 10,
                         "length": null,
                         "material": "Copper",
                         "type": "Rectangle",
                         "width": 40
-                    },
-                    "electrical": {
-                        "ratedCurrentA": 600
-                    },
-                    "copperRailDimensions": "1x100x12"
+                    }
                 },
                 "templateProductInformation": {
                     "additionalInfo": "",
@@ -26,7 +81,7 @@
                     "condition": "new",
                     "eanNumber": "",
                     "manufacturer": "Rolf Janssen",
-                    "manufacturerNumber": "4411",
+                    "manufacturerNumber": "",
                     "name": "RJ_40x10_600A",
                     "productName": "Kupferschiene 40x10",
                     "purchasePrice": "",
@@ -34,7 +89,7 @@
                     "tags": [
                         "600 A"
                     ],
-                    "uniqueNumber": "3921e"
+                    "uniqueNumber": ""
                 }
             },
             {

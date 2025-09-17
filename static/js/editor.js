@@ -1,20 +1,13 @@
 // static/js/editor.js
 
-document.addEventListener("DOMContentLoaded", () => {
-  // This script will be loaded dynamically by library.js when the library page is opened.
-});
+document.addEventListener("DOMContentLoaded", () => {});
 
-// Globale Variablen, um die geladenen Daten zu speichern
 let libraryData = {};
 let tagsData = {};
-let currentEditorComponent = null; // Speichert das Bauteil, das gerade bearbeitet wird
-let currentEditorComponentType = null; // Speichert den Typ des Bauteils (z.B. 'transformers')
-let currentComponentTags = []; // Speichert die Tags des aktuellen Bauteils
+let currentEditorComponent = null;
+let currentEditorComponentType = null;
+let currentComponentTags = [];
 
-/**
- * Initialisiert den gesamten Editor. Wird von library.js aufgerufen.
- * @param {object} library - Das geladene library.json Objekt.
- */
 async function initializeEditor(library) {
   libraryData = library;
   await loadTagsForEditor();
@@ -25,9 +18,6 @@ async function initializeEditor(library) {
     .addEventListener("click", showComponentTypeSelectionModal);
 }
 
-/**
- * Lädt die Tag-Daten vom Server.
- */
 async function loadTagsForEditor() {
   try {
     const response = await fetch("/api/tags");
@@ -37,9 +27,6 @@ async function loadTagsForEditor() {
   }
 }
 
-/**
- * Richtet die Event-Listener für die Filter- und Suchfelder ein.
- */
 function setupFilters() {
   document
     .getElementById("component-type-filter")
@@ -49,9 +36,6 @@ function setupFilters() {
     .addEventListener("input", renderComponentList);
 }
 
-/**
- * Rendert die Liste der Bauteile basierend auf den aktuellen Filtereinstellungen.
- */
 function renderComponentList() {
   const accordion = document.getElementById("component-list-accordion");
   accordion.innerHTML = "";
@@ -159,10 +143,16 @@ function openEditor(component = null, type = "transformers") {
   const data = component || {
     templateProductInformation: { name: "", manufacturer: "", tags: [] },
     specificProductInformation: {
-      geometry: { type: "Rectangle" },
+      geometry: { type: "Rectangle", material: "M-36 Steel" },
       electrical: {},
     },
   };
+  if (
+    type === "copperRails" &&
+    !data.specificProductInformation.geometry.material
+  ) {
+    data.specificProductInformation.geometry.material = "Copper";
+  }
 
   if (type === "transformers") {
     form.innerHTML = getTransformerFormHtml(data);
@@ -341,7 +331,6 @@ function getTransformerFormHtml(data) {
               geo.coreInnerHeight || 0
             }"></div>
         </div>
-        <button type="submit" style="display: none;" aria-hidden="true"></button>
     `;
 }
 
@@ -359,6 +348,15 @@ function getSimpleComponentFormHtml(data, type) {
         `<option value="${strom}" ${
           ele.ratedCurrentA === strom ? "selected" : ""
         }>${strom} A</option>`
+    )
+    .join("");
+
+  const materialOptions = (libraryData.materials || [])
+    .map(
+      (mat) =>
+        `<option value="${mat.name}" ${
+          geo.material === mat.name ? "selected" : ""
+        }>${mat.name}</option>`
     )
     .join("");
 
@@ -392,6 +390,7 @@ function getSimpleComponentFormHtml(data, type) {
         }
         <div class="form-section">
             <h3>Geometrie (Rechteck)</h3>
+             <div class="form-group"><label>Material</label><select id="edit-material">${materialOptions}</select></div>
             <div class="form-group"><label>Breite (width)</label><input type="number" step="0.1" class="geo-input" id="edit-width" value="${
               geo.width || 0
             }"></div>
@@ -399,13 +398,21 @@ function getSimpleComponentFormHtml(data, type) {
               geo.height || 0
             }"></div>
         </div>
-        <button type="submit" style="display: none;" aria-hidden="true"></button>
      `;
 }
 
 function getSheetPackageFormHtml(data) {
   const tpi = data.templateProductInformation;
   const geo = data.specificProductInformation.geometry || {};
+
+  const materialOptions = (libraryData.materials || [])
+    .map(
+      (mat) =>
+        `<option value="${mat.name}" ${
+          geo.material === mat.name ? "selected" : ""
+        }>${mat.name}</option>`
+    )
+    .join("");
 
   return `
         <div class="form-section">
@@ -428,6 +435,7 @@ function getSheetPackageFormHtml(data) {
         </div>
         <div class="form-section">
             <h3>Geometrie (Abschirmblech-Paket)</h3>
+            <div class="form-group"><label>Material der Bleche</label><select id="edit-material">${materialOptions}</select></div>
             <div class="form-group">
                 <label for="edit-sheetCount">Anzahl der Bleche</label>
                 <input type="number" id="edit-sheetCount" class="geo-input" min="1" step="1" value="${
@@ -448,11 +456,11 @@ function getSheetPackageFormHtml(data) {
             </div>
             <hr>
             <h4>Isolierung</h4>
-            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+            <div class="form-group checkbox-group">
                 <input type="checkbox" id="edit-withInsulation" class="geo-input" ${
                   geo.withInsulation ? "checked" : ""
-                } style="width: auto;">
-                <label for="edit-withInsulation" style="margin-bottom: 0;">Mit Außenisolierung (Kunststoff)</label>
+                }>
+                <label for="edit-withInsulation">Mit Außenisolierung (Kunststoff)</label>
             </div>
             <div class="form-group">
                 <label for="edit-insulationThickness">Dicke der Isolierung (mm)</label>
@@ -461,7 +469,6 @@ function getSheetPackageFormHtml(data) {
                 }">
             </div>
         </div>
-        <button type="submit" style="display: none;" aria-hidden="true"></button>
     `;
 }
 
@@ -498,7 +505,7 @@ function gatherComponentDataFromForm(type) {
   } else if (type === "transformerSheets") {
     data.geometry = {
       type: "SheetPackage",
-      material: "M-36 Steel",
+      material: form.querySelector("#edit-material")?.value || "M-36 Steel",
       sheetCount: parseInt(form.querySelector("#edit-sheetCount")?.value) || 1,
       sheetThickness:
         parseFloat(form.querySelector("#edit-sheetThickness")?.value) || 0,
@@ -513,7 +520,9 @@ function gatherComponentDataFromForm(type) {
       type: "Rectangle",
       width: parseFloat(form.querySelector("#edit-width")?.value) || 0,
       height: parseFloat(form.querySelector("#edit-height")?.value) || 0,
-      material: type === "copperRails" ? "Copper" : "M-36 Steel",
+      material:
+        form.querySelector("#edit-material")?.value ||
+        (type === "copperRails" ? "Copper" : "M-36 Steel"),
     };
     if (type === "copperRails") {
       data.electrical = {
@@ -707,17 +716,16 @@ function renderCurrentTags() {
 
 function openTagSelectionModal() {
   const modal = document.getElementById("tag-selection-modal");
-  const tagBackup = [...currentComponentTags]; // Backup für "Abbrechen"
+  const tagBackup = [...currentComponentTags];
   renderTagSelectionModal();
   modal.style.display = "flex";
 
   document.getElementById("save-tags-btn").onclick = () => {
-    // Die `currentComponentTags` sind bereits aktuell durch das Live-Update
     modal.style.display = "none";
   };
 
   document.getElementById("cancel-tags-btn").onclick = () => {
-    currentComponentTags = tagBackup; // Backup wiederherstellen
+    currentComponentTags = tagBackup;
     renderCurrentTags();
     modal.style.display = "none";
   };
@@ -759,7 +767,6 @@ function renderTagSelectionModal() {
           (t) => t !== tagName
         );
       }
-      // Live-Update der Tag-Anzeige im Hauptformular
       renderCurrentTags();
     });
   });

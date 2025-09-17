@@ -23,8 +23,7 @@ from server.utils import (
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LIBRARY_FILE = "library.json"
 SIMULATION_RUN_FILE = "simulation_run.json"
-SIMULATIONS_DIR = "simulations"  # Verzeichnis für alle Simulationsergebnisse
-
+SIMULATIONS_DIR = "simulations"
 
 app = Flask(__name__)
 
@@ -206,14 +205,8 @@ def generate_simulation():
             ]
             final_assemblies.append(assembly_data)
 
-    materials = {
-        "air": {"name": "Air"},
-        "copper": {"name": "Copper"},
-        "steel": {
-            "name": "M-36 Steel",
-            "is_steel": True,
-        },
-    }
+    # Materialien aus der Bibliothek übernehmen
+    materials = library_data.get("materials", [])
 
     simulation_data = {
         "description": "Konfiguration erstellt via Web-UI",
@@ -369,7 +362,6 @@ def visualize_configuration():
                 s_geo = sheet["specificProductInformation"]["geometry"]
                 rotation = comp.get("rotation", 0)
 
-                # KORREKTUR: Abfrage für den Geometrie-Typ
                 if s_geo.get("type") == "SheetPackage":
                     sheet_count = s_geo.get("sheetCount", 1)
                     sheet_thickness = s_geo.get("sheetThickness", 0)
@@ -384,7 +376,6 @@ def visualize_configuration():
 
                     current_offset = -total_width / 2
 
-                    # Linke Isolierung
                     if s_geo.get("withInsulation"):
                         scene_elements.append(
                             {
@@ -393,13 +384,12 @@ def visualize_configuration():
                                 "y": pos["y"] - s_geo["height"] / 2,
                                 "width": insulation_thickness,
                                 "height": s_geo["height"],
-                                "fill": "#ADD8E6",  # Hellblau für Kunststoff
+                                "fill": "#ADD8E6",
                                 "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
                             }
                         )
                         current_offset += insulation_thickness
 
-                    # Bleche
                     for _ in range(sheet_count):
                         scene_elements.append(
                             {
@@ -414,7 +404,6 @@ def visualize_configuration():
                         )
                         current_offset += sheet_thickness
 
-                    # Rechte Isolierung
                     if s_geo.get("withInsulation"):
                         scene_elements.append(
                             {
@@ -428,14 +417,14 @@ def visualize_configuration():
                             }
                         )
 
-                else:  # Fallback für alte, einfache Bleche
+                else:
                     scene_elements.append(
                         {
                             "type": "rect",
-                            "x": pos["x"] - s_geo["width"] / 2,
-                            "y": pos["y"] - s_geo["height"] / 2,
-                            "width": s_geo["width"],
-                            "height": s_geo["height"],
+                            "x": pos["x"] - s_geo.get("width", 0) / 2,
+                            "y": pos["y"] - s_geo.get("height", 0) / 2,
+                            "width": s_geo.get("width", 0),
+                            "height": s_geo.get("height", 0),
                             "fill": "#a9a9a9",
                             "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
                         }

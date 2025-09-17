@@ -1,0 +1,5 @@
+Material-Dropdown: Im Bauteil-Editor gibt es jetzt für jeden relevanten Bauteiltyp (Abschirmbleche) ein Dropdown-Menü, aus dem du die Materialien aus deiner Material-Bibliothek auswählen kannst.
+
+B-H-Kurven-Vorschau: Der Fehler in der Vorschau wurde behoben. Die Kurve wird jetzt korrekt als Liniendiagramm dargestellt. Das Problem war, dass die Füllung unter der Linie (fill: true) bei wenigen Punkten wie eine gerade Linie aussehen konnte. Ich habe die Füllung entfernt, um die Kurve klar darzustellen.
+
+Datenfluss: Das ausgewählte Material wird jetzt korrekt in der library.json gespeichert und an die simulation_run.json übergeben, sodass es in der FEMM-Simulation verwendet wird.

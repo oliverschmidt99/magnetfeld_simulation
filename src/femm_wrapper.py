@@ -37,6 +37,10 @@ class FEMMSession:
         """Fügt ein neues Material hinzu."""
         femm.mi_addmaterial(mat_name, mu_x, mu_y, h_c, j, c, d)
 
+    def add_bh_point(self, mat_name, b, h):
+        """Fügt einen Punkt zur B-H Kurve eines Materials hinzu."""
+        femm.mi_addbhpoint(mat_name, b, h)
+
     def get_material(self, mat_name):
         """Lädt ein Material aus der Standard-Bibliothek."""
         femm.mi_getmaterial(mat_name)
@@ -111,8 +115,6 @@ class FEMMSession:
 
     def show_vector_plot(self, plot_type, scale_factor):
         """Zeigt einen Vektor-Plot an."""
-        # Das erste Argument 'plot_type' ist in pyfemm ein integer,
-        # 0 für B (Flussdichte), 1 für H (Feldstärke)
         femm.mo_showvectorplot(plot_type, scale_factor)
 
     def show_contour_plot(self, num_contours, lower_bound, upper_bound, plot_type="A"):

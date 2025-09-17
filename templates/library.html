@@ -13,6 +13,7 @@
     <div class="tabs">
         <button type="button" class="tab-link active" onclick="openTab(event, 'components')">Bauteil-Bibliothek
             (JSON)</button>
+        <button type="button" class="tab-link" onclick="openTab(event, 'materials')">Material-Bibliothek</button>
         <button type="button" class="tab-link" onclick="openTab(event, 'master-data')">Stammdaten (CSV)</button>
     </div>
 
@@ -40,7 +41,7 @@
             <div id="component-list-accordion">
             </div>
 
-            <div id="component-type-modal" class="modal-overlay" style="display: none;">
+            <div id="component-type-modal" class="modal-overlay initially-hidden">
                 <div class="modal-content">
                     <h2>Welchen Bauteiltyp möchtest du erstellen?</h2>
                     <div class="button-group modal-button-group-centered">
@@ -55,12 +56,12 @@
             </div>
 
 
-            <div id="component-editor-modal" class="modal-overlay" style="display: none;">
+            <div id="component-editor-modal" class="modal-overlay initially-hidden">
                 <div class="modal-content">
                     <h2 id="editor-title">Bauteil bearbeiten</h2>
                     <div class="editor-layout">
                         <form id="component-editor-form" class="component-form">
-                            <button type="submit" style="display: none;" aria-hidden="true"></button>
+                            <button type="submit" class="hidden" aria-label="Submit"></button>
                         </form>
                         <div class="component-preview-container">
                             <h3>Vorschau</h3>
@@ -78,7 +79,7 @@
             </div>
         </div>
 
-        <div id="tag-selection-modal" class="modal-overlay" style="display: none;">
+        <div id="tag-selection-modal" class="modal-overlay initially-hidden">
             <div class="modal-content">
                 <h2>Tags auswählen</h2>
                 <div class="search-container">
@@ -94,9 +95,75 @@
         </div>
     </div>
 
+    <div id="materials" class="tab-content">
+        <h3>Material-Bibliothek verwalten</h3>
+        <p>Hier kannst du Materialien mit linearen Eigenschaften oder nichtlinearen B-H-Kurven definieren.</p>
+        <div class="filter-bar">
+            <button type="button" id="add-new-material-btn" class="button">Neues Material hinzufügen</button>
+        </div>
+        <div id="material-list">
+        </div>
+    </div>
+
     <div id="master-data" class="tab-content">
         <h3>Stammdaten-Editor (CSV-Dateien)</h3>
         <p>Platzhalter: Der Editor für die CSV-Stammdaten wird hier geladen.</p>
+    </div>
+</div>
+
+<div id="material-editor-modal" class="modal-overlay initially-hidden">
+    <div class="modal-content">
+        <h2 id="material-editor-title">Material bearbeiten</h2>
+        <div class="editor-layout">
+            <div class="component-form">
+                <div class="form-section">
+                    <h3>Allgemein</h3>
+                    <div class="form-group">
+                        <label for="material-name">Name</label>
+                        <input type="text" id="material-name" required>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h3>Eigenschaften</h3>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="material-is-nonlinear">
+                        <label for="material-is-nonlinear">Nichtlineare B-H Kurve verwenden</label>
+                    </div>
+                    <div class="form-group" id="linear-mu-group">
+                        <label>Lineare Relative Permeabilität (µr)</label>
+                        <input type="number" id="material-mur" value="1" step="100">
+                    </div>
+                </div>
+                <div class="form-section initially-hidden" id="nonlinear-bh-group">
+                    <h3>B-H Kurvenpunkte</h3>
+                    <p>Füge hier die Punkte der Hysteresekurve hinzu.</p>
+                    <table class="summary-table" id="bh-curve-table">
+                        <thead>
+                            <tr>
+                                <th>Flussdichte B (Tesla)</th>
+                                <th>Feldstärke H (A/m)</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                    <button type="button" id="add-bh-point-btn" class="button secondary btn-margin-top">+ Punkt
+                        hinzufügen</button>
+                </div>
+            </div>
+            <div class="component-preview-container">
+                <h3>Vorschau der B-H Kurve</h3>
+                <div class="component-preview">
+                    <canvas id="bh-curve-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="button-group">
+            <button type="button" id="save-material-btn" class="button">Speichern</button>
+            <button type="button" id="delete-material-btn" class="button danger">Löschen</button>
+            <button type="button" id="cancel-material-edit-btn" class="button secondary">Abbrechen</button>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -104,5 +171,6 @@
 <script src="{{ url_for('static', filename='js/tags.js') }}"></script>
 <script src="{{ url_for('static', filename='js/preview.js') }}"></script>
 <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/materials.js') }}"></script>
 <script src="{{ url_for('static', filename='js/library.js') }}"></script>
 {% endblock %}

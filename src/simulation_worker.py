@@ -51,7 +51,7 @@ def setup_femm_problem(femm, global_params, electrical_system, angle_deg):
     Konfiguriert die Grundeinstellungen des FEMM-Problems.
     """
     scenario_params = global_params.get("scenarioParams", {})
-    materials_config = global_params.get("materials", {})
+    materials_config = global_params.get("materials", [])
     freq = float(scenario_params.get("frequencyHz", 50))
     depth = float(scenario_params.get("problemDepthM", 30))
     core_perm = float(scenario_params.get("coreRelPermeability", 2500))
@@ -61,15 +61,22 @@ def setup_femm_problem(femm, global_params, electrical_system, angle_deg):
 
     femm.add_material("Kunststoff", mu_x=1, mu_y=1)
 
-    for mat_props in materials_config.values():
+    for mat_props in materials_config:
         mat_name = mat_props.get("name")
         if not mat_name:
             continue
 
-        if mat_props.get("is_steel", False):
-            femm.add_material(mat_name, mu_x=core_perm, mu_y=core_perm)
+        if mat_props.get("is_nonlinear") and mat_props.get("bh_curve"):
+            femm.add_material(mat_name, 1, 1)
+            for b_val, h_val in mat_props["bh_curve"]:
+                femm.add_bh_point(mat_name, b_val, h_val)
         else:
-            femm.get_material(mat_name)
+            if mat_name in ["Air", "Copper"]:
+                femm.get_material(mat_name)
+            else:
+                mu_x = float(mat_props.get("mu_x", core_perm))
+                mu_y = float(mat_props.get("mu_y", core_perm))
+                femm.add_material(mat_name, mu_x=mu_x, mu_y=mu_y)
 
     for phase in electrical_system:
         inst_current = calculate_instantaneous_current(
@@ -82,10 +89,19 @@ def build_femm_geometry(femm, step_config):
     """
     Zeichnet die gesamte Geometrie und platziert alle Material-Labels.
     """
-    materials = step_config.get("materials", {})
-    air = materials.get("air", {}).get("name", "Air")
-    copper = materials.get("copper", {}).get("name", "Copper")
-    steel = materials.get("steel", {}).get("name", "M-36 Steel")
+    materials_list = step_config.get("materials", [])
+    air = next((m.get("name") for m in materials_list if m.get("name") == "Air"), "Air")
+    copper = next(
+        (m.get("name") for m in materials_list if m.get("name") == "Copper"), "Copper"
+    )
+    steel = next(
+        (
+            m.get("name")
+            for m in materials_list
+            if m.get("name") not in ["Air", "Copper", "Kunststoff"]
+        ),
+        "M-36 Steel",
+    )
 
     sim_raum = step_config["simulation_meta"]["simulationsraum"]
     sim_length = float(sim_raum["Laenge"])
@@ -175,22 +191,17 @@ def run_analysis_and_collect_results(
     femm.analyze(1)
     femm.load_solution()
 
-    # KORREKTUR: Grafische Plots werden jetzt für JEDEN Phasenwinkel erstellt
     run_base_dir = os.path.dirname(os.path.dirname(femm_files_dir))
     plots_dir = os.path.join(run_base_dir, "femm_plots")
     os.makedirs(plots_dir, exist_ok=True)
 
-    # Dichte-Plot für |H| erstellen und speichern
     femm.zoom_natural()
     femm.show_density_plot(legend=1, gscale=0, upper_b=0, lower_b=0, plot_type="h")
-    # KORREKTUR: Dateiname enthält jetzt den Phasenwinkel
     density_plot_path = os.path.join(plots_dir, f"{run_identifier}_density_H.png")
     femm.save_bitmap(density_plot_path)
 
-    # Vektor-Plot für H erstellen und speichern
     femm.zoom_natural()
     femm.show_vector_plot(plot_type=1, scale_factor=2)
-    # KORREKTUR: Dateiname enthält jetzt den Phasenwinkel
     vector_plot_path = os.path.join(plots_dir, f"{run_identifier}_vector_H.png")
     femm.save_bitmap(vector_plot_path)
 
@@ -269,9 +280,7 @@ def create_sheet_package(femm_session, center_pos, geo, rotation_deg, group_id_s
     insulation_thickness = (
         float(geo.get("insulationThickness", 0)) if with_insulation else 0
     )
-
     total_width = (sheet_count * sheet_thickness) + (2 * insulation_thickness)
-
     components = []
     current_offset = -total_width / 2
 
@@ -285,7 +294,6 @@ def create_sheet_package(femm_session, center_pos, geo, rotation_deg, group_id_s
             }
         )
         current_offset += insulation_thickness
-
     for _ in range(sheet_count):
         components.append(
             {
@@ -296,7 +304,6 @@ def create_sheet_package(femm_session, center_pos, geo, rotation_deg, group_id_s
             }
         )
         current_offset += sheet_thickness
-
     if with_insulation:
         components.append(
             {
@@ -306,17 +313,13 @@ def create_sheet_package(femm_session, center_pos, geo, rotation_deg, group_id_s
                 "material": "Kunststoff",
             }
         )
-
     for i, comp_props in enumerate(components):
         rad = np.deg2rad(rotation_deg)
         cos_a, sin_a = np.cos(rad), np.sin(rad)
-
         rotated_offset_x = comp_props["offset_x"] * cos_a
         rotated_offset_y = comp_props["offset_x"] * sin_a
-
         final_center_x = center_x + rotated_offset_x
         final_center_y = center_y + rotated_offset_y
-
         create_standalone_object(
             femm_session,
             final_center_x,
@@ -354,13 +357,11 @@ def create_standalone_object(
         (px * cos_a - py * sin_a + center_x, px * sin_a + py * cos_a + center_y)
         for px, py in corners
     ]
-
     for corner_x, corner_y in rotated_corners:
         femm_session.add_node(corner_x, corner_y)
     for k in range(4):
         p1, p2 = rotated_corners[k], rotated_corners[(k + 1) % 4]
         femm_session.add_segment(p1[0], p1[1], p2[0], p2[1])
-
     femm_session.add_block_label(center_x, center_y)
     femm_session.select_label(center_x, center_y)
     femm_session.set_block_prop(material, 1, 0, circuit, 0, group_id, 0)

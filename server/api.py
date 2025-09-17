@@ -4,7 +4,6 @@ Dieses Modul stellt die API-Endpunkte für die Anwendung bereit.
 
 from flask import Blueprint, jsonify, request
 
-# KORREKTUR: 'load_data' wurde in 'load_json' umbenannt, um den Fehler zu beheben
 from .utils import load_json, save_data, TAGS_FILE, LIBRARY_FILE
 from .csv_editor import (
     list_csv_files,
@@ -38,28 +37,26 @@ def update_tags():
 @api_bp.route("/library", methods=["GET"])
 def get_library():
     """Gibt die gesamte Bauteil-Bibliothek zurück."""
-    library_data = load_json(LIBRARY_FILE, {"components": {}})
+    library_data = load_json(LIBRARY_FILE, {"components": {}, "materials": []})
     return jsonify(library_data)
 
 
 @api_bp.route("/library", methods=["POST"])
 def update_library():
-    """Aktualisiert oder löscht ein Bauteil in der Bibliothek."""
+    """Aktualisiert oder löscht ein Bauteil oder Material in der Bibliothek."""
     data = request.json
     action = data.get("action")
-    component_type = data.get("type")
-    original_name = data.get("originalName")
-    component_data = data.get("component")
 
-    library = load_json(LIBRARY_FILE, {"components": {}})
+    library = load_json(LIBRARY_FILE, {"components": {}, "materials": []})
 
     if action == "save":
+        component_type = data.get("type")
+        original_name = data.get("originalName")
+        component_data = data.get("component")
         if component_type not in library["components"]:
             library["components"][component_type] = []
-
         components_list = library["components"][component_type]
-
-        if original_name:  # Existing component
+        if original_name:
             found = False
             for i, comp in enumerate(components_list):
                 if (
@@ -74,14 +71,14 @@ def update_library():
                     jsonify({"message": f"Bauteil '{original_name}' nicht gefunden."}),
                     404,
                 )
-        else:  # New component
-            # Hier müsste eine Validierung und ID-Vergabe stattfinden
+        else:
             components_list.append(component_data)
-
         save_data(LIBRARY_FILE, library)
         return jsonify({"message": "Bauteil erfolgreich gespeichert."}), 200
 
     elif action == "delete":
+        component_type = data.get("type")
+        original_name = data.get("originalName")
         if component_type in library["components"]:
             components_list = library["components"][component_type]
             new_list = [
@@ -99,12 +96,53 @@ def update_library():
                     404,
                 )
 
+    elif action == "save_material":
+        material_data = data.get("material")
+        original_name = data.get("originalName")
+        if not library.get("materials"):
+            library["materials"] = []
+
+        if original_name:  # Material bearbeiten
+            found = False
+            for i, mat in enumerate(library["materials"]):
+                if mat.get("name") == original_name:
+                    library["materials"][i] = material_data
+                    found = True
+                    break
+            if not found:
+                return (
+                    jsonify({"message": f"Material '{original_name}' nicht gefunden."}),
+                    404,
+                )
+        else:  # Neues Material
+            library["materials"].append(material_data)
+
+        save_data(LIBRARY_FILE, library)
+        return jsonify({"message": "Material erfolgreich gespeichert."}), 200
+
+    elif action == "delete_material":
+        original_name = data.get("originalName")
+        if library.get("materials"):
+            new_list = [
+                m for m in library["materials"] if m.get("name") != original_name
+            ]
+            if len(new_list) < len(library["materials"]):
+                library["materials"] = new_list
+                save_data(LIBRARY_FILE, library)
+                return (
+                    jsonify({"message": f"Material '{original_name}' gelöscht."}),
+                    200,
+                )
+            else:
+                return (
+                    jsonify({"message": f"Material '{original_name}' nicht gefunden."}),
+                    404,
+                )
+
     return jsonify({"message": "Aktion nicht erfolgreich oder ungültig."}), 400
 
 
 # --- Routen für den CSV-Editor ---
-
-
 @api_bp.route("/csv-files", methods=["GET"])
 def get_csv_files():
     """Listet die verfügbaren CSV-Dateien auf."""

@@ -21,7 +21,6 @@ def run_simulation_script(app, run_path):
     with app.app_context():
         project_root = app.root_path
         python_executable = sys.executable
-        # KORREKTUR: Übergibt den eindeutigen Pfad als Kommandozeilen-Argument
         command = [python_executable, "-m", "src.simulation_runner", run_path]
 
         try:
@@ -55,9 +54,8 @@ def run_simulation_script(app, run_path):
             )
         except (subprocess.SubprocessError, OSError) as e:
             print(f"Ein Fehler im Subprozess ist aufgetreten: {e}")
-        finally:
-            # Signalisiert, dass der Thread beendet ist
-            current_app.config["ACTIVE_SIMULATION_PATH"] = None
+        # KORREKTUR: Der "finally"-Block wurde entfernt, um das Zurücksetzen
+        # des aktiven Pfades dem Main-Thread zu überlassen.
 
 
 @simulation_bp.route("/start_simulation", methods=["POST"])
@@ -74,12 +72,9 @@ def start_simulation():
             409,
         )
 
-    # KORREKTUR: Eindeutigen Pfad vor dem Start des Threads erstellen
     now = datetime.now()
     date_str, time_str = now.strftime("%Y%m%d"), now.strftime("%H%M%S")
     run_path = os.path.join("simulations", date_str, f"{time_str}_parallel_sweep")
-
-    # KORREKTUR: Speichert den Pfad des aktiven Laufs
     current_app.config["ACTIVE_SIMULATION_PATH"] = run_path
 
     # pylint: disable=protected-access
@@ -88,7 +83,6 @@ def start_simulation():
         target=run_simulation_script, args=(app_context, run_path)
     )
     new_thread.start()
-
     current_app.config["SIMULATION_THREAD"] = new_thread
 
     return jsonify(
@@ -110,20 +104,17 @@ def simulation_progress():
         return jsonify({"status": "idle"})
 
     try:
-        # KORREKTUR: Greift gezielt auf die Statusdatei des aktiven Laufs zu
         status_file = os.path.join(
             current_app.root_path, active_run_path, "simulation_status.json"
         )
-
         with open(status_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        # Wenn der Lauf abgeschlossen ist, den aktiven Pfad zurücksetzen
         if data.get("status") == "complete":
+            # Setze den Pfad zurück, nachdem der "complete"-Status gesendet wurde.
             current_app.config["ACTIVE_SIMULATION_PATH"] = None
 
         return jsonify(data)
 
     except (FileNotFoundError, json.JSONDecodeError):
-        # Die Datei wurde noch nicht erstellt, der Prozess startet aber
         return jsonify({"status": "starting"})

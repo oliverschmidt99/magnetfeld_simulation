@@ -172,25 +172,25 @@ def run_analysis_and_collect_results(
     """
     Führt die Analyse durch, sammelt die Roh-Ergebnisse und speichert Plots.
     """
-    # KORREKTUR: Die Analyse mit Flag 1 ausführen.
-    # Dies löst das Problem und öffnet die Ergebnisansicht,
-    # was für das Speichern der Bilder notwendig ist.
     femm.analyze(1)
     femm.load_solution()
 
+    # KORREKTUR: Grafische Plots werden jetzt für JEDEN Phasenwinkel erstellt
     run_base_dir = os.path.dirname(os.path.dirname(femm_files_dir))
     plots_dir = os.path.join(run_base_dir, "femm_plots")
     os.makedirs(plots_dir, exist_ok=True)
 
+    # Dichte-Plot für |H| erstellen und speichern
     femm.zoom_natural()
     femm.show_density_plot(legend=1, gscale=0, upper_b=0, lower_b=0, plot_type="h")
-    femm.show_contour_plot(num_contours=30, lower_bound=0, upper_bound=0, plot_type="A")
+    # KORREKTUR: Dateiname enthält jetzt den Phasenwinkel
     density_plot_path = os.path.join(plots_dir, f"{run_identifier}_density_H.png")
     femm.save_bitmap(density_plot_path)
 
+    # Vektor-Plot für H erstellen und speichern
     femm.zoom_natural()
     femm.show_vector_plot(plot_type=1, scale_factor=2)
-    femm.show_contour_plot(num_contours=30, lower_bound=0, upper_bound=0, plot_type="A")
+    # KORREKTUR: Dateiname enthält jetzt den Phasenwinkel
     vector_plot_path = os.path.join(plots_dir, f"{run_identifier}_vector_H.png")
     femm.save_bitmap(vector_plot_path)
 

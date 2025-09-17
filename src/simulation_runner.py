@@ -8,7 +8,7 @@ import shutil
 import multiprocessing
 import logging
 import time
-import sys  # Importieren für Kommandozeilen-Argumente
+import sys
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -26,7 +26,6 @@ class SimulationRunner:
         if not self.run_data:
             raise ValueError("Konfigurationsdatei konnte nicht geladen werden.")
 
-        # KORREKTUR: Nutzt den übergebenen Pfad oder erstellt einen neuen
         self.base_results_path = (
             base_path if base_path else self._create_results_directory()
         )
@@ -107,16 +106,21 @@ class SimulationRunner:
         with multiprocessing.Pool(processes=num_processes) as pool:
             for result_chunk in pool.imap_unordered(run_single_simulation, tasks):
                 completed_tasks += 1
-                all_results.extend(result_chunk)
-
                 if (
-                    completed_tasks % (max(1, total_tasks // 20)) == 0
-                    or completed_tasks == total_tasks
-                ):
+                    result_chunk
+                ):  # Nur Ergebnisse hinzufügen, wenn die Analyse erfolgreich war
+                    all_results.extend(result_chunk)
+
+                # Status seltener aktualisieren, um die Dateizugriffe zu reduzieren
+                if (completed_tasks % 5 == 0) or (completed_tasks == total_tasks):
                     self._update_status("running", completed_tasks, total_tasks)
 
         if all_results:
             self._save_results_to_csv(all_results)
+        else:
+            logging.warning(
+                "Keine Ergebnisse nach Abschluss aller Simulationen vorhanden. Es wird keine CSV-Datei erstellt."
+            )
 
         end_time = time.time()
         duration = round(end_time - start_time, 2)
@@ -157,7 +161,6 @@ class SimulationRunner:
 
                 for angle in phase_angles:
                     run_identifier = f"{pos_name}_{current_name}_angle{int(angle)}"
-
                     step_config = self.run_data.copy()
                     step_config["electricalSystem"] = [
                         p.copy() for p in self.run_data["electricalSystem"]
@@ -187,17 +190,48 @@ class SimulationRunner:
         return all_tasks
 
     def _save_results_to_csv(self, results):
-        """Speichert eine Liste von Ergebnis-Dictionaries in gruppierten und sortierten CSV-Dateien."""
+        """Speichert eine Liste von Ergebnis-Dictionaries in gruppierten CSV-Dateien."""
         if not results:
+            logging.warning(
+                "Die Ergebnisliste ist leer. Es wird keine CSV-Datei geschrieben."
+            )
             return
 
         df = pd.DataFrame(results)
 
+        # KORREKTUR: Sicherstellen, dass die Spalten für die Gruppierung existieren
+        if "pos_name" not in df.columns or "current_name" not in df.columns:
+            logging.error(
+                "Erforderliche Spalten 'pos_name' oder 'current_name' fehlen in den Ergebnissen."
+            )
+            # Fallback: Alles in eine Datei schreiben
+            csv_path = os.path.join(self.base_results_path, "summary_full.csv")
+            df.to_csv(csv_path, index=False)
+            logging.info(f"Alle Ergebnisse wurden in '{csv_path}' gespeichert.")
+            return
+
         for (pos, current), group in df.groupby(["pos_name", "current_name"]):
             csv_filename = f"{pos}_{current}_summary.csv"
             csv_path = os.path.join(self.base_results_path, csv_filename)
-
             sorted_group = group.sort_values(by=["phaseAngle_deg", "conductor"])
-
             columns_to_drop = ["pos_name", "current_name", "run_identifier"]
-            sorted_group.drop(columns=columns_to_drop, errors="ignore").to_
+
+            # KORREKTUR: Die unvollständige Zeile wurde vervollständigt.
+            sorted_group.drop(columns=columns_to_drop, errors="ignore").to_csv(
+                csv_path, index=False
+            )
+            logging.info(
+                f"Ergebnisse für {pos} / {current} in '{csv_path}' gespeichert."
+            )
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    if len(sys.argv) > 1:
+        RUNNER_BASE_PATH = sys.argv[1]
+        RUNNER = SimulationRunner(base_path=RUNNER_BASE_PATH)
+        RUNNER.run()
+    else:
+        logging.error("Fehler: Es wurde kein Basispfad für die Ergebnisse übergeben.")

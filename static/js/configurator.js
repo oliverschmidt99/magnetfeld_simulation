@@ -61,7 +61,7 @@ function initializeConfigurator() {
 
   // Navigation und UI-Elemente initialisieren
   initializeVerticalNavigation("config-nav", "config-sections");
-  setupDragAndDrop();
+  // setupDragAndDrop(); // Falls du Drag&Drop wieder brauchst, hier einkommentieren
 
   const svg = document.getElementById("config-preview-svg");
   if (svg) {
@@ -103,25 +103,24 @@ function initializeConfigurator() {
   document
     .getElementById("start-simulation-btn")
     ?.addEventListener("click", startSimulation);
-  document
-    .getElementById("save-config-btn")
-    .addEventListener("click", saveConfiguration);
-  document
-    .getElementById("load-config-btn")
-    .addEventListener("click", loadConfiguration);
-  document
-    .getElementById("load-sim-run-btn")
-    .addEventListener("click", loadSimulationRun);
+  // document
+  //   .getElementById("save-config-btn")
+  //   .addEventListener("click", saveConfiguration);
+  // document
+  //   .getElementById("load-config-btn")
+  //   .addEventListener("click", loadConfiguration);
+  // document
+  //   .getElementById("load-sim-run-btn")
+  //   .addEventListener("click", loadSimulationRun);
 
   document.querySelectorAll(".direction-preset").forEach((select) => {
     select.addEventListener("change", () => updateDirectionInputs(select));
-    updateDirectionInputs(select);
   });
 
   // Initialen Zustand laden
   loadState();
-  populateLoadOptions();
-  populateSimulationRunOptions();
+  // populateLoadOptions();
+  // populateSimulationRunOptions();
 }
 
 function handleFormSubmit(event) {
@@ -160,7 +159,7 @@ function updateDirectionInputs(selectElement) {
   const targetXInput = document.getElementById(selectElement.dataset.targetX);
   const targetYInput = document.getElementById(selectElement.dataset.targetY);
 
-  if (vector) {
+  if (vector && targetXInput && targetYInput) {
     targetXInput.value = vector.x;
     targetYInput.value = vector.y;
   }

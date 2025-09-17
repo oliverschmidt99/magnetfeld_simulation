@@ -253,3 +253,63 @@ function gatherFormData() {
     })),
   };
 }
+
+function applyState(state) {
+  const form = document.getElementById("simulation-form");
+  const params = state.simulationParams;
+
+  // Parameter
+  form.querySelector("#ratedCurrent").value = params.ratedCurrent;
+  form.querySelector("#problemDepthM").value = params.problemDepthM;
+
+  // Spielraum
+  form.querySelector("#spielraumLaenge").value = params.spielraum.Laenge;
+  form.querySelector("#spielraumBreite").value = params.spielraum.Breite;
+
+  // Startpositionen
+  form.querySelector("#startX_L1").value = params.startpositionen.x_L1;
+  form.querySelector("#startY_L1").value = params.startpositionen.y_L1;
+  form.querySelector("#startX_L2").value = params.startpositionen.x_L2;
+  form.querySelector("#startY_L2").value = params.startpositionen.y_L2;
+  form.querySelector("#startX_L3").value = params.startpositionen.x_L3;
+  form.querySelector("#startY_L3").value = params.startpositionen.y_L3;
+
+  // Bewegungsrichtungen
+  form.querySelector("#directionL1_x").value = params.bewegungsRichtungen.L1.x;
+  form.querySelector("#directionL1_y").value = params.bewegungsRichtungen.L1.y;
+  form.querySelector("#directionL2_x").value = params.bewegungsRichtungen.L2.x;
+  form.querySelector("#directionL2_y").value = params.bewegungsRichtungen.L2.y;
+  form.querySelector("#directionL3_x").value = params.bewegungsRichtungen.L3.x;
+  form.querySelector("#directionL3_y").value = params.bewegungsRichtungen.L3.y;
+
+  // Schrittweiten
+  form.querySelector("#schrittweitePos1").value = params.schrittweiten.Pos1;
+  form.querySelector("#schrittweitePos2").value = params.schrittweiten.Pos2;
+  form.querySelector("#schrittweitePos3").value = params.schrittweiten.Pos3;
+  form.querySelector("#schrittweitePos4").value = params.schrittweiten.Pos4;
+
+  // Analyse-Parameter
+  form.querySelector("#I_1_mes").value = params.I_1_mes;
+  form.querySelector("#I_2_mes").value = params.I_2_mes;
+  form.querySelector("#I_3_mes").value = params.I_3_mes;
+  form.querySelector("#phaseStart").value = params.phaseSweep.start;
+  form.querySelector("#phaseEnd").value = params.phaseSweep.end;
+  form.querySelector("#phaseStep").value = params.phaseSweep.step;
+
+  // Dynamische Listen leeren
+  document.getElementById("electrical-system-list").innerHTML = "";
+  document.getElementById("assemblies-list").innerHTML = "";
+  document.getElementById("standalone-list").innerHTML = "";
+  phaseCounter = 0;
+  assemblyCounter = 0;
+  standaloneCounter = 0;
+
+  // Listen neu aufbauen
+  state.electricalSystem.forEach((phase) => addPhase(phase));
+  state.assemblies.forEach((assembly) => addAssembly(assembly));
+  state.standAloneComponents.forEach((comp) => addStandalone(comp));
+
+  // Dropdowns aktualisieren und Visualisierung neu zeichnen
+  updateAssemblyPhaseDropdowns();
+  updateVisualization();
+}

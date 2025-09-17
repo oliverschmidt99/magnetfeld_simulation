@@ -444,6 +444,7 @@ textarea {
     stroke: #343a40 !important;
     stroke-width: 4px !important;
     fill: white !important;
+    vector-effect: non-scaling-stroke;
 }
 
 .simulation-room-label {
@@ -451,6 +452,12 @@ textarea {
     font-family: sans-serif;
     fill: #6c757d;
     text-anchor: middle;
+}
+
+.assembly-label {
+    font-size: 12px;
+    font-family: sans-serif;
+    fill: #212529;
 }
 
 .material-label {

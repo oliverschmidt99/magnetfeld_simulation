@@ -1,11 +1,103 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
-{% block title %}Einstellungen{% endblock %}
-{% block content %}
-<div class="container">
-    <div class="sub-nav-bar">
-        <h2>Einstellungen</h2>
-    </div>
-    <p>Platzhalter für zukünftige Anwendungseinstellungen.</p>
+{% block title %}Simulation{% endblock %}
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Simulation Konfigurieren &amp; Starten</h2>
 </div>
+{% endblock %}
+
+{% block content %}
+<script id="library-data" type="application/json">
+    {{ library|tojson|safe }}
+</script>
+<script id="spielraum-data" type="application/json">
+    {{ spielraum_data|tojson|safe }}
+</script>
+<script id="schrittweiten-data" type="application/json">
+    {{ schrittweiten_data|tojson|safe }}
+</script>
+<script id="startpos-data" type="application/json">
+    {{ startpos_data|tojson|safe }}
+</script>
+
+<div class="container simulation-page-container">
+    <div class="preview-section card">
+        <h3>Simulations-Vorschau</h3>
+        <div id="config-preview-controls" class="button-group"></div>
+        <div class="component-preview">
+            <svg id="config-preview-svg"></svg>
+        </div>
+        <div id="config-preview-coords" class="coordinate-display">
+            X: --, Y: --
+        </div>
+    </div>
+    <hr>
+
+    <div class="two-column-layout vertical-nav-layout">
+        <div class="side-column-nav" id="config-nav">
+            <a href="#" class="nav-link active" data-target="config-params">
+                <h4>Allgemeine Parameter</h4>
+                <p>Grundeinstellungen der Simulation.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="config-phases">
+                <h4>Elektrisches System</h4>
+                <p>Phasen (L1, L2, etc.) definieren.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="config-assemblies">
+                <h4>Baugruppen</h4>
+                <p>Leiter und Wandler positionieren.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="config-standalone">
+                <h4>Eigenständige Bauteile</h4>
+                <p>Abschirmbleche etc. hinzufügen.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="config-summary">
+                <h4>Übersicht &amp; Verwaltung</h4>
+                <p>Kontrolle und Speicherung.</p>
+            </a>
+        </div>
+
+        <div class="main-column">
+            <form id="simulation-form" onsubmit="return false;">
+                <div id="config-sections">
+                    <div id="config-params" class="config-section active"></div>
+                    <div id="config-phases" class="config-section"></div>
+                    <div id="config-assemblies" class="config-section"></div>
+                    <div id="config-standalone" class="config-section"></div>
+                    <div id="config-summary" class="config-section"></div>
+                </div>
+            </form>
+            <hr>
+            <div class="action-box">
+                <button type="submit" form="simulation-form" class="button large-button" id="generate-json-btn">1.
+                    simulation.json erstellen</button>
+            </div>
+            <div id="simulation-runner" class="card initially-hidden">
+                <h2>Simulation durchführen</h2>
+                <button type="button" id="start-simulation-btn" class="button large-button">2. Simulation
+                    starten</button>
+                <div id="simulation-progress" class="initially-hidden">
+                    <h4>Fortschritt:</h4>
+                    <div class="progress-bar-container">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    <div id="progress-text" class="progress-text">Initialisiere...</div>
+                    <div id="progress-timer" class="progress-timer">Verstrichene Zeit: 0s</div>
+                    <div id="progress-summary" class="progress-summary"></div>
+                </div>
+                <div id="simulation-output-container">
+                    <h4>Log-Ausgabe:</h4>
+                    <pre><code id="simulation-output"></code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/configurator_templates.js') }}"></script>
+<script src="{{ url_for('static', filename='js/simulation_preview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configurator.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configurator-simulation.js') }}"></script>
 {% endblock %}

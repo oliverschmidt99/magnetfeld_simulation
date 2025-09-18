@@ -1,5 +1,8 @@
 // static/js/configurator-dom.js
 
+/**
+ * Updates form parameters based on the selected rated current by reading from pre-loaded CSV data.
+ */
 function updateParametersFromCsv() {
   const ratedCurrent = document.getElementById("ratedCurrent").value;
   const currentSpielraum = spielraumData[ratedCurrent];
@@ -32,11 +35,14 @@ function updateParametersFromCsv() {
   }
 }
 
+/**
+ * Updates the read-only current fields for all existing phases.
+ */
 function updatePhaseCurrents() {
   const ratedCurrent = parseFloat(
     document.getElementById("ratedCurrent").value
   );
-  const peakCurrent = (ratedCurrent * SQRT2).toFixed(2);
+  const peakCurrent = (ratedCurrent * Math.sqrt(2)).toFixed(2);
   document
     .querySelectorAll("#electrical-system-list .list-item")
     .forEach((item) => {
@@ -45,6 +51,9 @@ function updatePhaseCurrents() {
     });
 }
 
+/**
+ * Updates the phase selection dropdowns in all assembly items.
+ */
 function updateAssemblyPhaseDropdowns() {
   const phases = Array.from(
     document.querySelectorAll("#electrical-system-list .phase-name")
@@ -62,6 +71,10 @@ function updateAssemblyPhaseDropdowns() {
   });
 }
 
+/**
+ * Adds a new phase item to the electrical system list.
+ * @param {object} [data={}] - Optional data to pre-fill the phase fields.
+ */
 function addPhase(data = {}) {
   phaseCounter++;
   const list = document.getElementById("electrical-system-list");
@@ -72,7 +85,9 @@ function addPhase(data = {}) {
   const ratedCurrent = parseFloat(
     document.getElementById("ratedCurrent").value
   );
-  const peakCurrent = (data.peakCurrentA || ratedCurrent * SQRT2).toFixed(2);
+  const peakCurrent = (
+    data.peakCurrentA || ratedCurrent * Math.sqrt(2)
+  ).toFixed(2);
   const rmsCurrent = (data.rmsCurrent || ratedCurrent).toFixed(2);
   item.dataset.peakCurrent = peakCurrent;
 
@@ -91,6 +106,10 @@ function addPhase(data = {}) {
   updateAssemblyPhaseDropdowns();
 }
 
+/**
+ * Adds a new assembly item to the assemblies list.
+ * @param {object} [data={}] - Optional data to pre-fill the assembly fields.
+ */
 function addAssembly(data = {}) {
   assemblyCounter++;
   const list = document.getElementById("assemblies-list");
@@ -136,6 +155,10 @@ function addAssembly(data = {}) {
   list.appendChild(item);
 }
 
+/**
+ * Adds a new standalone component item to its list.
+ * @param {object} [data={}] - Optional data to pre-fill the component fields.
+ */
 function addStandalone(data = {}) {
   standaloneCounter++;
   const list = document.getElementById("standalone-list");
@@ -171,145 +194,10 @@ function addStandalone(data = {}) {
   list.appendChild(item);
 }
 
+/**
+ * Removes an item from a dynamic list by its ID.
+ * @param {string} id The ID of the element to remove.
+ */
 function removeItem(id) {
   document.getElementById(id)?.remove();
-}
-
-function gatherFormData() {
-  const form = document.getElementById("simulation-form");
-  return {
-    simulationParams: {
-      ratedCurrent: form.querySelector("#ratedCurrent").value,
-      startpositionen: {
-        x_L1: form.querySelector("#startX_L1").value,
-        y_L1: form.querySelector("#startY_L1").value,
-        x_L2: form.querySelector("#startX_L2").value,
-        y_L2: form.querySelector("#startY_L2").value,
-        x_L3: form.querySelector("#startX_L3").value,
-        y_L3: form.querySelector("#startY_L3").value,
-      },
-      bewegungsRichtungen: {
-        L1: {
-          x: form.querySelector("#directionL1_x").value,
-          y: form.querySelector("#directionL1_y").value,
-        },
-        L2: {
-          x: form.querySelector("#directionL2_x").value,
-          y: form.querySelector("#directionL2_y").value,
-        },
-        L3: {
-          x: form.querySelector("#directionL3_x").value,
-          y: form.querySelector("#directionL3_y").value,
-        },
-      },
-      problemDepthM: form.querySelector("#problemDepthM").value,
-      spielraum: {
-        Laenge: form.querySelector("#spielraumLaenge").value,
-        Breite: form.querySelector("#spielraumBreite").value,
-      },
-      schrittweiten: {
-        Pos1: form.querySelector("#schrittweitePos1").value,
-        Pos2: form.querySelector("#schrittweitePos2").value,
-        Pos3: form.querySelector("#schrittweitePos3").value,
-        Pos4: form.querySelector("#schrittweitePos4").value,
-      },
-      I_1_mes: form.querySelector("#I_1_mes").value,
-      I_2_mes: form.querySelector("#I_2_mes").value,
-      I_3_mes: form.querySelector("#I_3_mes").value,
-      phaseSweep: {
-        start: form.querySelector("#phaseStart").value,
-        end: form.querySelector("#phaseEnd").value,
-        step: form.querySelector("#phaseStep").value,
-      },
-    },
-    electricalSystem: Array.from(
-      form.querySelectorAll("#electrical-system-list .list-item")
-    ).map((item) => ({
-      name: item.querySelector(".phase-name").value,
-      phaseShiftDeg: parseFloat(item.querySelector(".phase-shift").value) || 0,
-      peakCurrentA: parseFloat(item.dataset.peakCurrent),
-    })),
-    assemblies: Array.from(
-      form.querySelectorAll("#assemblies-list .list-item")
-    ).map((item, index) => ({
-      name: item.querySelector(".assembly-name").value,
-      phaseName: item.querySelector(".assembly-phase-select").value,
-      copperRailName: item.querySelector(".copper-rail").value,
-      transformerName: item.querySelector(".transformer").value,
-      enabled:
-        document.getElementById(`toggle-assembly-${index}`)?.checked ?? true,
-    })),
-    standAloneComponents: Array.from(
-      form.querySelectorAll("#standalone-list .list-item")
-    ).map((item, index) => ({
-      name: item.querySelector(".standalone-name").value,
-      position: {
-        x: parseFloat(item.querySelector(".pos-x").value) || 0,
-        y: parseFloat(item.querySelector(".pos-y").value) || 0,
-      },
-      rotation: parseFloat(item.querySelector(".rotation").value) || 0,
-      enabled:
-        document.getElementById(`toggle-standalone-${index}`)?.checked ?? true,
-    })),
-  };
-}
-
-function applyState(state) {
-  const form = document.getElementById("simulation-form");
-  const params = state.simulationParams;
-
-  // Parameter
-  form.querySelector("#ratedCurrent").value = params.ratedCurrent;
-  form.querySelector("#problemDepthM").value = params.problemDepthM;
-
-  // Spielraum
-  form.querySelector("#spielraumLaenge").value = params.spielraum.Laenge;
-  form.querySelector("#spielraumBreite").value = params.spielraum.Breite;
-
-  // Startpositionen
-  form.querySelector("#startX_L1").value = params.startpositionen.x_L1;
-  form.querySelector("#startY_L1").value = params.startpositionen.y_L1;
-  form.querySelector("#startX_L2").value = params.startpositionen.x_L2;
-  form.querySelector("#startY_L2").value = params.startpositionen.y_L2;
-  form.querySelector("#startX_L3").value = params.startpositionen.x_L3;
-  form.querySelector("#startY_L3").value = params.startpositionen.y_L3;
-
-  // Bewegungsrichtungen
-  form.querySelector("#directionL1_x").value = params.bewegungsRichtungen.L1.x;
-  form.querySelector("#directionL1_y").value = params.bewegungsRichtungen.L1.y;
-  form.querySelector("#directionL2_x").value = params.bewegungsRichtungen.L2.x;
-  form.querySelector("#directionL2_y").value = params.bewegungsRichtungen.L2.y;
-  form.querySelector("#directionL3_x").value = params.bewegungsRichtungen.L3.x;
-  form.querySelector("#directionL3_y").value = params.bewegungsRichtungen.L3.y;
-
-  // Schrittweiten
-  form.querySelector("#schrittweitePos1").value = params.schrittweiten.Pos1;
-  form.querySelector("#schrittweitePos2").value = params.schrittweiten.Pos2;
-  form.querySelector("#schrittweitePos3").value = params.schrittweiten.Pos3;
-  form.querySelector("#schrittweitePos4").value = params.schrittweiten.Pos4;
-
-  // Analyse-Parameter
-  form.querySelector("#I_1_mes").value = params.I_1_mes;
-  form.querySelector("#I_2_mes").value = params.I_2_mes;
-  form.querySelector("#I_3_mes").value = params.I_3_mes;
-  form.querySelector("#phaseStart").value = params.phaseSweep.start;
-  form.querySelector("#phaseEnd").value = params.phaseSweep.end;
-  form.querySelector("#phaseStep").value = params.phaseSweep.step;
-
-  // Dynamische Listen leeren
-  document.getElementById("electrical-system-list").innerHTML = "";
-  document.getElementById("assemblies-list").innerHTML = "";
-  document.getElementById("standalone-list").innerHTML = "";
-  phaseCounter = 0;
-  assemblyCounter = 0;
-  standaloneCounter = 0;
-
-  // Listen neu aufbauen
-  state.electricalSystem.forEach((phase) => addPhase(phase));
-  state.assemblies.forEach((assembly) => addAssembly(assembly));
-  state.standAloneComponents.forEach((comp) => addStandalone(comp));
-
-  // Dropdowns aktualisieren und Visualisierung neu zeichnen
-  updateAssemblyPhaseDropdowns();
-  updateVisualization();
 }

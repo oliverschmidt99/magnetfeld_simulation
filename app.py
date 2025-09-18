@@ -55,13 +55,24 @@ def index():
 def simulation():
     """Zeigt die kombinierte Konfigurations- und Simulations-Seite."""
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
-    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
+
+    # Sicherstellen, dass die Spalte 'Strom' existiert, bevor das Dictionary erstellt wird.
+    spielraum_data = {
+        str(item["Strom"]): item
+        for item in load_csv("spielraum.csv")
+        if "Strom" in item
+    }
     schrittweiten_data = {
-        str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
+        str(item["Strom"]): item
+        for item in load_csv("schrittweiten.csv")
+        if "Strom" in item
     }
     startpos_data = {
-        str(item["Strom"]): item for item in load_csv("startpositionen.csv")
+        str(item["Strom"]): item
+        for item in load_csv("startpositionen.csv")
+        if "Strom" in item
     }
+
     direction_options = [
         {"value": "Keine Bewegung", "text": "Keine Bewegung"},
         {"value": "Norden", "text": "⬆️ Norden"},

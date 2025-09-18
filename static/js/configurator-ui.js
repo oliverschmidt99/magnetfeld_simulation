@@ -20,11 +20,11 @@ function initializeVerticalNavigation(navId, sectionContainerId) {
 
 async function updateVisualization() {
   const data = gatherFormData();
-  const svg = document.getElementById("config-preview-svg");
-  const controls = document.getElementById("preview-controls");
+  const previewContainer = document.querySelector(".preview-section"); // Hauptcontainer der Vorschau
 
-  svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
-  controls.innerHTML = "";
+  // Ladeanzeige im SVG-Container anzeigen
+  const svgContainer = previewContainer.querySelector(".component-preview");
+  svgContainer.innerHTML = `<svg id="config-preview-svg"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text></svg>`;
 
   const toggleContainer = document.getElementById("component-toggle-list");
   if (toggleContainer) renderComponentToggles(data);
@@ -41,6 +41,7 @@ async function updateVisualization() {
     const vizData = await response.json();
     const { scenes, room } = vizData;
 
+    // Parameter-Zusammenfassung aktualisieren
     const summaryContainer = document.getElementById(
       "parameter-summary-container"
     );
@@ -48,73 +49,14 @@ async function updateVisualization() {
       updateParameterSummary(data, scenes.length, vizData.coordinate_summary);
     }
 
-    svg.innerHTML = "";
-    const roomWidth = parseFloat(room.Laenge || room.Länge);
-    const roomHeight = parseFloat(room.Breite);
-
-    if (isNaN(roomWidth) || isNaN(roomHeight)) {
-      svg.innerHTML = `<text x="50%" y="50%" fill="red" text-anchor="middle">Raumdaten unvollständig.</text>`;
-      return;
-    }
-
-    const padding = 50;
-    const viewBox = `${-roomWidth / 2 - padding} ${-roomHeight / 2 - padding} ${
-      roomWidth + 2 * padding
-    } ${roomHeight + 2 * padding}`;
-    svg.setAttribute("viewBox", viewBox);
-
-    const mainGroup = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "g"
-    );
-    mainGroup.setAttribute("transform", "scale(1, -1)");
-    svg.appendChild(mainGroup);
-
-    scenes.forEach((scene, index) => {
-      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      group.id = `scene-${index}`;
-      group.style.visibility = "hidden";
-      (scene.elements || []).forEach((elData) => {
-        let el;
-        if (elData.type === "rect") {
-          el = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-          Object.keys(elData).forEach((key) =>
-            el.setAttribute(key, elData[key])
-          );
-        } else if (elData.type === "text") {
-          el = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          Object.keys(elData).forEach((key) =>
-            el.setAttribute(key, elData[key])
-          );
-          el.textContent = elData.text;
-        }
-        if (el) group.appendChild(el);
-      });
-      mainGroup.appendChild(group);
-    });
-
-    scenes.forEach((scene, index) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "button";
-      button.textContent = scene.name;
-      button.onclick = () => {
-        mainGroup
-          .querySelectorAll("g[id^='scene-']")
-          .forEach((g) => (g.style.visibility = "hidden"));
-        mainGroup.querySelector(`#scene-${index}`).style.visibility = "visible";
-        controls
-          .querySelectorAll("button")
-          .forEach((b) => b.classList.remove("active"));
-        button.classList.add("active");
-      };
-      controls.appendChild(button);
-    });
-
-    if (controls.firstChild) controls.firstChild.click();
+    // Die neue, interaktive Vorschau rendern
+    renderInteractivePreview("config-preview", scenes, room);
   } catch (error) {
     console.error("Fehler bei der Visualisierung:", error);
-    svg.innerHTML = `<text x="50%" y="50%" fill="red" text-anchor="middle">Fehler: ${error.message}</text>`;
+    const svg = document.getElementById("config-preview-svg");
+    if (svg) {
+      svg.innerHTML = `<text x="50%" y="50%" fill="red" text-anchor="middle">Fehler: ${error.message}</text>`;
+    }
   }
 }
 
@@ -204,76 +146,4 @@ function updateParameterSummary(data, positionSteps, coordinateSummary) {
 
   html += `</div>`;
   container.innerHTML = html;
-}
-
-function enableSvgZoom(svg) {
-  let pan = false;
-  let point = { x: 0, y: 0 };
-  let viewbox = { x: 0, y: 0, w: svg.clientWidth, h: svg.clientHeight };
-
-  const updateViewBox = () => {
-    const parts = (svg.getAttribute("viewBox") || "0 0 1 1")
-      .split(" ")
-      .map(Number);
-    [viewbox.x, viewbox.y, viewbox.w, viewbox.h] = parts;
-  };
-
-  svg.addEventListener("mousedown", (e) => {
-    pan = true;
-    point.x = e.clientX;
-    point.y = e.clientY;
-    updateViewBox();
-  });
-
-  svg.addEventListener("mousemove", (e) => {
-    if (!pan) return;
-    const dx = e.clientX - point.x;
-    const dy = e.clientY - point.y;
-    viewbox.x -= dx * (viewbox.w / svg.clientWidth);
-    viewbox.y -= dy * (viewbox.h / svg.clientHeight);
-    svg.setAttribute(
-      "viewBox",
-      `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
-    );
-    point.x = e.clientX;
-    point.y = e.clientY;
-  });
-  const stopPan = () => (pan = false);
-  svg.addEventListener("mouseup", stopPan);
-  svg.addEventListener("mouseleave", stopPan);
-  svg.addEventListener("wheel", (e) => {
-    e.preventDefault();
-    updateViewBox();
-    const w = viewbox.w;
-    const h = viewbox.h;
-    const mx = e.offsetX;
-    const my = e.offsetY;
-    const dw = w * Math.sign(e.deltaY) * 0.1;
-    const dh = h * Math.sign(e.deltaY) * 0.1;
-    const dx = (dw * mx) / svg.clientWidth;
-    const dy = (dh * my) / svg.clientHeight;
-    viewbox = { x: viewbox.x + dx, y: viewbox.y + dy, w: w - dw, h: h - dh };
-    svg.setAttribute(
-      "viewBox",
-      `${viewbox.x} ${viewbox.y} ${viewbox.w} ${viewbox.h}`
-    );
-  });
-}
-
-function setupCoordinateDisplay(svg) {
-  const coordDisplay = document.getElementById("coordinate-display");
-  if (!coordDisplay) return;
-
-  svg.addEventListener("mousemove", (e) => {
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-    coordDisplay.textContent = `X: ${svgP.x.toFixed(1)}, Y: ${(-svgP.y).toFixed(
-      1
-    )}`;
-  });
-  svg.addEventListener("mouseleave", () => {
-    coordDisplay.textContent = "X: --, Y: --";
-  });
 }

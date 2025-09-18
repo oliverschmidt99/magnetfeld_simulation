@@ -6,19 +6,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// Globale Variablen
-const libraryDataElement = document.getElementById("library-data");
-const library = libraryDataElement
-  ? JSON.parse(libraryDataElement.textContent)
-  : {};
+const library = JSON.parse(
+  document.getElementById("library-data")?.textContent || "{}"
+);
 const spielraumData = JSON.parse(
-  document.getElementById("spielraum-data").textContent
+  document.getElementById("spielraum-data")?.textContent || "{}"
 );
 const schrittweitenData = JSON.parse(
-  document.getElementById("schrittweiten-data").textContent
+  document.getElementById("schrittweiten-data")?.textContent || "{}"
 );
 const startposData = JSON.parse(
-  document.getElementById("startpos-data").textContent
+  document.getElementById("startpos-data")?.textContent || "{}"
 );
 
 const directionOptions = [
@@ -45,13 +43,16 @@ const directionVectors = {
   Nordwesten: { x: -1, y: 1 },
 };
 
-const SQRT2 = Math.sqrt(2);
+// Zähler für dynamische Elemente
 let phaseCounter = 0;
 let assemblyCounter = 0;
 let standaloneCounter = 0;
 
+/**
+ * Initialisiert den gesamten Konfigurator.
+ */
 function initializeConfigurator() {
-  // HTML-Templates laden
+  // 1. HTML-Struktur aus Templates aufbauen
   document.getElementById("config-params").innerHTML =
     getParamsHtml(directionOptions);
   document.getElementById("config-phases").innerHTML = getPhasesHtml();
@@ -59,27 +60,42 @@ function initializeConfigurator() {
   document.getElementById("config-standalone").innerHTML = getStandaloneHtml();
   document.getElementById("config-summary").innerHTML = getSummaryHtml();
 
-  // Navigation und UI-Elemente initialisieren
+  // 2. Navigation und UI-Elemente initialisieren
   initializeVerticalNavigation("config-nav", "config-sections");
-  // setupDragAndDrop(); // Falls du Drag&Drop wieder brauchst, hier einkommentieren
-
   const svg = document.getElementById("config-preview-svg");
   if (svg) {
-    enableSvgZoom(svg);
-    setupCoordinateDisplay(svg);
+    enablePanZoom(svg);
+    setupCoordinateDisplay(
+      svg,
+      document.getElementById("config-preview-coords")
+    );
   }
 
-  // Event-Listener setzen
+  // 3. Event-Listener zentral setzen
+  setupEventListeners();
+
+  // 4. Gespeicherten Zustand laden (oder Standardwerte, falls nichts gespeichert ist)
+  loadState();
+}
+
+/**
+ * Richtet alle zentralen Event-Listener für das Formular ein.
+ */
+function setupEventListeners() {
   const form = document.getElementById("simulation-form");
   const debouncedUpdate = debounce(updateVisualization, 400);
 
+  // Listener für alle Änderungen an Eingabefeldern
   form.addEventListener("input", () => {
     saveState();
     debouncedUpdate();
   });
 
+  // Listener für Klicks (fängt das Hinzufügen/Entfernen von Elementen ab)
   form.addEventListener("click", (e) => {
+    // Prüfen, ob ein Button zum Hinzufügen/Entfernen geklickt wurde
     if (e.target.tagName === "BUTTON" && e.target.type === "button") {
+      // Kurze Verzögerung, damit die DOM-Aktion (z.B. removeItem) zuerst ausgeführt wird
       setTimeout(() => {
         saveState();
         updateVisualization();
@@ -87,40 +103,33 @@ function initializeConfigurator() {
     }
   });
 
+  // Spezieller Listener für den Nennstrom, da er abhängige Felder aktualisiert
   document.getElementById("ratedCurrent").addEventListener("change", () => {
     updateParametersFromCsv();
     updatePhaseCurrents();
-    const data = gatherFormData();
+    // Baugruppen-Liste neu aufbauen, da die Wandler-Optionen sich ändern
+    const currentState = gatherFormData(); // Aktuellen Stand sichern
     const asmList = document.getElementById("assemblies-list");
     asmList.innerHTML = "";
     assemblyCounter = 0;
-    (data.assemblies || []).forEach((asm) => addAssembly(asm));
+    (currentState.assemblies || []).forEach((asm) => addAssembly(asm));
     updateAssemblyPhaseDropdowns();
+    // Nach der Änderung den neuen Zustand speichern
+    saveState();
   });
 
-  form.addEventListener("submit", handleFormSubmit);
-
-  document
-    .getElementById("start-simulation-btn")
-    ?.addEventListener("click", startSimulation);
-  // document
-  //   .getElementById("save-config-btn")
-  //   .addEventListener("click", saveConfiguration);
-  // document
-  //   .getElementById("load-config-btn")
-  //   .addEventListener("click", loadConfiguration);
-  // document
-  //   .getElementById("load-sim-run-btn")
-  //   .addEventListener("click", loadSimulationRun);
-
+  // Listener für die "Bewegungsrichtung"-Presets
   document.querySelectorAll(".direction-preset").forEach((select) => {
     select.addEventListener("change", () => updateDirectionInputs(select));
   });
 
-  // Initialen Zustand laden
-  loadState();
-  // populateLoadOptions();
-  // populateSimulationRunOptions();
+  // Formular-Submit-Handler
+  form.addEventListener("submit", handleFormSubmit);
+
+  // Simulations-Start-Button
+  document
+    .getElementById("start-simulation-btn")
+    ?.addEventListener("click", startSimulation);
 }
 
 function handleFormSubmit(event) {
@@ -144,15 +153,9 @@ function handleFormSubmit(event) {
     });
 }
 
-function debounce(func, delay) {
-  let timeout;
-  return function (...args) {
-    const context = this;
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(context, args), delay);
-  };
-}
-
+/**
+ * Wandelt ein Preset (z.B. "Norden") in Vektor-Koordinaten um.
+ */
 function updateDirectionInputs(selectElement) {
   const selectedDirection = selectElement.value;
   const vector = directionVectors[selectedDirection];
@@ -163,4 +166,16 @@ function updateDirectionInputs(selectElement) {
     targetXInput.value = vector.x;
     targetYInput.value = vector.y;
   }
+}
+
+/**
+ * Hilfsfunktion, um die Ausführung einer Funktion zu verzögern.
+ */
+function debounce(func, delay) {
+  let timeout;
+  return function (...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), delay);
+  };
 }

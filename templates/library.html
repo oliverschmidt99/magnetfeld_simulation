@@ -114,7 +114,16 @@
 <div id="material-editor-modal" class="modal-overlay initially-hidden">
     <div class="modal-content">
         <h2 id="material-editor-title">Material bearbeiten</h2>
-        <div class="editor-layout">
+
+        <div class="material-editor-layout">
+
+            <div class="component-preview-container">
+                <h3>Vorschau der B-H Kurve</h3>
+                <div class="component-preview">
+                    <canvas id="bh-curve-chart"></canvas>
+                </div>
+            </div>
+
             <div class="component-form">
                 <div class="form-section">
                     <h3>Allgemein</h3>
@@ -152,13 +161,9 @@
                         hinzufügen</button>
                 </div>
             </div>
-            <div class="component-preview-container">
-                <h3>Vorschau der B-H Kurve</h3>
-                <div class="component-preview">
-                    <canvas id="bh-curve-chart"></canvas>
-                </div>
-            </div>
+
         </div>
+
         <div class="button-group">
             <button type="button" id="save-material-btn" class="button">Speichern</button>
             <button type="button" id="delete-material-btn" class="button danger">Löschen</button>

@@ -158,15 +158,16 @@ function updateBHChart() {
     .sort((a, b) => a.x - b.x);
 
   bhChart = new Chart(ctx, {
-    type: "line",
+    type: "scatter", // KORREKTUR: Typ auf 'scatter' geändert
     data: {
       datasets: [
         {
           label: "B-H Kurve",
           data: dataPoints,
           borderColor: "#0d6efd",
-          fill: false, // Geändert: keine Füllung
-          tension: 0.1,
+          backgroundColor: "#0d6efd",
+          showLine: true, // KORREKTUR: Linie zwischen den Punkten explizit anzeigen
+          tension: 0.2, // Sorgt für eine leichtere Krümmung der Linie
         },
       ],
     },
@@ -176,6 +177,11 @@ function updateBHChart() {
       scales: {
         x: { title: { display: true, text: "Magnetische Feldstärke H (A/m)" } },
         y: { title: { display: true, text: "Magnetische Flussdichte B (T)" } },
+      },
+      plugins: {
+        legend: {
+          display: true,
+        },
       },
     },
   });
@@ -223,7 +229,7 @@ async function saveMaterial() {
   if (response.ok) {
     document.getElementById("material-editor-modal").style.display = "none";
     const libResponse = await fetch("/api/library");
-    libraryData = await libResponse.json(); // Globale Variable aktualisieren
+    libraryData = await libResponse.json();
     renderMaterialList(libraryData.materials || []);
   }
 }
@@ -252,7 +258,7 @@ async function deleteMaterial() {
   if (response.ok) {
     document.getElementById("material-editor-modal").style.display = "none";
     const libResponse = await fetch("/api/library");
-    libraryData = await libResponse.json(); // Globale Variable aktualisieren
+    libraryData = await libResponse.json();
     renderMaterialList(libraryData.materials || []);
   }
 }

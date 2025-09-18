@@ -1,22 +1,28 @@
 // static/js/simulation_preview.js
 
 function renderInteractivePreview(
-  targetPrefix,
+  targetContainerId,
   scenes,
   room,
   onStepClickCallback
 ) {
-  const svgElement = document.getElementById(`${targetPrefix}-svg`);
-  const controlsElement = document.getElementById(`${targetPrefix}-controls`);
-  const coordsElement = document.getElementById(`${targetPrefix}-coords`);
+  const container = document.getElementById(targetContainerId);
+  if (!container) return;
 
-  if (!svgElement || !controlsElement) {
-    console.error("Vorschau-Elemente nicht gefunden für Prefix:", targetPrefix);
-    return;
-  }
+  // Erstelle die notwendige HTML-Struktur
+  container.innerHTML = `
+        <h3>Simulations-Vorschau</h3>
+        <div id="${targetContainerId}-controls" class="button-group"></div>
+        <div class="component-preview">
+            <svg id="${targetContainerId}-svg"></svg>
+        </div>
+        <div id="${targetContainerId}-coords" class="coordinate-display">X: --, Y: --</div>
+    `;
 
-  // SVG leeren
-  svgElement.innerHTML = "";
+  const svgElement = document.getElementById(`${targetContainerId}-svg`);
+  const controlsElement = document.getElementById(
+    `${targetContainerId}-controls`
+  );
 
   const roomWidth = parseFloat(room.Laenge || room.Länge);
   const roomHeight = parseFloat(room.Breite);
@@ -38,11 +44,9 @@ function renderInteractivePreview(
     return el;
   };
 
-  // Haupt-Gruppe mit korrekter Y-Achsen-Spiegelung
   const mainGroup = createSvgElement("g", { transform: "scale(1, -1)" });
   svgElement.appendChild(mainGroup);
 
-  // Raum-Rechteck zeichnen
   mainGroup.appendChild(
     createSvgElement("rect", {
       x: -roomWidth / 2,
@@ -53,10 +57,9 @@ function renderInteractivePreview(
     })
   );
 
-  // Alle Szenen (Positionsschritte) erstellen
   scenes.forEach((scene, index) => {
     const group = createSvgElement("g", {
-      id: `scene-${targetPrefix}-${index}`,
+      id: `scene-${targetContainerId}-${index}`,
       style: "visibility: hidden;",
     });
     (scene.elements || []).forEach((elData) => {
@@ -77,21 +80,18 @@ function renderInteractivePreview(
           "text",
           {
             x: elData.x,
-            y: -elData.y, // Y-Position für Text korrigieren
+            y: -elData.y,
             "text-anchor": "middle",
             "dominant-baseline": "middle",
-            transform: "scale(1, -1)", // Text wieder richtig herum drehen
-            class: "assembly-label",
+            transform: "scale(1, -1)",
           },
           elData.text
         );
       }
-      if (el) group.appendChild(el);
+      if (el) mainGroup.appendChild(group).appendChild(el);
     });
-    mainGroup.appendChild(group);
   });
 
-  // Steuerungs-Buttons erstellen
   controlsElement.innerHTML = "";
   scenes.forEach((scene, index) => {
     const button = document.createElement("button");
@@ -100,30 +100,28 @@ function renderInteractivePreview(
     button.textContent = scene.name;
     button.onclick = () => {
       mainGroup
-        .querySelectorAll(`[id^='scene-${targetPrefix}-']`)
+        .querySelectorAll(`[id^='scene-${targetContainerId}-']`)
         .forEach((g) => (g.style.visibility = "hidden"));
       mainGroup.querySelector(
-        `#scene-${targetPrefix}-${index}`
+        `#scene-${targetContainerId}-${index}`
       ).style.visibility = "visible";
       controlsElement
         .querySelectorAll("button")
         .forEach((b) => b.classList.remove("active"));
       button.classList.add("active");
-      if (onStepClickCallback && scene.pos_group) {
+      if (onStepClickCallback) {
         onStepClickCallback(scene.pos_group);
       }
     };
     controlsElement.appendChild(button);
   });
 
-  // Ersten Button standardmäßig aktivieren
   if (controlsElement.firstChild) {
     controlsElement.firstChild.click();
   }
 
-  // Pan & Zoom und Koordinatenanzeige aktivieren
   enablePanZoom(svgElement);
-  setupCoordinateDisplay(svgElement, coordsElement);
+  setupCoordinateDisplay(svgElement, `${targetContainerId}-coords`);
 }
 
 function enablePanZoom(svg) {
@@ -141,7 +139,6 @@ function enablePanZoom(svg) {
     pan = true;
     point.x = e.clientX;
     point.y = e.clientY;
-    svg.style.cursor = "grabbing";
     updateViewBox();
   });
   svg.addEventListener("mousemove", (e) => {
@@ -159,7 +156,6 @@ function enablePanZoom(svg) {
   });
   const stopPan = () => {
     pan = false;
-    svg.style.cursor = "grab";
   };
   svg.addEventListener("mouseup", stopPan);
   svg.addEventListener("mouseleave", stopPan);
@@ -182,19 +178,19 @@ function enablePanZoom(svg) {
   });
 }
 
-function setupCoordinateDisplay(svg, displayElement) {
-  if (!displayElement) return;
+function setupCoordinateDisplay(svg, displayId) {
+  const coordDisplay = document.getElementById(displayId);
+  if (!coordDisplay) return;
   svg.addEventListener("mousemove", (e) => {
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
     const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-    // Y-Koordinate aufgrund der `scale(1, -1)` Transformation negieren
-    displayElement.textContent = `X: ${svgP.x.toFixed(
+    coordDisplay.textContent = `X: ${svgP.x.toFixed(1)}, Y: ${(-svgP.y).toFixed(
       1
-    )}, Y: ${(-svgP.y).toFixed(1)}`;
+    )}`;
   });
   svg.addEventListener("mouseleave", () => {
-    displayElement.textContent = "X: --, Y: --";
+    coordDisplay.textContent = "X: --, Y: --";
   });
 }

@@ -33,12 +33,6 @@ app.register_blueprint(simulation_bp)
 app.register_blueprint(configurations_bp, url_prefix="/api")
 
 
-@app.context_processor
-def inject_timestamp():
-    """Stellt einen Zeitstempel für das Cache-Busting bereit."""
-    return {"timestamp": int(time.time())}
-
-
 @app.route("/api/analysis/results_file/<path:filepath>")
 def serve_results_file(filepath):
     """Liefert eine Datei aus dem Simulationsergebnis-Ordner sicher aus."""
@@ -55,24 +49,13 @@ def index():
 def simulation():
     """Zeigt die kombinierte Konfigurations- und Simulations-Seite."""
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
-
-    # Sicherstellen, dass die Spalte 'Strom' existiert, bevor das Dictionary erstellt wird.
-    spielraum_data = {
-        str(item["Strom"]): item
-        for item in load_csv("spielraum.csv")
-        if "Strom" in item
-    }
+    spielraum_data = {str(item["Strom"]): item for item in load_csv("spielraum.csv")}
     schrittweiten_data = {
-        str(item["Strom"]): item
-        for item in load_csv("schrittweiten.csv")
-        if "Strom" in item
+        str(item["Strom"]): item for item in load_csv("schrittweiten.csv")
     }
     startpos_data = {
-        str(item["Strom"]): item
-        for item in load_csv("startpositionen.csv")
-        if "Strom" in item
+        str(item["Strom"]): item for item in load_csv("startpositionen.csv")
     }
-
     direction_options = [
         {"value": "Keine Bewegung", "text": "Keine Bewegung"},
         {"value": "Norden", "text": "⬆️ Norden"},
@@ -91,20 +74,23 @@ def simulation():
         schrittweiten_data=schrittweiten_data,
         startpos_data=startpos_data,
         direction_options=direction_options,
+        timestamp=int(time.time()),
     )
 
 
 @app.route("/results")
 def results():
     """Zeigt die Ergebnisseite."""
-    return render_template("ergebnisse.html")
+    return render_template("ergebnisse.html", timestamp=int(time.time()))
 
 
 @app.route("/library")
 def library():
     """Zeigt die kombinierte Bibliotheks- und Stammdaten-Verwaltung."""
     library_data = load_json(os.path.join(BASE_DIR, LIBRARY_FILE))
-    return render_template("library.html", library=library_data)
+    return render_template(
+        "library.html", library=library_data, timestamp=int(time.time())
+    )
 
 
 @app.route("/settings")

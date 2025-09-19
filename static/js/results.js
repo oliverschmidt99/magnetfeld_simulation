@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const angleSlider = document.getElementById("angle-slider");
   const angleDisplay = document.getElementById("angle-display");
   const playPauseBtn = document.getElementById("play-pause-btn");
+  const speedSlider = document.getElementById("speed-slider");
+  const speedDisplay = document.getElementById("speed-display");
 
   let simulationRuns = [];
   const storageKey = "resultsSelection";
@@ -75,6 +77,13 @@ document.addEventListener("DOMContentLoaded", () => {
   conductorSelector.addEventListener("change", () => fetchPlotData(false));
   angleSlider.addEventListener("input", handleSliderChange);
   playPauseBtn.addEventListener("click", toggleAnimation);
+  speedSlider.addEventListener("input", () => {
+    speedDisplay.textContent = `${speedSlider.value}ms`;
+    if (animationInterval) {
+      stopAnimation();
+      startAnimation();
+    }
+  });
 
   function handleRunChange() {
     const runIndex = runSelector.value;
@@ -386,7 +395,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       angleSlider.value = nextValue;
       handleSliderChange();
-    }, 200);
+    }, speedSlider.value);
   }
 
   function stopAnimation() {

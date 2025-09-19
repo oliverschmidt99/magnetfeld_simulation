@@ -2,6 +2,7 @@
 Hauptanwendung für den FEMM-Simulationskonfigurator.
 """
 
+import logging
 import json
 import os
 import math
@@ -26,6 +27,10 @@ SIMULATION_RUN_FILE = "simulation_run.json"
 SIMULATIONS_DIR = "simulations"
 
 app = Flask(__name__)
+
+# Deaktiviere das Standard-Flask-Logging für GET-Anfragen
+log = logging.getLogger("werkzeug")
+log.setLevel(logging.ERROR)
 
 app.register_blueprint(api_bp)
 app.register_blueprint(analysis_bp, url_prefix="/api")

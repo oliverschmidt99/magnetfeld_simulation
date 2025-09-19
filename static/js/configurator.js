@@ -488,7 +488,6 @@ async function updateVisualization() {
   svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Vorschau wird geladen...</text>`;
   controls.innerHTML = "";
 
-  // Diese Funktion muss auf der Übersichtsseite bleiben
   const toggleContainer = document.getElementById("component-toggle-list");
   if (toggleContainer) {
     renderComponentToggles(data);
@@ -500,12 +499,14 @@ async function updateVisualization() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok)
+    if (!response.ok) {
       throw new Error("Visualisierungs-Daten konnten nicht geladen werden.");
+    }
 
-    const { scenes, room } = await response.json();
+    // KORREKTUR: Antwort nur einmal auslesen
+    const vizData = await response.json();
+    const { scenes, room, coordinate_summary } = vizData;
 
-    // Parameter-Zusammenfassung nur auf der Übersichts-Seite aktualisieren
     const summaryContainer = document.getElementById(
       "parameter-summary-container"
     );
@@ -513,7 +514,7 @@ async function updateVisualization() {
       updateParameterSummary(
         data,
         scenes.length,
-        await response.json().coordinate_summary
+        coordinate_summary // Variable hier verwenden
       );
     }
 
@@ -616,7 +617,7 @@ async function updateVisualization() {
     scenes.forEach((scene, index) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "button"; // secondary-Klasse entfernt für blaue Buttons
+      button.className = "button";
       button.textContent = scene.name;
       button.onclick = () => {
         mainGroup
@@ -642,7 +643,7 @@ async function updateVisualization() {
 
 function renderComponentToggles(data) {
   const container = document.getElementById("component-toggle-list");
-  if (!container) return; // Abbrechen, wenn der Container nicht da ist
+  if (!container) return;
 
   container.innerHTML = "";
 
@@ -884,7 +885,9 @@ function addAssembly(data = {}) {
         }>${r.templateProductInformation.name}</option>`
     )
     .join("");
-  const transformerOptions = (library.components?.transformers || [])
+
+  let transformerOptions = '<option value="">Kein Wandler</option>';
+  transformerOptions += (library.components?.transformers || [])
     .filter((t) =>
       (t.templateProductInformation.tags || []).includes(searchTag)
     )

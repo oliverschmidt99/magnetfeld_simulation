@@ -1,22 +1,14 @@
 // static/js/results_comparison.js
 document.addEventListener("DOMContentLoaded", () => {
-  // Globale Steuerelemente
   const conductorSelector = document.getElementById("conductor-selector");
   const syncBtn = document.getElementById("sync-btn");
-  const playPauseSyncBtn = document.getElementById("play-pause-sync-btn");
-  const speedSlider = document.getElementById("speed-slider");
-  const speedDisplay = document.getElementById("speed-display");
 
-  // Zustand und Daten
   let simulationRuns = [];
   let charts = { 1: null, 2: null };
-  let globalAnimationInterval = null;
 
-  // Initialisierung der beiden Vergleichs-Spalten
   const side1 = setupSide(1);
   const side2 = setupSide(2);
 
-  // Lade die verfügbaren Simulationsläufe
   fetch("/api/analysis/runs")
     .then((response) => response.json())
     .then((runs) => {
@@ -36,38 +28,16 @@ document.addEventListener("DOMContentLoaded", () => {
       side2.handleRunChange(lastSelection2);
     });
 
-  // Event-Listener
   conductorSelector.addEventListener("change", () => {
     side1.fetchPlotData();
     side2.fetchPlotData();
   });
 
   syncBtn.addEventListener("click", () => {
-    const runIndex1 = document.getElementById("run-selector-1").value;
     const current1 = document.getElementById("current-selector-1").value;
     const yAxis1 = document.getElementById("y-axis-selector-1").value;
-    const runSelector2 = document.getElementById("run-selector-2");
-
-    if (runSelector2.value !== runIndex1) {
-      runSelector2.value = runIndex1;
-      runSelector2.dispatchEvent(
-        new CustomEvent("change", {
-          detail: { current: current1, yAxis: yAxis1 },
-        })
-      );
-    } else {
-      document.getElementById("current-selector-2").value = current1;
-      side2.fetchPlotData(yAxis1);
-    }
-  });
-
-  playPauseSyncBtn.addEventListener("click", toggleGlobalAnimation);
-  speedSlider.addEventListener("input", () => {
-    speedDisplay.textContent = `${speedSlider.value}ms`;
-    if (globalAnimationInterval) {
-      stopGlobalAnimation();
-      startGlobalAnimation();
-    }
+    document.getElementById("current-selector-2").value = current1;
+    side2.fetchPlotData(yAxis1);
   });
 
   function equalizeCardHeights() {
@@ -79,11 +49,9 @@ document.addEventListener("DOMContentLoaded", () => {
       for (let i = 0; i < numCards; i++) {
         cards1[i].style.minHeight = "auto";
         cards2[i].style.minHeight = "auto";
-
         const height1 = cards1[i].offsetHeight;
         const height2 = cards2[i].offsetHeight;
         const maxHeight = Math.max(height1, height2);
-
         cards1[i].style.minHeight = `${maxHeight}px`;
         cards2[i].style.minHeight = `${maxHeight}px`;
       }
@@ -110,25 +78,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function toggleGlobalAnimation() {
-    if (globalAnimationInterval) stopGlobalAnimation();
-    else startGlobalAnimation();
-  }
-
-  function startGlobalAnimation() {
-    playPauseSyncBtn.innerHTML = "⏸️ Animation stoppen";
-    globalAnimationInterval = setInterval(() => {
-      side1.advanceSlider();
-      side2.advanceSlider();
-    }, speedSlider.value);
-  }
-
-  function stopGlobalAnimation() {
-    clearInterval(globalAnimationInterval);
-    globalAnimationInterval = null;
-    playPauseSyncBtn.innerHTML = "▶️ Animation synchron starten";
-  }
-
   function setupSide(id) {
     const runSelector = document.getElementById(`run-selector-${id}`);
     const currentSelector = document.getElementById(`current-selector-${id}`);
@@ -141,6 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const femmContainer = document.getElementById(`femm-plots-container-${id}`);
     const angleSlider = document.getElementById(`angle-slider-${id}`);
     const angleDisplay = document.getElementById(`angle-display-${id}`);
+    const playBtn = document.getElementById(`play-pause-btn-${id}`);
     const densityLoading = document.getElementById(
       `density-plot-loading-${id}`
     );
@@ -148,6 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let densityPlotList = [];
     let imageTransform = { scale: 1, translateX: 0, translateY: 0 };
+    let currentPositionGroup = null;
+    let animationInterval = null;
 
     runSelector.addEventListener("change", (event) =>
       handleRunChange(event.detail || {})
@@ -155,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
     currentSelector.addEventListener("change", () => fetchPlotData());
     yAxisSelector.addEventListener("change", () => fetchPlotData());
     angleSlider.addEventListener("input", handleSliderChange);
+    playBtn.addEventListener("click", toggleAnimation);
 
     function saveSelection() {
       const selection = {
@@ -166,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function handleRunChange(preselect = {}) {
-      stopGlobalAnimation();
+      stopAnimation();
       const runIndex = runSelector.value;
       if (runIndex === "") {
         clearAll();
@@ -174,6 +127,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const selectedRun = simulationRuns[runIndex];
+      currentPositionGroup = selectedRun.positions[0] || null;
+
       const preselectedCurrent = preselect.current || currentSelector.value;
       currentSelector.innerHTML = "";
       Object.entries(selectedRun.currents).forEach(([key, value]) => {
@@ -197,6 +152,14 @@ document.addEventListener("DOMContentLoaded", () => {
       fetchFemmPlots();
     }
 
+    function onStepClick(posGroup) {
+      if (currentPositionGroup !== posGroup) {
+        currentPositionGroup = posGroup;
+        fetchPlotData();
+        fetchFemmPlots();
+      }
+    }
+
     function clearAll() {
       if (charts[id]) charts[id].destroy();
       plotDiv.classList.add("initially-hidden");
@@ -218,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `results-preview-container-${id}`,
             data.scenes,
             data.room,
-            null
+            onStepClick
           );
           equalizeCardHeights();
         })
@@ -232,29 +195,28 @@ document.addEventListener("DOMContentLoaded", () => {
       const currentGroup = currentSelector.value;
       const desiredYAxis = preselectYAxis || yAxisSelector.value;
 
-      if (!runIndex || !currentGroup) {
+      if (!runIndex || !currentGroup || !currentPositionGroup) {
         if (charts[id]) charts[id].destroy();
         plotDiv.classList.add("initially-hidden");
         loadingMsg.style.display = "block";
-        loadingMsg.textContent = "Bitte Primärstrom wählen.";
+        loadingMsg.textContent = "Bitte Primärstrom und Position wählen.";
         yAxisSelector.disabled = true;
         return;
       }
 
       const selectedRun = simulationRuns[runIndex];
-      const posGroup = selectedRun.positions[0] || null;
-      if (!posGroup) return;
-
       const selectedConductors = Array.from(
         conductorSelector.querySelectorAll("input:checked")
       ).map((cb) => cb.value);
 
       const queryParams = new URLSearchParams({
         run_folder: selectedRun.name,
-        pos_group: posGroup,
+        pos_group: currentPositionGroup,
         current_group: currentGroup,
       });
-      if (desiredYAxis) queryParams.append("y_axis", desiredYAxis);
+      if (desiredYAxis) {
+        queryParams.append("y_axis", desiredYAxis);
+      }
       selectedConductors.forEach((c) => queryParams.append("conductors[]", c));
 
       plotDiv.classList.add("initially-hidden");
@@ -301,23 +263,10 @@ document.addEventListener("DOMContentLoaded", () => {
             });
           }
 
-          const finalYAxis = data.y_axis_label.replace(/ /g, "_");
-          if (yAxisSelector.value !== finalYAxis) {
-            queryParams.set("y_axis", yAxisSelector.value);
-            fetch(`/api/analysis/plot?${queryParams.toString()}`)
-              .then((res) => res.json())
-              .then((newData) => {
-                updateChart(newData);
-                plotDiv.classList.remove("initially-hidden");
-                saveSelection();
-                equalizeCardHeights();
-              });
-          } else {
-            updateChart(data);
-            plotDiv.classList.remove("initially-hidden");
-            saveSelection();
-            equalizeCardHeights();
-          }
+          updateChart(data);
+          plotDiv.classList.remove("initially-hidden");
+          saveSelection();
+          equalizeCardHeights();
         })
         .catch((err) => {
           if (charts[id]) charts[id].destroy();
@@ -329,15 +278,14 @@ document.addEventListener("DOMContentLoaded", () => {
     function fetchFemmPlots() {
       const runIndex = runSelector.value;
       const currentGroup = currentSelector.value;
-      if (!runIndex || !currentGroup) {
+      if (!runIndex || !currentGroup || !currentPositionGroup) {
         femmContainer.classList.add("initially-hidden");
         return;
       }
 
       const selectedRun = simulationRuns[runIndex];
-      const posGroup = selectedRun.positions[0] || null;
 
-      stopGlobalAnimation();
+      stopAnimation();
       densityPlotList = [];
       angleSlider.disabled = true;
       angleSlider.value = 0;
@@ -350,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const queryParams = new URLSearchParams({
         run_folder: selectedRun.name,
-        pos_group: posGroup,
+        pos_group: currentPositionGroup,
         current_group: currentGroup,
       });
 
@@ -361,6 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (densityPlotList.length > 1) {
             angleSlider.max = densityPlotList.length - 1;
             angleSlider.disabled = false;
+            playBtn.disabled = false;
             handleSliderChange();
             densityLoading.style.display = "none";
           } else if (densityPlotList.length === 1) {
@@ -368,6 +317,7 @@ document.addEventListener("DOMContentLoaded", () => {
             densityLoading.style.display = "none";
           } else {
             densityLoading.textContent = "Keine Plots verfügbar.";
+            playBtn.disabled = true;
           }
           equalizeCardHeights();
         })
@@ -409,6 +359,24 @@ document.addEventListener("DOMContentLoaded", () => {
       if (nextValue > angleSlider.max) nextValue = 0;
       angleSlider.value = nextValue;
       handleSliderChange();
+    }
+
+    function toggleAnimation() {
+      if (animationInterval) stopAnimation();
+      else startAnimation();
+    }
+
+    function startAnimation() {
+      playBtn.textContent = "❚❚";
+      animationInterval = setInterval(() => {
+        advanceSlider();
+      }, 200);
+    }
+
+    function stopAnimation() {
+      clearInterval(animationInterval);
+      animationInterval = null;
+      playBtn.textContent = "▶";
     }
 
     function enableImagePanZoom(wrapperId) {

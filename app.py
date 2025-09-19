@@ -150,15 +150,19 @@ def generate_simulation():
 
     assemblies_with_details = []
     for assembly_data in active_assemblies:
-        transformer_details = next(
-            (
-                t
-                for t in library_data.get("components", {}).get("transformers", [])
-                if t.get("templateProductInformation", {}).get("name")
-                == assembly_data.get("transformerName")
-            ),
-            None,
-        )
+        if assembly_data.get("transformerName"):
+            transformer_details = next(
+                (
+                    t
+                    for t in library_data.get("components", {}).get("transformers", [])
+                    if t.get("templateProductInformation", {}).get("name")
+                    == assembly_data.get("transformerName")
+                ),
+                None,
+            )
+            if transformer_details:
+                assembly_data["transformer_details"] = transformer_details
+
         rail_details = next(
             (
                 r
@@ -168,8 +172,6 @@ def generate_simulation():
             ),
             None,
         )
-        if transformer_details:
-            assembly_data["transformer_details"] = transformer_details
         if rail_details:
             assembly_data["copperRail_details"] = rail_details
         assemblies_with_details.append(assembly_data)
@@ -271,15 +273,19 @@ def visualize_configuration():
 
     assemblies = active_assemblies
     for asm in assemblies:
-        asm["transformer_details"] = next(
-            (
-                t
-                for t in library_data.get("components", {}).get("transformers", [])
-                if t.get("templateProductInformation", {}).get("name")
-                == asm.get("transformerName")
-            ),
-            None,
-        )
+        if asm.get("transformerName"):
+            asm["transformer_details"] = next(
+                (
+                    t
+                    for t in library_data.get("components", {}).get("transformers", [])
+                    if t.get("templateProductInformation", {}).get("name")
+                    == asm.get("transformerName")
+                ),
+                None,
+            )
+        else:
+            asm["transformer_details"] = None
+
         asm["copperRail_details"] = next(
             (
                 r
@@ -314,43 +320,61 @@ def visualize_configuration():
             trans = asm.get("transformer_details")
             rail = asm.get("copperRail_details")
 
-            if trans and rail:
-                t_geo = trans["specificProductInformation"]["geometry"]
+            if rail:
                 r_geo = rail["specificProductInformation"]["geometry"]
-                scene_elements.extend(
-                    [
-                        {
-                            "type": "rect",
-                            "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
-                            "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
-                            "width": t_geo["coreOuterWidth"],
-                            "height": t_geo["coreOuterHeight"],
-                            "fill": "#808080",
-                        },
-                        {
-                            "type": "rect",
-                            "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
-                            "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
-                            "width": t_geo["coreInnerWidth"],
-                            "height": t_geo["coreInnerHeight"],
-                            "fill": "white",
-                        },
-                        {
-                            "type": "rect",
-                            "x": pos["x"] - r_geo["width"] / 2,
-                            "y": pos["y"] - r_geo["height"] / 2,
-                            "width": r_geo["width"],
-                            "height": r_geo["height"],
-                            "fill": "#b87333",
-                        },
-                        {
-                            "type": "text",
-                            "x": pos["x"],
-                            "y": pos["y"] + t_geo["coreOuterHeight"] / 2 + 10,
-                            "text": phase,
-                        },
-                    ]
+
+                # Zeichne zuerst den Wandler (falls vorhanden), damit die Schiene darüber liegt
+                if trans:
+                    t_geo = trans["specificProductInformation"]["geometry"]
+                    scene_elements.extend(
+                        [
+                            {
+                                "type": "rect",
+                                "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
+                                "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
+                                "width": t_geo["coreOuterWidth"],
+                                "height": t_geo["coreOuterHeight"],
+                                "fill": "#808080",  # Kern
+                            },
+                            {
+                                "type": "rect",
+                                "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
+                                "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
+                                "width": t_geo["coreInnerWidth"],
+                                "height": t_geo["coreInnerHeight"],
+                                "fill": "white",  # innere Öffnung
+                            },
+                        ]
+                    )
+
+                # Zeichne danach die Kupferschiene, damit sie sichtbar ist
+                scene_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos["x"] - r_geo["width"] / 2,
+                        "y": pos["y"] - r_geo["height"] / 2,
+                        "width": r_geo["width"],
+                        "height": r_geo["height"],
+                        "fill": "#b87333",
+                    }
                 )
+
+                # Zeichne zuletzt das Text-Label
+                label_y_offset = (
+                    trans["specificProductInformation"]["geometry"]["coreOuterHeight"]
+                    / 2
+                    if trans
+                    else r_geo["height"] / 2
+                )
+                scene_elements.append(
+                    {
+                        "type": "text",
+                        "x": pos["x"],
+                        "y": pos["y"] + label_y_offset + 15,
+                        "text": phase,
+                    }
+                )
+
                 step_coords["components"].append(
                     {
                         "name": asm.get("name"),
@@ -378,9 +402,7 @@ def visualize_configuration():
                     total_width = (sheet_count * sheet_thickness) + (
                         2 * insulation_thickness
                     )
-
                     current_offset = -total_width / 2
-
                     if s_geo.get("withInsulation"):
                         scene_elements.append(
                             {
@@ -394,7 +416,6 @@ def visualize_configuration():
                             }
                         )
                         current_offset += insulation_thickness
-
                     for _ in range(sheet_count):
                         scene_elements.append(
                             {
@@ -408,7 +429,6 @@ def visualize_configuration():
                             }
                         )
                         current_offset += sheet_thickness
-
                     if s_geo.get("withInsulation"):
                         scene_elements.append(
                             {
@@ -421,7 +441,6 @@ def visualize_configuration():
                                 "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
                             }
                         )
-
                 else:
                     scene_elements.append(
                         {
@@ -444,7 +463,13 @@ def visualize_configuration():
                     }
                 )
 
-        scenes.append({"name": f"Schritt {i}", "elements": scene_elements})
+        scenes.append(
+            {
+                "name": f"Schritt {i}",
+                "elements": scene_elements,
+                "pos_group": f"pos_{i+1}",
+            }
+        )
         coordinate_summary.append(step_coords)
 
     return jsonify(

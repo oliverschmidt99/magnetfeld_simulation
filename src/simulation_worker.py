@@ -102,32 +102,49 @@ def build_femm_geometry(femm, step_config):
 
     for i, asm in enumerate(step_config["assemblies"]):
         pos = asm["position"]
-        t_geo = asm["transformer_details"]["specificProductInformation"]["geometry"]
         r_geo = asm["copperRail_details"]["specificProductInformation"]["geometry"]
-        core_material = t_geo.get("coreMaterial", "M-36 Steel")
+        has_transformer = "transformer_details" in asm and asm["transformer_details"]
 
-        draw_rect_explicitly(
-            femm, pos["x"], pos["y"], t_geo["coreOuterWidth"], t_geo["coreOuterHeight"]
-        )
-        draw_rect_explicitly(
-            femm, pos["x"], pos["y"], t_geo["coreInnerWidth"], t_geo["coreInnerHeight"]
-        )
+        # Zeichne immer die Kupferschiene
         draw_rect_explicitly(femm, pos["x"], pos["y"], r_geo["width"], r_geo["height"])
 
-        label_x_core = (
-            pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
-        )
-        femm.add_block_label(label_x_core, pos["y"])
-        femm.select_label(label_x_core, pos["y"])
-        femm.set_block_prop(core_material, 1, 0, "<None>", 0, i * 10 + 2, 0)
-        femm.clear_selected()
+        if has_transformer:
+            t_geo = asm["transformer_details"]["specificProductInformation"]["geometry"]
+            core_material = t_geo.get("coreMaterial", "M-36 Steel")
 
-        label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
-        femm.add_block_label(label_x_air_gap, pos["y"])
-        femm.select_label(label_x_air_gap, pos["y"])
-        femm.set_block_prop(air, 1, 0, "<None>", 0, 0, 0)
-        femm.clear_selected()
+            # Zeichne Wandler-Teile
+            draw_rect_explicitly(
+                femm,
+                pos["x"],
+                pos["y"],
+                t_geo["coreOuterWidth"],
+                t_geo["coreOuterHeight"],
+            )
+            draw_rect_explicitly(
+                femm,
+                pos["x"],
+                pos["y"],
+                t_geo["coreInnerWidth"],
+                t_geo["coreInnerHeight"],
+            )
 
+            # Label für den Kern
+            label_x_core = (
+                pos["x"] + (t_geo["coreOuterWidth"] + t_geo["coreInnerWidth"]) / 4
+            )
+            femm.add_block_label(label_x_core, pos["y"])
+            femm.select_label(label_x_core, pos["y"])
+            femm.set_block_prop(core_material, 1, 0, "<None>", 0, i * 10 + 2, 0)
+            femm.clear_selected()
+
+            # Label für den Luftspalt im Wandler
+            label_x_air_gap = pos["x"] + (t_geo["coreInnerWidth"] + r_geo["width"]) / 4
+            femm.add_block_label(label_x_air_gap, pos["y"])
+            femm.select_label(label_x_air_gap, pos["y"])
+            femm.set_block_prop(air, 1, 0, "<None>", 0, 0, 0)
+            femm.clear_selected()
+
+        # Label für die Kupferschiene
         femm.add_block_label(pos["x"], pos["y"])
         femm.select_label(pos["x"], pos["y"])
         femm.set_block_prop(copper, 1, 0, asm["phaseName"], 0, i * 10 + 1, 0)
@@ -199,21 +216,29 @@ def run_analysis_and_collect_results(
     results = []
     for i, asm in enumerate(assemblies):
         phase_name = asm["phaseName"]
+        has_transformer = "transformer_details" in asm and asm["transformer_details"]
 
         conductor_group_id = i * 10 + 1
         i_prim_sim_complex = femm.get_group_block_integral(7, conductor_group_id)
 
-        (
-            i_sec_real_a,
-            i_sec_imag_a,
-            circuit_voltage_complex,
-        ) = femm.get_circuit_properties(phase_name)
+        # Standardwerte für den Fall, dass kein Wandler vorhanden ist
+        i_sec_real_a, i_sec_imag_a = 0, 0
+        circuit_voltage_complex = 0 + 0j
+        b_avg_t, p_joule_w, w_mag_j = 0, 0, 0
+        flux_wb_complex = 0 + 0j
 
-        core_group_id = i * 10 + 2
-        b_avg_t = femm.get_group_block_integral(18, core_group_id)
-        p_joule_w = femm.get_group_block_integral(5, core_group_id)
-        w_mag_j = femm.get_group_block_integral(6, core_group_id)
-        flux_wb_complex = femm.get_group_block_integral(8, core_group_id)
+        if has_transformer:
+            (
+                i_sec_real_a,
+                i_sec_imag_a,
+                circuit_voltage_complex,
+            ) = femm.get_circuit_properties(phase_name)
+
+            core_group_id = i * 10 + 2
+            b_avg_t = femm.get_group_block_integral(18, core_group_id)
+            p_joule_w = femm.get_group_block_integral(5, core_group_id)
+            w_mag_j = femm.get_group_block_integral(6, core_group_id)
+            flux_wb_complex = femm.get_group_block_integral(8, core_group_id)
 
         res = {
             "pos_name": pos_name,

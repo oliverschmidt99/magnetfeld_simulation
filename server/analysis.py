@@ -6,7 +6,7 @@ import os
 import re
 import numpy as np
 import pandas as pd
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 
 from server.utils import load_json
 
@@ -128,6 +128,22 @@ def get_plot_data():
         df = pd.read_csv(file_path)
         conductors = df["conductor"].unique().tolist()
 
+        # Alle relevanten Spalten sicher in numerische Werte umwandeln
+        cols_to_convert = [
+            "Iprim_sim_real_A",
+            "Iprim_sim_imag_A",
+            "Isec_real_A",
+            "Isec_imag_A",
+            "circuit_voltage_real_V",
+            "circuit_voltage_imag_V",
+            "Flux_real_Wb",
+            "Flux_imag_Wb",
+            "B_avg_T",
+        ]
+        for col in cols_to_convert:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
         for real_col, imag_col, abs_col in [
             ("Iprim_sim_real_A", "Iprim_sim_imag_A", "Iprim_sim_abs_A"),
             ("Isec_real_A", "Isec_imag_A", "Isec_abs_A"),
@@ -139,9 +155,7 @@ def get_plot_data():
             ("Flux_real_Wb", "Flux_imag_Wb", "Flux_abs_Wb"),
         ]:
             if real_col in df.columns and imag_col in df.columns:
-                real_num = pd.to_numeric(df[real_col], errors="coerce")
-                imag_num = pd.to_numeric(df[imag_col], errors="coerce")
-                df[abs_col] = np.sqrt(real_num**2 + imag_num**2)
+                df[abs_col] = np.sqrt(df[real_col] ** 2 + df[imag_col] ** 2)
 
         all_columns = df.columns.tolist()
         plot_columns = [
@@ -158,14 +172,23 @@ def get_plot_data():
             and "pos_" not in col
         ]
 
-        columns_for_frontend = [{"value": col, "name": col} for col in plot_columns]
-        selected_conductors = request.args.getlist("conductors[]")
-        y_axis_variable = request.args.get("y_axis") or (
-            plot_columns[0] if plot_columns else None
-        )
+        columns_for_frontend = [
+            {"value": col, "name": col.replace("_", " ")} for col in plot_columns
+        ]
+
+        y_axis_variable = request.args.get("y_axis")
+
+        if not y_axis_variable or y_axis_variable not in df.columns:
+            y_axis_variable = plot_columns[0] if plot_columns else None
 
         if not y_axis_variable:
-            return jsonify({"error": "Keine plotbaren Spalten gefunden."})
+            return (
+                jsonify({"error": "Keine darstellbaren Daten in der Datei gefunden."}),
+                400,
+            )
+
+        selected_conductors = request.args.getlist("conductors[]")
+        y_axis_label_for_chart = y_axis_variable.replace("_", " ")
 
         chart_data = create_chartjs_data(
             df, "phaseAngle_deg", y_axis_variable, selected_conductors
@@ -177,14 +200,12 @@ def get_plot_data():
                 "conductors": conductors,
                 "columns": columns_for_frontend,
                 "x_axis_label": "Phasenwinkel (°)",
-                "y_axis_label": y_axis_variable,
+                "y_axis_label": y_axis_label_for_chart,
             }
         )
-    except (IOError, pd.errors.ParserError, KeyError, ValueError) as e:
-        return (
-            jsonify({"error": f"Ein Server-Fehler ist aufgetreten: {e}"}),
-            500,
-        )
+    except Exception as e:
+        current_app.logger.error(f"Error in get_plot_data: {e}", exc_info=True)
+        return jsonify({"error": "Ein interner Serverfehler ist aufgetreten."}), 500
 
 
 @analysis_bp.route("/analysis/femm_plots", methods=["GET"])
@@ -205,8 +226,6 @@ def get_femm_plots():
 
     plot_files = os.listdir(plots_dir)
 
-    # Regex, um Winkel aus dem Dateinamen zu extrahieren
-    # z.B. aus 'pos_1_I_1_mes_angle45_density_H.png' -> '45'
     pattern = re.compile(f"{pos_group}_{current_group}_angle(\\d+)_.*\\.png")
 
     density_plots = []
@@ -224,7 +243,6 @@ def get_femm_plots():
             elif "vector" in filename:
                 vector_plots.append(plot_info)
 
-    # Sortiere die Listen nach dem Winkel
     density_plots.sort(key=lambda p: p["angle"])
     vector_plots.sort(key=lambda p: p["angle"])
 
@@ -290,42 +308,56 @@ def get_full_result_preview(run_folder):
             trans = asm.get("transformer_details")
             rail = asm.get("copperRail_details")
 
-            if trans and rail:
-                t_geo = trans["specificProductInformation"]["geometry"]
+            if rail:
                 r_geo = rail["specificProductInformation"]["geometry"]
-                scene_elements.extend(
-                    [
-                        {
-                            "type": "rect",
-                            "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
-                            "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
-                            "width": t_geo["coreOuterWidth"],
-                            "height": t_geo["coreOuterHeight"],
-                            "fill": "#808080",
-                        },
-                        {
-                            "type": "rect",
-                            "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
-                            "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
-                            "width": t_geo["coreInnerWidth"],
-                            "height": t_geo["coreInnerHeight"],
-                            "fill": "white",
-                        },
-                        {
-                            "type": "rect",
-                            "x": pos["x"] - r_geo["width"] / 2,
-                            "y": pos["y"] - r_geo["height"] / 2,
-                            "width": r_geo["width"],
-                            "height": r_geo["height"],
-                            "fill": "#b87333",
-                        },
-                        {
-                            "type": "text",
-                            "x": pos["x"],
-                            "y": pos["y"] + t_geo["coreOuterHeight"] / 2 + 10,
-                            "text": phase,
-                        },
-                    ]
+
+                if trans:
+                    t_geo = trans["specificProductInformation"]["geometry"]
+                    scene_elements.extend(
+                        [
+                            {
+                                "type": "rect",
+                                "x": pos["x"] - t_geo["coreOuterWidth"] / 2,
+                                "y": pos["y"] - t_geo["coreOuterHeight"] / 2,
+                                "width": t_geo["coreOuterWidth"],
+                                "height": t_geo["coreOuterHeight"],
+                                "fill": "#808080",
+                            },
+                            {
+                                "type": "rect",
+                                "x": pos["x"] - t_geo["coreInnerWidth"] / 2,
+                                "y": pos["y"] - t_geo["coreInnerHeight"] / 2,
+                                "width": t_geo["coreInnerWidth"],
+                                "height": t_geo["coreInnerHeight"],
+                                "fill": "white",
+                            },
+                        ]
+                    )
+
+                scene_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos["x"] - r_geo["width"] / 2,
+                        "y": pos["y"] - r_geo["height"] / 2,
+                        "width": r_geo["width"],
+                        "height": r_geo["height"],
+                        "fill": "#b87333",
+                    }
+                )
+
+                label_y_offset = (
+                    trans["specificProductInformation"]["geometry"]["coreOuterHeight"]
+                    / 2
+                    if trans
+                    else r_geo["height"] / 2
+                )
+                scene_elements.append(
+                    {
+                        "type": "text",
+                        "x": pos["x"],
+                        "y": pos["y"] + label_y_offset + 10,
+                        "text": phase,
+                    }
                 )
 
         for comp in standalone_components:

@@ -1,0 +1,87 @@
+{
+    "simulationParams": {
+        "ratedCurrent": "3000",
+        "startpositionen": {
+            "x_L1": "-200",
+            "y_L1": "0",
+            "x_L2": "0",
+            "y_L2": "0",
+            "x_L3": "200",
+            "y_L3": "0"
+        },
+        "bewegungsRichtungen": {
+            "L1": {
+                "x": "-1",
+                "y": "0"
+            },
+            "L2": {
+                "x": "0",
+                "y": "0"
+            },
+            "L3": {
+                "x": "1",
+                "y": "0"
+            }
+        },
+        "problemDepthM": "30",
+        "spielraum": {
+            "Laenge": "1000",
+            "Breite": "500"
+        },
+        "schrittweiten": {
+            "Pos1": "10",
+            "Pos2": "150",
+            "Pos3": "0",
+            "Pos4": "0"
+        },
+        "I_1_mes": "2000",
+        "I_2_mes": "25000",
+        "I_3_mes": "3200",
+        "phaseSweep": {
+            "start": "0",
+            "end": "180",
+            "step": "10"
+        }
+    },
+    "electricalSystem": [
+        {
+            "name": "L1",
+            "phaseShiftDeg": 0,
+            "peakCurrentA": 4242.64
+        },
+        {
+            "name": "L2",
+            "phaseShiftDeg": 120,
+            "peakCurrentA": 4242.64
+        },
+        {
+            "name": "L3",
+            "phaseShiftDeg": -120,
+            "peakCurrentA": 4242.64
+        }
+    ],
+    "assemblies": [
+        {
+            "name": "Assembly_1",
+            "phaseName": "L1",
+            "copperRailName": "RJ_100x30_3200A",
+            "transformerName": "ALO 12070 (3000A)",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_2",
+            "phaseName": "L2",
+            "copperRailName": "RJ_100x30_3200A",
+            "transformerName": "ALO 12070 (3000A)",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_3",
+            "phaseName": "L3",
+            "copperRailName": "RJ_100x30_3200A",
+            "transformerName": "ALO 12070 (3000A)",
+            "enabled": true
+        }
+    ],
+    "standAloneComponents": []
+}

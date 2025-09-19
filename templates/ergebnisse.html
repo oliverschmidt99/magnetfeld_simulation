@@ -27,14 +27,6 @@
             <div class="form-group">
                 <button type="button" id="sync-btn" class="button secondary">↙️ Auswahl von Links übernehmen</button>
             </div>
-            <div class="form-group">
-                <button type="button" id="play-pause-sync-btn" class="button">▶️ Animation synchron starten</button>
-            </div>
-        </div>
-        <div class="plot-slider-container global-controls">
-            <label for="speed-slider">Animations-Geschwindigkeit:</label>
-            <input type="range" id="speed-slider" min="50" max="1000" step="50" value="200">
-            <span id="speed-display">200ms</span>
         </div>
         <div id="conductor-selector" class="conductor-selector"></div>
     </div>
@@ -67,6 +59,7 @@
             <div id="femm-plots-container-1" class="preview-section card initially-hidden">
                 <h3>FEMM-Analyse-Plot: Lauf 1</h3>
                 <div class="plot-slider-container">
+                    <button type="button" id="play-pause-btn-1" class="play-btn" disabled>▶</button>
                     <label for="angle-slider-1">Phasenwinkel:</label>
                     <input type="range" id="angle-slider-1" min="0" max="0" step="1" disabled>
                     <span id="angle-display-1">0°</span>
@@ -114,6 +107,7 @@
             <div id="femm-plots-container-2" class="preview-section card initially-hidden">
                 <h3>FEMM-Analyse-Plot: Lauf 2</h3>
                 <div class="plot-slider-container">
+                    <button type="button" id="play-pause-btn-2" class="play-btn" disabled>▶</button>
                     <label for="angle-slider-2">Phasenwinkel:</label>
                     <input type="range" id="angle-slider-2" min="0" max="0" step="1" disabled>
                     <span id="angle-display-2">0°</span>

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
-{% block title %}Ergebnisse{% endblock %}
+{% block title %}Ergebnisse vergleichen{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/results.css') }}">
@@ -8,87 +8,130 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container results-comparison-container">
     <div class="sub-nav-bar">
-        <h2>Simulationsergebnisse</h2>
+        <h2>Simulationsergebnisse vergleichen</h2>
     </div>
 
-    <div class="results-filter-container">
-        <div class="form-group">
-            <label for="run-selector">1. Wähle einen Simulationslauf:</label>
-            <select id="run-selector">
-                <option value="">Bitte wählen...</option>
-            </select>
-        </div>
-        <div class="form-group" style="display: none;">
-            <label for="position-selector">2. Positionsschritt:</label>
-            <select id="position-selector" disabled>
-                <option value="">--</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="current-selector">2. Wähle einen Primärstrom:</label>
-            <select id="current-selector" disabled>
-                <option value="">--</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="y-axis-selector">3. Anzuzeigender Wert (Y-Achse):</label>
-            <select id="y-axis-selector" disabled>
-                <option value="">--</option>
-            </select>
-        </div>
-    </div>
-
-    <div id="conductor-selector" class="conductor-selector"></div>
-
-    <div id="results-content">
-        <div class="plot-container">
-            <p id="loading-message" class="loading-message">Lade Diagramm...</p>
-            <div id="plot-div" class="initially-hidden">
-                <canvas id="plot-canvas"></canvas>
+    <div class="top-controls card">
+        <h3>Vergleichssteuerung</h3>
+        <div class="results-filter-container">
+            <div class="form-group">
+                <label for="run-selector-1">Simulationslauf 1 (Links)</label>
+                <select id="run-selector-1"></select>
+            </div>
+            <div class="form-group">
+                <label for="run-selector-2">Simulationslauf 2 (Rechts)</label>
+                <select id="run-selector-2"></select>
+            </div>
+            <div class="form-group">
+                <button type="button" id="sync-btn" class="button secondary">↙️ Auswahl von Links übernehmen</button>
+            </div>
+            <div class="form-group">
+                <button type="button" id="play-pause-sync-btn" class="button">▶️ Animation synchron starten</button>
             </div>
         </div>
-    </div>
-
-    <hr>
-
-    <div id="results-preview-container" class="preview-section card">
-        <p id="preview-loading-message" class="loading-message">Lade Vorschau...</p>
-    </div>
-
-    <hr>
-
-    <div id="femm-plots-container" class="preview-section card initially-hidden">
-        <h3>FEMM-Analyse-Plots</h3>
-        <div class="plot-slider-container">
-            <button type="button" id="play-pause-btn" class="play-btn" disabled>▶</button>
-            <label for="angle-slider">Phasenwinkel:</label>
-            <input type="range" id="angle-slider" min="0" max="0" step="1" disabled>
-            <span id="angle-display">0°</span>
+        <div class="plot-slider-container global-controls">
+            <label for="speed-slider">Animations-Geschwindigkeit:</label>
+            <input type="range" id="speed-slider" min="50" max="1000" step="50" value="200">
+            <span id="speed-display">200ms</span>
         </div>
-        <div class="femm-plot-wrapper">
-            <div class="femm-plot">
-                <h4>Dichte-Plot (Feldstärke |H|)</h4>
-                <p id="density-plot-loading" class="loading-message">Lade Plot...</p>
-                <div id="density-plot-wrapper" class="plot-image-wrapper">
-                    <img id="density-plot-img" src="#_" alt="Dichte-Plot der Feldstärke H"
-                        class="femm-plot-image initially-hidden">
+        <div id="conductor-selector" class="conductor-selector"></div>
+    </div>
+
+    <div class="comparison-content">
+        <div class="comparison-column" id="column-1">
+            <div class="card">
+                <h3>Diagramm: Lauf 1</h3>
+                <div class="chart-controls">
+                    <div class="form-group">
+                        <label for="current-selector-1">Primärstrom</label>
+                        <select id="current-selector-1" disabled></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="y-axis-selector-1">Y-Achse</label>
+                        <select id="y-axis-selector-1" disabled></select>
+                    </div>
+                </div>
+                <div class="plot-container">
+                    <p id="loading-message-1" class="loading-message">Lade Diagramm...</p>
+                    <div id="plot-div-1" class="initially-hidden">
+                        <canvas id="plot-canvas-1"></canvas>
+                    </div>
                 </div>
             </div>
-            <div class="femm-plot">
-                <h4>Vektor-Plot (Feldstärke H, Skalierung: 2)</h4>
-                <p id="vector-plot-loading" class="loading-message">Lade Plot...</p>
-                <div id="vector-plot-wrapper" class="plot-image-wrapper">
-                    <img id="vector-plot-img" src="#_" alt="Vektor-Plot der Feldstärke H"
-                        class="femm-plot-image initially-hidden">
+            <div id="results-preview-container-1" class="preview-section card">
+                <h3>Simulations-Vorschau: Lauf 1</h3>
+                <p id="preview-loading-message-1" class="loading-message">Lade Vorschau...</p>
+            </div>
+            <div id="femm-plots-container-1" class="preview-section card initially-hidden">
+                <h3>FEMM-Analyse-Plot: Lauf 1</h3>
+                <div class="plot-slider-container">
+                    <label for="angle-slider-1">Phasenwinkel:</label>
+                    <input type="range" id="angle-slider-1" min="0" max="0" step="1" disabled>
+                    <span id="angle-display-1">0°</span>
+                </div>
+                <div class="femm-plot">
+                    <h4>Dichte-Plot (Feldstärke |H|)</h4>
+                    <p id="density-plot-loading-1" class="loading-message">Lade Plot...</p>
+                    <div id="density-plot-wrapper-1" class="plot-image-wrapper">
+                        <img id="density-plot-img-1" src="#_" alt="Dichte-Plot der Feldstärke H"
+                            class="femm-plot-image initially-hidden">
+                        <div class="zoom-controls">
+                            <button type="button" id="zoom-home-btn-1" title="Zoom zurücksetzen">⌂</button>
+                            <button type="button" id="zoom-in-btn-1" title="Vergrößern">+</button>
+                            <button type="button" id="zoom-out-btn-1" title="Verkleinern">-</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="zoom-controls">
-            <button type="button" id="zoom-home-btn" title="Zoom zurücksetzen">⌂</button>
-            <button type="button" id="zoom-in-btn" title="Vergrößern">+</button>
-            <button type="button" id="zoom-out-btn" title="Verkleinern">-</button>
+
+        <div class="comparison-column" id="column-2">
+            <div class="card">
+                <h3>Diagramm: Lauf 2</h3>
+                <div class="chart-controls">
+                    <div class="form-group">
+                        <label for="current-selector-2">Primärstrom</label>
+                        <select id="current-selector-2" disabled></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="y-axis-selector-2">Y-Achse</label>
+                        <select id="y-axis-selector-2" disabled></select>
+                    </div>
+                </div>
+                <div class="plot-container">
+                    <p id="loading-message-2" class="loading-message">Lade Diagramm...</p>
+                    <div id="plot-div-2" class="initially-hidden">
+                        <canvas id="plot-canvas-2"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div id="results-preview-container-2" class="preview-section card">
+                <h3>Simulations-Vorschau: Lauf 2</h3>
+                <p id="preview-loading-message-2" class="loading-message">Lade Vorschau...</p>
+            </div>
+            <div id="femm-plots-container-2" class="preview-section card initially-hidden">
+                <h3>FEMM-Analyse-Plot: Lauf 2</h3>
+                <div class="plot-slider-container">
+                    <label for="angle-slider-2">Phasenwinkel:</label>
+                    <input type="range" id="angle-slider-2" min="0" max="0" step="1" disabled>
+                    <span id="angle-display-2">0°</span>
+                </div>
+                <div class="femm-plot">
+                    <h4>Dichte-Plot (Feldstärke |H|)</h4>
+                    <p id="density-plot-loading-2" class="loading-message">Lade Plot...</p>
+                    <div id="density-plot-wrapper-2" class="plot-image-wrapper">
+                        <img id="density-plot-img-2" src="#_" alt="Dichte-Plot der Feldstärke H"
+                            class="femm-plot-image initially-hidden">
+                        <div class="zoom-controls">
+                            <button type="button" id="zoom-home-btn-2" title="Zoom zurücksetzen">⌂</button>
+                            <button type="button" id="zoom-in-btn-2" title="Vergrößern">+</button>
+                            <button type="button" id="zoom-out-btn-2" title="Verkleinern">-</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -96,5 +139,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/simulation_preview.js', v=timestamp) }}"></script>
-<script src="{{ url_for('static', filename='js/results.js', v=timestamp) }}"></script>
+<script src="{{ url_for('static', filename='js/results_comparison.js', v=timestamp) }}"></script>
 {% endblock %}

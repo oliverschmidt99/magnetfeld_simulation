@@ -1,19 +1,77 @@
 /* static/css/results.css */
 
+/* Haupt-Container für die Vergleichsseite */
+.results-comparison-container {
+    max-width: 1800px;
+    width: 100%;
+}
+
+/* Obere Steuerungsleiste */
+.top-controls {
+    margin-bottom: 2rem;
+}
+
 .results-filter-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1.5rem;
-    max-width: 1200px;
-    margin: 2rem auto 1rem;
     align-items: end;
+}
+
+#sync-btn, #play-pause-sync-btn {
+    width: 100%;
+    height: 100%;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* Container für die beiden Spalten */
+.comparison-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: stretch; /* Sorgt dafür, dass die Spalten die gleiche Höhe haben */
+}
+
+.comparison-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.comparison-column .card {
+    margin-bottom: 0;
+    flex-grow: 1; /* Erlaubt den Karten, sich an die Höhe anzupassen */
+    display: flex;
+    flex-direction: column;
+}
+
+.comparison-column .card .plot-container {
+    flex-grow: 1;
+}
+
+
+/* Steuerelemente innerhalb der Diagramm-Karten */
+.chart-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1rem;
+}
+
+.global-controls {
+    margin-top: 1.5rem;
+    border-top: 1px solid #dee2e6;
+    padding-top: 1rem;
 }
 
 .conductor-selector {
     display: flex;
     justify-content: center;
     gap: 1.5rem;
-    margin-bottom: 2rem;
+    margin-top: 1.5rem;
     padding: 0.5rem;
 }
 
@@ -37,40 +95,27 @@
 
 .plot-container {
     width: 100%;
-    max-width: 900px;
-    height: 500px;
-    margin: 0 auto 2rem auto;
+    height: 450px;
+    margin: 0 auto;
     position: relative;
 }
 
-#plot-div {
+#plot-div-1, #plot-div-2 {
     height: 100%;
     width: 100%;
 }
 
-#results-preview-container {
-    max-width: 900px;
-    margin: 1rem auto;
-}
-
-#results-preview-container .component-preview {
+.preview-section .component-preview {
     max-height: 450px;
     min-height: 300px;
 }
 
-#results-preview-container .button-group {
+.preview-section .button-group {
     justify-content: center;
 }
 
-#femm-plots-container {
-    position: relative; /* Notwendig für die Positionierung der Zoom-Knöpfe */
-}
-
-.femm-plot-wrapper {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    align-items: flex-start;
+#femm-plots-container-1, #femm-plots-container-2 {
+    position: relative;
 }
 
 .femm-plot {
@@ -87,6 +132,7 @@
     align-items: center;
     justify-content: center;
     background-color: #f8f9fa;
+    position: relative;
 }
 
 .femm-plot-image {
@@ -101,49 +147,22 @@
     justify-content: center;
     gap: 1rem;
     margin-bottom: 1.5rem;
+    flex-wrap: wrap;
 }
 
-#angle-slider {
-    width: 300px;
+#angle-slider-1, #angle-slider-2 {
+    width: 200px;
 }
 
-#angle-display {
+#angle-display-1, #angle-display-2 {
     font-weight: bold;
     min-width: 40px;
 }
 
-#play-pause-btn {
-    font-size: 1.2rem;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none; /* Rand entfernt für sauberes Aussehen */
-    background-color: #0d6efd; /* Blau als Hintergrund */
-    color: white; /* Weiße Schrift für Kontrast */
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    line-height: 1;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transition: background-color 0.2s;
-}
-
-#play-pause-btn:hover {
-    background-color: #0b5ed7; /* Dunkleres Blau beim Hover */
-}
-
-#play-pause-btn:disabled {
-    cursor: not-allowed;
-    background-color: #6c757d; /* Grau, wenn deaktiviert */
-    opacity: 0.65;
-}
-
 .zoom-controls {
     position: absolute;
-    bottom: 1.5rem;
-    left: 1.5rem;
+    bottom: 1rem;
+    left: 1rem;
     z-index: 10;
     display: flex;
     flex-direction: column;
@@ -151,13 +170,13 @@
 }
 
 .zoom-controls button {
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
+    width: 36px;
+    height: 36px;
+    font-size: 1.2rem;
     font-weight: bold;
     border-radius: 50%;
     border: 1px solid #adb5bd;
-    background-color: #e9ecef;
+    background-color: rgba(233, 236, 239, 0.8);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -172,7 +191,6 @@
     background-color: #dee2e6;
     border-color: #495057;
 }
-
 
 .initially-hidden {
     display: none;

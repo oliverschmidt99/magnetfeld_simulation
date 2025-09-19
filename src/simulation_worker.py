@@ -221,10 +221,9 @@ def run_analysis_and_collect_results(
         conductor_group_id = i * 10 + 1
         i_prim_sim_complex = femm.get_group_block_integral(7, conductor_group_id)
 
-        # Standardwerte für den Fall, dass kein Wandler vorhanden ist
         i_sec_real_a, i_sec_imag_a = 0, 0
         circuit_voltage_complex = 0 + 0j
-        b_avg_t, p_joule_w, w_mag_j = 0, 0, 0
+        b_avg_t, h_avg_complex, p_joule_w, w_mag_j = 0, 0 + 0j, 0, 0
         flux_wb_complex = 0 + 0j
 
         if has_transformer:
@@ -236,6 +235,7 @@ def run_analysis_and_collect_results(
 
             core_group_id = i * 10 + 2
             b_avg_t = femm.get_group_block_integral(18, core_group_id)
+            h_avg_complex = femm.get_group_block_integral(19, core_group_id)
             p_joule_w = femm.get_group_block_integral(5, core_group_id)
             w_mag_j = femm.get_group_block_integral(6, core_group_id)
             flux_wb_complex = femm.get_group_block_integral(8, core_group_id)
@@ -253,6 +253,8 @@ def run_analysis_and_collect_results(
             "circuit_voltage_real_V": circuit_voltage_complex.real,
             "circuit_voltage_imag_V": circuit_voltage_complex.imag,
             "B_avg_T": b_avg_t,
+            "H_avg_real_Am": h_avg_complex.real,
+            "H_avg_imag_Am": h_avg_complex.imag,
             "P_joule_W": p_joule_w,
             "W_mag_J": w_mag_j,
             "Flux_real_Wb": flux_wb_complex.real,

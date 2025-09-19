@@ -128,7 +128,7 @@ def get_plot_data():
         df = pd.read_csv(file_path)
         conductors = df["conductor"].unique().tolist()
 
-        # Alle relevanten Spalten sicher in numerische Werte umwandeln
+        # Konvertiere alle relevanten Spalten in numerische Werte
         cols_to_convert = [
             "Iprim_sim_real_A",
             "Iprim_sim_imag_A",
@@ -139,6 +139,8 @@ def get_plot_data():
             "Flux_real_Wb",
             "Flux_imag_Wb",
             "B_avg_T",
+            "H_avg_real_Am",
+            "H_avg_imag_Am",
         ]
         for col in cols_to_convert:
             if col in df.columns:
@@ -153,6 +155,7 @@ def get_plot_data():
                 "circuit_voltage_abs_V",
             ),
             ("Flux_real_Wb", "Flux_imag_Wb", "Flux_abs_Wb"),
+            ("H_avg_real_Am", "H_avg_imag_Am", "H_avg_abs_Am"),
         ]:
             if real_col in df.columns and imag_col in df.columns:
                 df[abs_col] = np.sqrt(df[real_col] ** 2 + df[imag_col] ** 2)
@@ -203,7 +206,7 @@ def get_plot_data():
                 "y_axis_label": y_axis_label_for_chart,
             }
         )
-    except Exception as e:
+    except (IOError, pd.errors.ParserError, KeyError, ValueError) as e:
         current_app.logger.error(f"Error in get_plot_data: {e}", exc_info=True)
         return jsonify({"error": "Ein interner Serverfehler ist aufgetreten."}), 500
 

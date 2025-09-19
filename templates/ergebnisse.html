@@ -31,6 +31,20 @@
         <div id="conductor-selector" class="conductor-selector"></div>
     </div>
 
+    <div class="card animation-controls global-femm-controls">
+        <h3>Globale FEMM-Plot Steuerung</h3>
+        <div class="plot-slider-container global-controls">
+            <button type="button" id="play-pause-sync-btn" class="play-btn" disabled>▶</button>
+            <label for="speed-slider-global">Geschwindigkeit:</label>
+            <input type="range" id="speed-slider-global" min="0" max="7" step="1" value="3">
+            <span id="speed-display-global">1.00x</span>
+            <label for="angle-slider-global">Phasenwinkel:</label>
+            <input type="range" id="angle-slider-global" min="0" max="0" step="1" disabled>
+            <span id="angle-display-global">0°</span>
+        </div>
+    </div>
+
+
     <div class="comparison-content">
         <div class="comparison-column" id="column-1">
             <div class="card">
@@ -60,12 +74,16 @@
                 <h3>FEMM-Analyse-Plot: Lauf 1</h3>
                 <div class="plot-slider-container">
                     <button type="button" id="play-pause-btn-1" class="play-btn" disabled>▶</button>
-                    <label for="angle-slider-1">Phasenwinkel:</label>
-                    <input type="range" id="angle-slider-1" min="0" max="0" step="1" disabled>
+                    <label for="speed-slider-1">Geschw.:</label>
+                    <input type="range" id="speed-slider-1" class="speed-slider-local" min="0" max="7" step="1"
+                        value="3">
+                    <span id="speed-display-1">1.00x</span>
+                    <label for="angle-slider-1">Winkel:</label>
+                    <input type="range" id="angle-slider-1" class="angle-slider-local" min="0" max="0" step="1"
+                        disabled>
                     <span id="angle-display-1">0°</span>
                 </div>
                 <div class="femm-plot">
-                    <h4>Dichte-Plot (Feldstärke |H|)</h4>
                     <p id="density-plot-loading-1" class="loading-message">Lade Plot...</p>
                     <div id="density-plot-wrapper-1" class="plot-image-wrapper">
                         <img id="density-plot-img-1" src="#_" alt="Dichte-Plot der Feldstärke H"
@@ -108,12 +126,16 @@
                 <h3>FEMM-Analyse-Plot: Lauf 2</h3>
                 <div class="plot-slider-container">
                     <button type="button" id="play-pause-btn-2" class="play-btn" disabled>▶</button>
-                    <label for="angle-slider-2">Phasenwinkel:</label>
-                    <input type="range" id="angle-slider-2" min="0" max="0" step="1" disabled>
+                    <label for="speed-slider-2">Geschw.:</label>
+                    <input type="range" id="speed-slider-2" class="speed-slider-local" min="0" max="7" step="1"
+                        value="3">
+                    <span id="speed-display-2">1.00x</span>
+                    <label for="angle-slider-2">Winkel:</label>
+                    <input type="range" id="angle-slider-2" class="angle-slider-local" min="0" max="0" step="1"
+                        disabled>
                     <span id="angle-display-2">0°</span>
                 </div>
                 <div class="femm-plot">
-                    <h4>Dichte-Plot (Feldstärke |H|)</h4>
                     <p id="density-plot-loading-2" class="loading-message">Lade Plot...</p>
                     <div id="density-plot-wrapper-2" class="plot-image-wrapper">
                         <img id="density-plot-img-2" src="#_" alt="Dichte-Plot der Feldstärke H"

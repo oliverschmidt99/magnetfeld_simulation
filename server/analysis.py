@@ -4,17 +4,70 @@ Dieses Modul stellt die Logik für die Analyse- und Ergebnisseite bereit.
 """
 import os
 import re
+import json
 import numpy as np
 import pandas as pd
 from flask import Blueprint, jsonify, request, current_app
 
+from server.db import get_db
 from server.utils import load_json
 
 analysis_bp = Blueprint("analysis_bp", __name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.join(BASE_DIR, "..")
 RESULTS_DIR = os.path.join(PROJECT_ROOT, "simulations")
-LIBRARY_FILE = os.path.join(PROJECT_ROOT, "library.json")
+
+
+def _get_library_from_db():
+    """Hilfsfunktion, um die Bibliothek innerhalb des Blueprints aus der DB zu laden."""
+    db_conn = get_db()
+    library_data = {"materials": [], "components": {}}
+
+    # Materialien laden
+    materials_cursor = db_conn.execute("SELECT * FROM materials ORDER BY name")
+    for mat_row in materials_cursor.fetchall():
+        material = dict(mat_row)
+        bh_cursor = db_conn.execute(
+            "SELECT b_value, h_value FROM bh_curve_points WHERE material_id = ?",
+            (material["id"],),
+        )
+        material["bh_curve"] = [
+            [row["b_value"], row["h_value"]] for row in bh_cursor.fetchall()
+        ]
+        del material["id"]
+        library_data["materials"].append(material)
+
+    # Bauteile laden
+    components_cursor = db_conn.execute("SELECT * FROM components ORDER BY type, name")
+    for comp_row in components_cursor.fetchall():
+        comp_type = comp_row["type"]
+        if comp_type not in library_data["components"]:
+            library_data["components"][comp_type] = []
+
+        component = {
+            "templateProductInformation": {
+                "name": comp_row["name"],
+                "productName": comp_row["productName"],
+                "manufacturer": comp_row["manufacturer"],
+                "manufacturerNumber": comp_row["manufacturerNumber"],
+                "companyNumber": comp_row["companyNumber"],
+                "uniqueNumber": comp_row["uniqueNumber"],
+            },
+            "specificProductInformation": json.loads(
+                comp_row["specificProductInformation"] or "{}"
+            ),
+        }
+        tags_cursor = db_conn.execute(
+            """SELECT t.name FROM tags t JOIN component_tags ct ON t.id = ct.tag_id
+               WHERE ct.component_id = ?""",
+            (comp_row["id"],),
+        )
+        component["templateProductInformation"]["tags"] = [
+            row["name"] for row in tags_cursor.fetchall()
+        ]
+        library_data["components"][comp_type].append(component)
+
+    return library_data
 
 
 @analysis_bp.route("/analysis/runs", methods=["GET"])
@@ -260,7 +313,7 @@ def get_full_result_preview(run_folder):
         return jsonify({"error": "simulation_run.json nicht gefunden."}), 404
 
     data = load_json(sim_run_path)
-    library_data = load_json(LIBRARY_FILE)
+    library_data = _get_library_from_db()
 
     spielraum = data.get("simulation_meta", {}).get("simulationsraum", {})
     position_steps = (
@@ -382,6 +435,10 @@ def get_full_result_preview(run_folder):
                         2 * insulation_thickness
                     )
                     current_offset = -total_width / 2
+                    transform = (
+                        f"rotate({-rotation} {pos.get('x', 0)} {pos.get('y', 0)})"
+                    )
+
                     if s_geo.get("withInsulation"):
                         scene_elements.append(
                             {
@@ -390,8 +447,8 @@ def get_full_result_preview(run_folder):
                                 "y": pos["y"] - s_geo["height"] / 2,
                                 "width": insulation_thickness,
                                 "height": s_geo["height"],
-                                "fill": "#ADD8E6",
-                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                                "fill": "#e9ecef",
+                                "transform": transform,
                             }
                         )
                         current_offset += insulation_thickness
@@ -404,7 +461,7 @@ def get_full_result_preview(run_folder):
                                 "width": sheet_thickness,
                                 "height": s_geo["height"],
                                 "fill": "#a9a9a9",
-                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                                "transform": transform,
                             }
                         )
                         current_offset += sheet_thickness
@@ -416,8 +473,8 @@ def get_full_result_preview(run_folder):
                                 "y": pos["y"] - s_geo["height"] / 2,
                                 "width": insulation_thickness,
                                 "height": s_geo["height"],
-                                "fill": "#ADD8E6",
-                                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
+                                "fill": "#e9ecef",
+                                "transform": transform,
                             }
                         )
                 else:

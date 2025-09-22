@@ -49,3 +49,10 @@
 .tab-content.active {
     display: block;
 }
+
+.main-column .filter-bar {
+    max-width: none;
+    margin: 0 0 2rem 0; /* Filterleiste an den Anfang setzen */
+    padding: 0;
+    background-color: transparent;
+}

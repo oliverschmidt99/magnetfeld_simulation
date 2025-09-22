@@ -1,6 +1,6 @@
 // static/js/materials.js
 
-let bhChart = null; // Globale Chart-Instanz
+let bhChart = null;
 let currentEditingMaterial = null;
 
 function initializeMaterialEditor(library) {
@@ -22,29 +22,139 @@ function initializeMaterialEditor(library) {
     .getElementById("delete-material-btn")
     .addEventListener("click", deleteMaterial);
   document
-    .getElementById("material-is-nonlinear")
+    .getElementById("material-bh-type")
     .addEventListener("change", toggleBHCurveInputs);
+  document
+    .getElementById("material-lamination-type")
+    .addEventListener("change", toggleLaminationInputs);
+  document
+    .getElementById("import-femm-material-btn")
+    .addEventListener("click", openFemmImportModal);
+  document
+    .getElementById("cancel-femm-import-btn")
+    .addEventListener("click", () => {
+      document.getElementById("femm-import-modal").style.display = "none";
+    });
+  document
+    .getElementById("confirm-femm-import-btn")
+    .addEventListener("click", () => {
+      const select = document.getElementById("femm-material-select");
+      const selectedMaterial = select.value;
+      if (selectedMaterial) {
+        importFemmMaterial(selectedMaterial);
+      }
+    });
 
   renderMaterialList(library.materials || []);
 }
 
+// --- FEMM Material Import ---
+
+async function openFemmImportModal() {
+  const modal = document.getElementById("femm-import-modal");
+  const select = document.getElementById("femm-material-select");
+  select.innerHTML = "<option value=''>Lade Materialien aus FEMM...</option>";
+  select.disabled = true;
+  modal.style.display = "flex";
+
+  try {
+    const response = await fetch("/api/femm_materials");
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(
+        err.error || "FEMM-Materialien konnten nicht geladen werden."
+      );
+    }
+
+    const structuredMaterials = await response.json();
+
+    select.innerHTML = "<option value=''>-- Bitte wählen --</option>";
+
+    structuredMaterials.forEach((group) => {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = group.folder;
+
+      group.materials.forEach((mat) => {
+        const fullMaterialName =
+          group.folder === "Uncategorized" ? mat : `${group.folder}\\${mat}`;
+        const option = new Option(mat, fullMaterialName);
+        optgroup.appendChild(option);
+      });
+
+      select.appendChild(optgroup);
+    });
+
+    select.disabled = false;
+  } catch (error) {
+    select.innerHTML = `<option value=''>Fehler: ${error.message}</option>`;
+  }
+}
+
+async function importFemmMaterial(materialName) {
+  const importModal = document.getElementById("femm-import-modal");
+  importModal.style.display = "none";
+
+  const editorModal = document.getElementById("material-editor-modal");
+  editorModal.style.display = "flex";
+
+  document.getElementById(
+    "material-editor-title"
+  ).textContent = `Importiere ${materialName}...`;
+
+  try {
+    const response = await fetch(
+      `/api/femm_material_details/${encodeURIComponent(materialName)}`
+    );
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(
+        err.error || "Material-Details konnten nicht geladen werden."
+      );
+    }
+
+    const props = await response.json();
+
+    openMaterialEditor();
+    document.getElementById(
+      "material-editor-title"
+    ).textContent = `Material importieren: ${props.name || materialName}`;
+
+    document.getElementById("material-name").value = props.name || materialName;
+    document.getElementById("material-name").disabled = false;
+    document.getElementById("material-bh-type").value = props.is_nonlinear
+      ? "nonlinear"
+      : "linear";
+    document.getElementById("material-mur-x").value = props.mu_x || 1;
+    document.getElementById("material-mur-y").value = props.mu_y || 1;
+    document.getElementById("material-hc").value = props.hc || 0;
+    document.getElementById("material-sigma").value = props.sigma || 0;
+
+    const tableBody = document.querySelector("#bh-curve-table tbody");
+    tableBody.innerHTML = "";
+    if (props.is_nonlinear && props.bh_curve && props.bh_curve.length > 0) {
+      props.bh_curve.forEach((p) => addBHPointRow(p[0], p[1]));
+    } else {
+      addBHPointRow(0, 0);
+    }
+
+    toggleBHCurveInputs();
+    updateBHChart();
+  } catch (error) {
+    alert(`Fehler beim Importieren von ${materialName}: ${error.message}`);
+    document.getElementById("material-editor-modal").style.display = "none";
+  }
+}
+
+// --- Standard Material Editor Funktionen ---
+
 function renderMaterialList(materials) {
   const container = document.getElementById("material-list");
   container.innerHTML = "";
+  if (!materials) return;
 
   const table = document.createElement("table");
   table.className = "summary-table";
-  table.innerHTML = `
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Typ</th>
-                <th>Aktion</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    `;
+  table.innerHTML = `<thead><tr><th>Name</th><th>Typ</th><th>Aktion</th></tr></thead><tbody></tbody>`;
   const tbody = table.querySelector("tbody");
   materials.forEach((mat) => {
     const row = tbody.insertRow();
@@ -57,7 +167,6 @@ function renderMaterialList(materials) {
       .querySelector(".edit-material-btn")
       .addEventListener("click", () => openMaterialEditor(mat));
   });
-
   container.appendChild(table);
 }
 
@@ -66,8 +175,7 @@ function openMaterialEditor(material = null) {
   const modal = document.getElementById("material-editor-modal");
   const title = document.getElementById("material-editor-title");
   const nameInput = document.getElementById("material-name");
-  const murInput = document.getElementById("material-mur");
-  const isNonlinearCheckbox = document.getElementById("material-is-nonlinear");
+  const bhTypeSelect = document.getElementById("material-bh-type");
   const tableBody = document.querySelector("#bh-curve-table tbody");
   tableBody.innerHTML = "";
 
@@ -75,17 +183,36 @@ function openMaterialEditor(material = null) {
     title.textContent = `Material bearbeiten: ${material.name}`;
     nameInput.value = material.name;
     nameInput.disabled = true;
-    murInput.value = material.mu_x || 1;
-    isNonlinearCheckbox.checked = material.is_nonlinear || false;
+    bhTypeSelect.value = material.is_nonlinear ? "nonlinear" : "linear";
+    document.getElementById("material-mur-x").value = material.mu_x || 1;
+    document.getElementById("material-mur-y").value = material.mu_y || 1;
+    document.getElementById("material-hc").value = material.hc || 0;
+    document.getElementById("material-sigma").value = material.sigma || 0;
+    document.getElementById("material-j").value = material.j || 0;
+    document.getElementById("material-lamination-type").value =
+      material.lamination_type || 0;
+    document.getElementById("material-lam-thickness").value =
+      material.lam_thickness || 0;
+    document.getElementById("material-lam-fill").value =
+      material.lam_fill_factor || 1;
+
     (material.bh_curve || []).forEach((point) =>
       addBHPointRow(point[0], point[1])
     );
+    if ((material.bh_curve || []).length === 0) addBHPointRow(0, 0);
   } else {
     title.textContent = "Neues Material erstellen";
     nameInput.value = "";
     nameInput.disabled = false;
-    murInput.value = "2500";
-    isNonlinearCheckbox.checked = false;
+    bhTypeSelect.value = "linear";
+    document.getElementById("material-mur-x").value = "2500";
+    document.getElementById("material-mur-y").value = "2500";
+    document.getElementById("material-hc").value = "0";
+    document.getElementById("material-sigma").value = "0";
+    document.getElementById("material-j").value = "0";
+    document.getElementById("material-lamination-type").value = "0";
+    document.getElementById("material-lam-thickness").value = "0";
+    document.getElementById("material-lam-fill").value = "1";
     addBHPointRow(0, 0);
   }
 
@@ -94,19 +221,29 @@ function openMaterialEditor(material = null) {
     : "none";
 
   toggleBHCurveInputs();
+  toggleLaminationInputs();
   updateBHChart();
   modal.style.display = "flex";
 }
 
 function toggleBHCurveInputs() {
-  const isNonlinear = document.getElementById("material-is-nonlinear").checked;
-  document.getElementById("nonlinear-bh-group").style.display = isNonlinear
-    ? "block"
-    : "none";
-  document.getElementById("linear-mu-group").style.display = isNonlinear
-    ? "none"
-    : "block";
+  const isNonlinear =
+    document.getElementById("material-bh-type").value === "nonlinear";
+  document.getElementById("nonlinear-properties-section").style.display =
+    isNonlinear ? "block" : "none";
+  document.getElementById("linear-properties-section").style.display =
+    isNonlinear ? "none" : "block";
   updateBHChart();
+}
+
+function toggleLaminationInputs() {
+  const lamType = document.getElementById("material-lamination-type").value;
+  const laminationFields = document.getElementById("lamination-fields");
+  if (parseInt(lamType) > 0 && parseInt(lamType) < 4) {
+    laminationFields.style.display = "flex";
+  } else {
+    laminationFields.style.display = "none";
+  }
 }
 
 function addBHPointRow(b = "", h = "") {
@@ -129,12 +266,11 @@ function addBHPointRow(b = "", h = "") {
 }
 
 function updateBHChart() {
-  const isNonlinear = document.getElementById("material-is-nonlinear").checked;
+  const isNonlinear =
+    document.getElementById("material-bh-type").value === "nonlinear";
   const ctx = document.getElementById("bh-curve-chart").getContext("2d");
 
-  if (bhChart) {
-    bhChart.destroy();
-  }
+  if (bhChart) bhChart.destroy();
 
   if (!isNonlinear) {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -158,7 +294,7 @@ function updateBHChart() {
     .sort((a, b) => a.x - b.x);
 
   bhChart = new Chart(ctx, {
-    type: "scatter", // KORREKTUR: Typ auf 'scatter' geändert
+    type: "scatter",
     data: {
       datasets: [
         {
@@ -166,8 +302,8 @@ function updateBHChart() {
           data: dataPoints,
           borderColor: "#0d6efd",
           backgroundColor: "#0d6efd",
-          showLine: true, // KORREKTUR: Linie zwischen den Punkten explizit anzeigen
-          tension: 0.2, // Sorgt für eine leichtere Krümmung der Linie
+          showLine: true,
+          tension: 0.2,
         },
       ],
     },
@@ -178,17 +314,13 @@ function updateBHChart() {
         x: { title: { display: true, text: "Magnetische Feldstärke H (A/m)" } },
         y: { title: { display: true, text: "Magnetische Flussdichte B (T)" } },
       },
-      plugins: {
-        legend: {
-          display: true,
-        },
-      },
     },
   });
 }
 
 function gatherMaterialData() {
-  const isNonlinear = document.getElementById("material-is-nonlinear").checked;
+  const isNonlinear =
+    document.getElementById("material-bh-type").value === "nonlinear";
   const bh_curve = isNonlinear
     ? Array.from(document.querySelectorAll("#bh-curve-table tbody tr")).map(
         (row) => [
@@ -201,8 +333,17 @@ function gatherMaterialData() {
   return {
     name: document.getElementById("material-name").value,
     is_nonlinear: isNonlinear,
-    mu_x: parseFloat(document.getElementById("material-mur").value) || 1,
-    mu_y: parseFloat(document.getElementById("material-mur").value) || 1,
+    mu_x: parseFloat(document.getElementById("material-mur-x").value) || 1,
+    mu_y: parseFloat(document.getElementById("material-mur-y").value) || 1,
+    hc: parseFloat(document.getElementById("material-hc").value) || 0,
+    sigma: parseFloat(document.getElementById("material-sigma").value) || 0,
+    j: parseFloat(document.getElementById("material-j").value) || 0,
+    lamination_type:
+      parseInt(document.getElementById("material-lamination-type").value) || 0,
+    lam_thickness:
+      parseFloat(document.getElementById("material-lam-thickness").value) || 0,
+    lam_fill_factor:
+      parseFloat(document.getElementById("material-lam-fill").value) || 1,
     bh_curve: bh_curve,
   };
 }

@@ -5,125 +5,142 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/library.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
 {% endblock %}
+
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Datenverwaltung</h2>
+</div>
+{% endblock %}
+
 {% block content %}
+<script id="library-data" type="application/json">
+    {{ library|tojson|safe }}
+</script>
 <div class="container">
-    <div class="sub-nav-bar">
-        <h2>Datenverwaltung</h2>
-    </div>
-    <div class="tabs">
-        <button type="button" class="tab-link active" onclick="openTab(event, 'components')">Bauteil-Bibliothek
-            (JSON)</button>
-        <button type="button" class="tab-link" onclick="openTab(event, 'materials')">Material-Bibliothek</button>
-        <button type="button" class="tab-link" onclick="openTab(event, 'master-data')">Stammdaten (CSV)</button>
-    </div>
+    <div class="two-column-layout vertical-nav-layout">
+        <div class="side-column-nav" id="library-nav">
+            <a href="#" class="nav-link active" data-target="components">
+                <h4>Bauteil-Bibliothek</h4>
+                <p>Wandler, Schienen und Bleche verwalten.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="materials">
+                <h4>Material-Bibliothek</h4>
+                <p>Lineare und nichtlineare Materialien definieren.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="master-data">
+                <h4>Stammdaten</h4>
+                <p>CSV-Dateien für die Simulation bearbeiten.</p>
+            </a>
+        </div>
 
-    <div id="components" class="tab-content active">
-        <div id="editor-container">
-            <div class="filter-bar">
-                <div class="form-group">
-                    <label for="component-type-filter">Bauteiltyp</label>
-                    <select id="component-type-filter">
-                        <option value="all">Alle Typen</option>
-                        <option value="transformers">Wandler</option>
-                        <option value="copperRails">Kupferschienen</option>
-                        <option value="transformerSheets">Abschirmbleche</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="search-filter">Suche nach Name</label>
-                    <input type="text" id="search-filter" placeholder="z.B. CELSA_ALO...">
-                </div>
-                <div class="form-group">
-                    <button type="button" id="add-new-component-btn" class="button">Neues Bauteil</button>
-                </div>
-            </div>
-
-            <div id="component-list-accordion">
-            </div>
-
-            <div id="component-type-modal" class="modal-overlay initially-hidden">
-                <div class="modal-content">
-                    <h2>Welchen Bauteiltyp möchtest du erstellen?</h2>
-                    <div class="button-group modal-button-group-centered">
-                        <button type="button" id="select-transformer" class="button">Wandler</button>
-                        <button type="button" id="select-copperRail" class="button">Kupferschiene</button>
-                        <button type="button" id="select-transformerSheet" class="button">Abschirmblech</button>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" id="cancel-type-selection" class="button secondary">Abbrechen</button>
-                    </div>
-                </div>
-            </div>
-
-
-            <div id="component-editor-modal" class="modal-overlay initially-hidden">
-                <div class="modal-content">
-                    <h2 id="editor-title">Bauteil bearbeiten</h2>
-                    <div class="editor-layout">
-                        <form id="component-editor-form" class="component-form">
-                            <button type="submit" class="hidden" aria-label="Submit Form"></button>
-                        </form>
-                        <div class="component-preview-container">
-                            <h3>Vorschau</h3>
-                            <div class="component-preview">
-                                <svg id="editor-preview-svg"></svg>
+        <div class="main-column">
+            <div id="library-sections">
+                <div id="components" class="config-section active">
+                    <div id="editor-container">
+                        <div class="filter-bar">
+                            <div class="form-group">
+                                <label for="component-type-filter">Bauteiltyp</label>
+                                <select id="component-type-filter">
+                                    <option value="all">Alle Typen</option>
+                                    <option value="transformers">Wandler</option>
+                                    <option value="copperRails">Kupferschienen</option>
+                                    <option value="transformerSheets">Abschirmbleche</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="search-filter">Suche nach Name</label>
+                                <input type="text" id="search-filter" placeholder="z.B. CELSA_ALO...">
+                            </div>
+                            <div class="form-group">
+                                <button type="button" id="add-new-component-btn" class="button">Neues Bauteil</button>
                             </div>
                         </div>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" id="save-component-btn" class="button">Speichern</button>
-                        <button type="button" id="delete-component-btn" class="button danger">Löschen</button>
-                        <button type="button" id="cancel-edit-btn" class="button secondary">Abbrechen</button>
+                        <div id="component-list-accordion"></div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div id="tag-selection-modal" class="modal-overlay initially-hidden">
-            <div class="modal-content">
-                <h2>Tags auswählen</h2>
-                <div class="search-container">
-                    <input type="text" id="tag-search-input" placeholder="Tag suchen...">
+                <div id="materials" class="config-section">
+                    <h3>Material-Bibliothek verwalten</h3>
+                    <p>Hier kannst du Materialien mit linearen Eigenschaften oder nichtlinearen B-H-Kurven definieren.
+                    </p>
+                    <div class="filter-bar">
+                        <button type="button" id="add-new-material-btn" class="button">Neues Material
+                            hinzufügen</button>
+                    </div>
+                    <div id="material-list"></div>
                 </div>
-                <div id="modal-tag-list">
-                </div>
-                <div class="button-group">
-                    <button type="button" id="save-tags-btn" class="button">Übernehmen</button>
-                    <button type="button" id="cancel-tags-btn" class="button secondary">Abbrechen</button>
+
+                <div id="master-data" class="config-section">
+                    <h3>Stammdaten-Editor (CSV-Dateien)</h3>
+                    <p>Platzhalter: Der Editor für die CSV-Stammdaten wird hier geladen.</p>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <div id="materials" class="tab-content">
-        <h3>Material-Bibliothek verwalten</h3>
-        <p>Hier kannst du Materialien mit linearen Eigenschaften oder nichtlinearen B-H-Kurven definieren.</p>
-        <div class="filter-bar">
-            <button type="button" id="add-new-material-btn" class="button">Neues Material hinzufügen</button>
+<div id="component-type-modal" class="modal-overlay initially-hidden">
+    <div class="modal-content">
+        <h2>Welchen Bauteiltyp möchtest du erstellen?</h2>
+        <div class="button-group modal-button-group-centered">
+            <button type="button" id="select-transformer" class="button">Wandler</button>
+            <button type="button" id="select-copperRail" class="button">Kupferschiene</button>
+            <button type="button" id="select-transformerSheet" class="button">Abschirmblech</button>
         </div>
-        <div id="material-list">
+        <div class="button-group">
+            <button type="button" id="cancel-type-selection" class="button secondary">Abbrechen</button>
         </div>
     </div>
+</div>
 
-    <div id="master-data" class="tab-content">
-        <h3>Stammdaten-Editor (CSV-Dateien)</h3>
-        <p>Platzhalter: Der Editor für die CSV-Stammdaten wird hier geladen.</p>
+<div id="component-editor-modal" class="modal-overlay initially-hidden">
+    <div class="modal-content">
+        <h2 id="editor-title">Bauteil bearbeiten</h2>
+        <div class="editor-layout">
+            <form id="component-editor-form" class="component-form">
+                <button type="submit" class="hidden" aria-label="Submit Form"></button>
+            </form>
+            <div class="component-preview-container">
+                <h3>Vorschau</h3>
+                <div class="component-preview">
+                    <svg id="editor-preview-svg"></svg>
+                </div>
+            </div>
+        </div>
+        <div class="button-group">
+            <button type="button" id="save-component-btn" class="button">Speichern</button>
+            <button type="button" id="delete-component-btn" class="button danger">Löschen</button>
+            <button type="button" id="cancel-edit-btn" class="button secondary">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<div id="tag-selection-modal" class="modal-overlay initially-hidden">
+    <div class="modal-content">
+        <h2>Tags auswählen</h2>
+        <div class="search-container">
+            <input type="text" id="tag-search-input" placeholder="Tag suchen...">
+        </div>
+        <div id="modal-tag-list"></div>
+        <div class="button-group">
+            <button type="button" id="save-tags-btn" class="button">Übernehmen</button>
+            <button type="button" id="cancel-tags-btn" class="button secondary">Abbrechen</button>
+        </div>
     </div>
 </div>
 
 <div id="material-editor-modal" class="modal-overlay initially-hidden">
     <div class="modal-content">
         <h2 id="material-editor-title">Material bearbeiten</h2>
-
         <div class="material-editor-layout">
-
             <div class="component-preview-container">
                 <h3>Vorschau der B-H Kurve</h3>
-                <div class="component-preview">
-                    <canvas id="bh-curve-chart"></canvas>
+                <div class="component-preview"><canvas id="bh-curve-chart"></canvas></div>
+                <div class="form-group btn-margin-top">
+                    <button type="button" id="import-femm-material-btn" class="button secondary">Aus FEMM-Bibliothek
+                        importieren</button>
                 </div>
             </div>
-
             <div class="component-form">
                 <div class="form-section">
                     <h3>Allgemein</h3>
@@ -131,39 +148,88 @@
                         <label for="material-name">Name</label>
                         <input type="text" id="material-name" required>
                     </div>
-                </div>
-                <div class="form-section">
-                    <h3>Eigenschaften</h3>
-                    <div class="form-group checkbox-group">
-                        <input type="checkbox" id="material-is-nonlinear">
-                        <label for="material-is-nonlinear">Nichtlineare B-H Kurve verwenden</label>
-                    </div>
-                    <div class="form-group" id="linear-mu-group">
-                        <label>Lineare Relative Permeabilität (µr)</label>
-                        <input type="number" id="material-mur" value="1" step="100">
+                    <div class="form-group">
+                        <label for="material-bh-type">B-H Beziehung</label>
+                        <select id="material-bh-type">
+                            <option value="linear">Linear B-H Relationship</option>
+                            <option value="nonlinear">Nonlinear B-H Curve</option>
+                        </select>
                     </div>
                 </div>
-                <div class="form-section initially-hidden" id="nonlinear-bh-group">
-                    <h3>B-H Kurvenpunkte</h3>
-                    <p>Füge hier die Punkte der Hysteresekurve hinzu.</p>
+                <div id="linear-properties-section" class="form-section">
+                    <h3>Lineare Materialeigenschaften</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Relative Permeabilität µ_x</label>
+                            <input type="number" id="material-mur-x" value="1" step="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Relative Permeabilität µ_y</label>
+                            <input type="number" id="material-mur-y" value="1" step="100">
+                        </div>
+                    </div>
+                </div>
+                <div id="nonlinear-properties-section" class="form-section initially-hidden">
+                    <h3>Nichtlineare Materialeigenschaften</h3>
+                    <p>Definiere die Punkte der B-H Kurve.</p>
                     <table class="summary-table" id="bh-curve-table">
                         <thead>
                             <tr>
-                                <th>Flussdichte B (Tesla)</th>
+                                <th>Flussdichte B (T)</th>
                                 <th>Feldstärke H (A/m)</th>
                                 <th>Aktion</th>
                             </tr>
                         </thead>
-                        <tbody>
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                     <button type="button" id="add-bh-point-btn" class="button secondary btn-margin-top">+ Punkt
                         hinzufügen</button>
                 </div>
+                <div class="form-section">
+                    <h3>Weitere Eigenschaften</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Koerzitivfeldstärke Hc (A/m)</label>
+                            <input type="number" id="material-hc" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Elektr. Leitfähigkeit σ (MS/m)</label>
+                            <input type="number" id="material-sigma" value="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Stromdichte J (MA/m^2)</label>
+                        <input type="number" id="material-j" value="0" step="0.1">
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h3>Spezielle Attribute</h3>
+                    <div class="form-group">
+                        <label for="material-lamination-type">Lamination &amp; Wire Type</label>
+                        <select id="material-lamination-type">
+                            <option value="0">Not laminated or stranded</option>
+                            <option value="1">Laminated in-plane</option>
+                            <option value="2">Laminated parallel to x (planar)</option>
+                            <option value="3">Laminated parallel to y (planar)</option>
+                            <option value="4">Magnet wire</option>
+                            <option value="5">Plain stranded wire</option>
+                            <option value="6">Litz wire</option>
+                            <option value="7">Square wire</option>
+                        </select>
+                    </div>
+                    <div id="lamination-fields" class="form-row initially-hidden">
+                        <div class="form-group">
+                            <label>Lam thickness (mm)</label>
+                            <input type="number" id="material-lam-thickness" value="0" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>Lam fill factor</label>
+                            <input type="number" id="material-lam-fill" value="1" step="0.01">
+                        </div>
+                    </div>
+                </div>
             </div>
-
         </div>
-
         <div class="button-group">
             <button type="button" id="save-material-btn" class="button">Speichern</button>
             <button type="button" id="delete-material-btn" class="button danger">Löschen</button>
@@ -171,7 +237,24 @@
         </div>
     </div>
 </div>
+
+<div id="femm-import-modal" class="modal-overlay initially-hidden">
+    <div class="modal-content">
+        <h2>Material aus FEMM-Bibliothek importieren</h2>
+        <div class="form-group">
+            <label for="femm-material-select">Material auswählen</label>
+            <select id="femm-material-select" class="form-control">
+                <option value="">Lade Materialien...</option>
+            </select>
+        </div>
+        <div class="button-group">
+            <button type="button" id="confirm-femm-import-btn" class="button">Auswählen &amp; Importieren</button>
+            <button type="button" id="cancel-femm-import-btn" class="button secondary">Abbrechen</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/tags.js') }}"></script>
 <script src="{{ url_for('static', filename='js/preview.js') }}"></script>

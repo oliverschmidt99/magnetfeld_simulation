@@ -1,8 +1,6 @@
 # app.py
 """
 Hauptanwendung für den FEMM-Simulationskonfigurator.
-Diese Anwendung steuert die Web-Oberfläche, verarbeitet Benutzereingaben
-und interagiert mit der SQLite-Datenbank für alle Bibliotheks- und Stammdaten.
 """
 import logging
 import json
@@ -12,7 +10,6 @@ import time
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
-# Blueprints und Module importieren
 from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
@@ -45,9 +42,7 @@ app.register_blueprint(configurations_bp, url_prefix="/api")
 
 
 def get_library_from_db():
-    """
-    Holt die gesamte Bibliothek aus der DB und formatiert sie wie die alte JSON.
-    """
+    """Holt die gesamte Bibliothek aus der DB und formatiert sie."""
     db_conn = db.get_db()
     library_data = {"materials": [], "components": {}}
 
@@ -84,7 +79,8 @@ def get_library_from_db():
             ),
         }
         tags_cursor = db_conn.execute(
-            "SELECT t.name FROM tags t JOIN component_tags ct ON t.id = ct.tag_id WHERE ct.component_id = ?",
+            """SELECT t.name FROM tags t JOIN component_tags ct ON t.id = ct.tag_id
+               WHERE ct.component_id = ?""",
             (comp_row["id"],),
         )
         component["templateProductInformation"]["tags"] = [
@@ -99,7 +95,8 @@ def get_library_from_db():
 @app.route("/api/analysis/results_file/<path:filepath>")
 def serve_results_file(filepath):
     """Liefert eine Datei aus dem Simulationsergebnis-Ordner sicher aus."""
-    return send_from_directory(os.path.join(app.root_path, SIMULATIONS_DIR), filepath)
+    results_path = os.path.join(app.root_path, SIMULATIONS_DIR)
+    return send_from_directory(results_path, filepath)
 
 
 @app.route("/")
@@ -141,7 +138,11 @@ def results():
 @app.route("/library")
 def library():
     """Zeigt die kombinierte Bibliotheks- und Stammdaten-Verwaltung."""
-    return render_template("library.html", timestamp=int(time.time()))
+    with app.app_context():
+        library_data = get_library_from_db()
+    return render_template(
+        "library.html", library=library_data, timestamp=int(time.time())
+    )
 
 
 @app.route("/settings")
@@ -158,28 +159,22 @@ def generate_simulation():
         library_data = get_library_from_db()
 
     active_assemblies = [
-        asm for asm in data.get("assemblies", []) if asm.get("enabled", True)
+        a for a in data.get("assemblies", []) if a.get("enabled", True)
     ]
     active_standalone = [
-        comp
-        for comp in data.get("standAloneComponents", [])
-        if comp.get("enabled", True)
+        c for c in data.get("standAloneComponents", []) if c.get("enabled", True)
     ]
     sim_params = data.get("simulationParams", {})
-    nennstrom_str = sim_params.get("ratedCurrent")
 
     try:
-        nennstrom_float = float(nennstrom_str)
+        nennstrom_float = float(sim_params.get("ratedCurrent"))
     except (ValueError, TypeError):
         return jsonify({"error": "Ungültiger Nennstrom-Wert."}), 400
 
-    startpositionen = sim_params.get("startpositionen")
-    schrittweiten = sim_params.get("schrittweiten")
-    spielraum = sim_params.get("spielraum")
-    bewegungs_richtungen = sim_params.get("bewegungsRichtungen", {})
-
     leiter_bewegungspfade = calculate_position_steps(
-        startpositionen, bewegungs_richtungen, schrittweiten
+        sim_params.get("startpositionen"),
+        sim_params.get("bewegungsRichtungen"),
+        sim_params.get("schrittweiten"),
     )
 
     assemblies_with_details = [
@@ -193,21 +188,21 @@ def generate_simulation():
         assemblies_with_details,
         standalone_with_details,
         leiter_bewegungspfade[0],
-        spielraum,
+        sim_params.get("spielraum"),
     )
-    peak_current = nennstrom_float * math.sqrt(2)
+
     electrical_system = data.get("electricalSystem", [])
     for phase in electrical_system:
-        phase["peakCurrentA"] = peak_current
+        phase["peakCurrentA"] = nennstrom_float * math.sqrt(2)
 
     final_assemblies = []
-    for assembly_data in assemblies_with_details:
-        phase_name = assembly_data.get("phaseName")
-        if startpositionen and f"x_{phase_name}" in startpositionen:
-            assembly_data["calculated_positions"] = [
+    for asm_data in assemblies_with_details:
+        phase_name = asm_data.get("phaseName")
+        if sim_params.get("startpositionen", {}).get(f"x_{phase_name}") is not None:
+            asm_data["calculated_positions"] = [
                 step[phase_name] for step in leiter_bewegungspfade
             ]
-            final_assemblies.append(assembly_data)
+            final_assemblies.append(asm_data)
 
     simulation_data = {
         "description": "Konfiguration erstellt via Web-UI",
@@ -217,9 +212,9 @@ def generate_simulation():
         "assemblies": final_assemblies,
         "standAloneComponents": standalone_with_details,
         "simulation_meta": {
-            "nennstrom_A": nennstrom_str,
-            "bewegungsgruppe": bewegungs_richtungen,
-            "simulationsraum": spielraum,
+            "nennstrom_A": sim_params.get("ratedCurrent"),
+            "bewegungsgruppe": sim_params.get("bewegungsRichtungen"),
+            "simulationsraum": sim_params.get("spielraum"),
             "bewegungspfade_alle_leiter": {
                 "beschreibung": "Bewegungsgruppe: Manuell",
                 "schritte_details": leiter_bewegungspfade,
@@ -248,12 +243,10 @@ def visualize_configuration():
         library_data = get_library_from_db()
 
     active_assemblies = [
-        asm for asm in data.get("assemblies", []) if asm.get("enabled", True)
+        a for a in data.get("assemblies", []) if a.get("enabled", True)
     ]
     active_standalone = [
-        comp
-        for comp in data.get("standAloneComponents", [])
-        if comp.get("enabled", True)
+        c for c in data.get("standAloneComponents", []) if c.get("enabled", True)
     ]
     sim_params = data.get("simulationParams", {})
 
@@ -263,17 +256,17 @@ def visualize_configuration():
         sim_params.get("schrittweiten"),
     )
 
-    scenes = []
-    coordinate_summary = []
+    scenes, coordinate_summary = [], []
     for i, step in enumerate(position_steps):
-        scene_elements = []
-        step_coords = {"step_name": f"Positionsschritt {i}", "components": []}
+        scene_elements, step_coords = [], {
+            "step_name": f"Positionsschritt {i}",
+            "components": [],
+        }
 
         for asm_data in active_assemblies:
             scene_elements, step_coords = process_assembly_for_viz(
                 asm_data, step, library_data, scene_elements, step_coords
             )
-
         for comp_data in active_standalone:
             scene_elements, step_coords = process_standalone_for_viz(
                 comp_data, library_data, scene_elements, step_coords
@@ -298,7 +291,7 @@ def visualize_configuration():
     )
 
 
-# --- Hilfsfunktionen für /generate und /visualize ---
+# --- Hilfsfunktionen ---
 
 
 def add_details_to_assembly(assembly_data, library_data):
@@ -326,7 +319,7 @@ def add_details_to_assembly(assembly_data, library_data):
 
 
 def add_details_to_standalone(component_data, library_data):
-    """Fügt Bauteil-Details aus der Bibliothek zu einem Standalone-Bauteil hinzu."""
+    """Fügt Bauteil-Details zu einem Standalone-Bauteil hinzu."""
     component_data["component_details"] = next(
         (
             s
@@ -344,8 +337,9 @@ def process_assembly_for_viz(asm_data, step, library_data, scene_elements, step_
     phase = asm_data.get("phaseName")
     pos = step.get(phase, {"x": 0, "y": 0})
     asm_details = add_details_to_assembly(asm_data, library_data)
-    trans = asm_details.get("transformer_details")
-    rail = asm_details.get("copperRail_details")
+    trans, rail = asm_details.get("transformer_details"), asm_details.get(
+        "copperRail_details"
+    )
 
     if rail:
         r_geo = rail["specificProductInformation"]["geometry"]
@@ -408,13 +402,11 @@ def process_assembly_for_viz(asm_data, step, library_data, scene_elements, step_
 def process_standalone_for_viz(comp_data, library_data, scene_elements, step_coords):
     """Verarbeitet ein Standalone-Bauteil für die SVG-Visualisierung."""
     pos = comp_data.get("position", {"x": 0, "y": 0})
-    comp_details = add_details_to_standalone(comp_data, library_data)
-    sheet = comp_details.get("component_details")
+    sheet = add_details_to_standalone(comp_data, library_data).get("component_details")
 
     if sheet:
         s_geo = sheet["specificProductInformation"]["geometry"]
         rotation = comp_data.get("rotation", 0)
-        # Hier könnte die detaillierte Logik zum Zeichnen von Blechpaketen etc. stehen
         scene_elements.append(
             {
                 "type": "rect",

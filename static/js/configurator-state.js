@@ -118,7 +118,6 @@ function loadState(data = null) {
   document.getElementById("ratedCurrent").value =
     simulationParams.ratedCurrent || "5000";
 
-  // Wichtig: Zuerst die CSV-basierten Werte setzen, dann mit den gespeicherten Werten überschreiben
   updateParametersFromCsv();
 
   if (simulationParams.startpositionen) {
@@ -184,7 +183,6 @@ function loadState(data = null) {
       simulationParams.phaseSweep.step || "5";
   }
 
-  // Dynamische Listen leeren und neu aufbauen
   document.getElementById("electrical-system-list").innerHTML = "";
   document.getElementById("assemblies-list").innerHTML = "";
   document.getElementById("standalone-list").innerHTML = "";
@@ -196,7 +194,6 @@ function loadState(data = null) {
   (assemblies || []).forEach(addAssembly);
   (standAloneComponents || []).forEach(addStandalone);
 
-  // Dropdowns aktualisieren und korrekte Werte auswählen
   updateAssemblyPhaseDropdowns();
   (assemblies || []).forEach((assembly, index) => {
     const select = document.querySelector(
@@ -205,7 +202,6 @@ function loadState(data = null) {
     if (select) select.value = assembly.phaseName;
   });
 
-  // Am Ende die Visualisierung aktualisieren
   updateVisualization();
 }
 
@@ -267,7 +263,7 @@ async function loadConfiguration() {
   try {
     const response = await fetch(`/api/configurations/${name}`);
     const data = await response.json();
-    loadState(data.data || data); // Passt sich an beide Speicherformate an
+    loadState(data.data || data);
     document.getElementById("simulationName").value = name;
     alert(`Konfiguration '${name}' geladen.`);
   } catch (error) {

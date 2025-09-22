@@ -169,8 +169,11 @@
                         </div>
                     </div>
                 </div>
-                <div id="nonlinear-properties-section" class="form-section initially-hidden">
-                    <h3>Nichtlineare Materialeigenschaften</h3>
+
+                <details class="form-section initially-hidden" id="nonlinear-properties-section">
+                    <summary>
+                        <h3>Nichtlineare Materialeigenschaften</h3>
+                    </summary>
                     <p>Definiere die Punkte der B-H Kurve.</p>
                     <table class="summary-table" id="bh-curve-table">
                         <thead>
@@ -184,7 +187,8 @@
                     </table>
                     <button type="button" id="add-bh-point-btn" class="button secondary btn-margin-top">+ Punkt
                         hinzufügen</button>
-                </div>
+                </details>
+
                 <div class="form-section">
                     <h3>Weitere Eigenschaften</h3>
                     <div class="form-row">
@@ -242,13 +246,13 @@
     <div class="modal-content">
         <h2>Material aus FEMM-Bibliothek importieren</h2>
         <div class="form-group">
-            <label for="femm-material-select">Material auswählen</label>
-            <select id="femm-material-select" class="form-control">
-                <option value="">Lade Materialien...</option>
-            </select>
+            <label for="femm-material-search">Suche nach Material</label>
+            <input type="text" id="femm-material-search" placeholder="z.B. M-19 Steel...">
+        </div>
+        <div id="femm-material-list-container">
+            <p>Lade Materialliste...</p>
         </div>
         <div class="button-group">
-            <button type="button" id="confirm-femm-import-btn" class="button">Auswählen &amp; Importieren</button>
             <button type="button" id="cancel-femm-import-btn" class="button secondary">Abbrechen</button>
         </div>
     </div>

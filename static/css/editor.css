@@ -63,7 +63,7 @@
 }
 
 .modal-content {
-    max-width: 1100px; /* Breiter für mehr Platz */
+    max-width: 1100px;
 }
 
 .modal-button-group-centered {
@@ -95,6 +95,19 @@
     padding-bottom: 0.5rem;
     margin-top: 0;
     margin-bottom: 1rem;
+}
+
+.form-section summary {
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    margin: 0;
+}
+
+.form-section summary h3 {
+    display: inline-block;
+    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .form-section h4 {
@@ -170,49 +183,12 @@
     background-color: #c82333;
 }
 
-.checkbox-container {
-    max-height: 150px;
-    overflow-y: auto;
-    border: 1px solid #ced4da;
-    padding: 10px;
-    border-radius: 4px;
-}
-
-.checkbox-container div {
-    display: flex;
-    align-items: center;
-    padding: 2px 0;
-}
-
-.checkbox-container input {
-    margin-right: 8px;
-    width: auto;
-}
-
-.checkbox-container label {
-    margin-bottom: 0;
-    font-weight: normal;
-}
-
 .initially-hidden {
     display: none;
 }
 
 .hidden {
     display: none;
-}
-
-.checkbox-group {
-    display: flex; 
-    align-items: center; 
-    gap: 10px;
-}
-
-.checkbox-group input {
-    width: auto;
-}
-.checkbox-group label {
-    margin-bottom: 0;
 }
 
 .btn-margin-top {
@@ -233,4 +209,43 @@
 
 .material-editor-layout .component-preview {
     height: 300px;
+}
+
+/* Stile für FEMM Import Modal */
+#femm-material-list-container {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0.5rem;
+    max-height: 40vh;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+}
+
+#femm-material-list-container .accordion-item {
+    border: none;
+    margin-bottom: 0;
+}
+
+#femm-material-list-container .accordion-button {
+    font-weight: bold;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+}
+
+#femm-material-list-container .femm-material-list {
+    list-style-type: none;
+    padding-left: 1rem;
+    margin: 0.5rem 0;
+}
+
+#femm-material-list-container .femm-material-list li {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+#femm-material-list-container .femm-material-list li:hover {
+    background-color: #dee2e6;
 }

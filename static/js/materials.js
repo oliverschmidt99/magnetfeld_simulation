@@ -27,6 +27,8 @@ function initializeMaterialEditor(library) {
   document
     .getElementById("material-lamination-type")
     .addEventListener("change", toggleLaminationInputs);
+
+  // Event Listeners für den neuen FEMM-Import-Modal
   document
     .getElementById("import-femm-material-btn")
     .addEventListener("click", openFemmImportModal);
@@ -36,14 +38,8 @@ function initializeMaterialEditor(library) {
       document.getElementById("femm-import-modal").style.display = "none";
     });
   document
-    .getElementById("confirm-femm-import-btn")
-    .addEventListener("click", () => {
-      const select = document.getElementById("femm-material-select");
-      const selectedMaterial = select.value;
-      if (selectedMaterial) {
-        importFemmMaterial(selectedMaterial);
-      }
-    });
+    .getElementById("femm-material-search")
+    .addEventListener("input", filterFemmMaterialList);
 
   renderMaterialList(library.materials || []);
 }
@@ -52,9 +48,9 @@ function initializeMaterialEditor(library) {
 
 async function openFemmImportModal() {
   const modal = document.getElementById("femm-import-modal");
-  const select = document.getElementById("femm-material-select");
-  select.innerHTML = "<option value=''>Lade Materialien aus FEMM...</option>";
-  select.disabled = true;
+  const container = document.getElementById("femm-material-list-container");
+  container.innerHTML = "<p>Lade Materialliste aus FEMM...</p>";
+  document.getElementById("femm-material-search").value = "";
   modal.style.display = "flex";
 
   try {
@@ -68,26 +64,66 @@ async function openFemmImportModal() {
 
     const structuredMaterials = await response.json();
 
-    select.innerHTML = "<option value=''>-- Bitte wählen --</option>";
+    container.innerHTML = "";
 
     structuredMaterials.forEach((group) => {
-      const optgroup = document.createElement("optgroup");
-      optgroup.label = group.folder;
+      const details = document.createElement("details");
+      details.className = "accordion-item";
+
+      const summary = document.createElement("summary");
+      summary.className = "accordion-button";
+      summary.textContent = group.folder;
+
+      const materialList = document.createElement("ul");
+      materialList.className = "femm-material-list";
 
       group.materials.forEach((mat) => {
         const fullMaterialName =
           group.folder === "Uncategorized" ? mat : `${group.folder}\\${mat}`;
-        const option = new Option(mat, fullMaterialName);
-        optgroup.appendChild(option);
+        const listItem = document.createElement("li");
+        listItem.textContent = mat;
+        listItem.dataset.materialName = fullMaterialName;
+        listItem.addEventListener("click", () =>
+          importFemmMaterial(fullMaterialName)
+        );
+        materialList.appendChild(listItem);
       });
 
-      select.appendChild(optgroup);
+      details.appendChild(summary);
+      details.appendChild(materialList);
+      container.appendChild(details);
+    });
+  } catch (error) {
+    container.innerHTML = `<p style="color:red;">Fehler: ${error.message}</p>`;
+  }
+}
+
+function filterFemmMaterialList(event) {
+  const filter = event.target.value.toLowerCase();
+  const allFolders = document.querySelectorAll(
+    "#femm-material-list-container .accordion-item"
+  );
+
+  allFolders.forEach((folder) => {
+    const items = folder.querySelectorAll("li");
+    let folderHasVisibleItems = false;
+
+    items.forEach((item) => {
+      const text = item.textContent.toLowerCase();
+      const isVisible = text.includes(filter);
+      item.style.display = isVisible ? "" : "none";
+      if (isVisible) {
+        folderHasVisibleItems = true;
+      }
     });
 
-    select.disabled = false;
-  } catch (error) {
-    select.innerHTML = `<option value=''>Fehler: ${error.message}</option>`;
-  }
+    folder.style.display = folderHasVisibleItems ? "" : "none";
+    if (folderHasVisibleItems && filter) {
+      folder.open = true;
+    } else if (!filter) {
+      folder.open = false;
+    }
+  });
 }
 
 async function importFemmMaterial(materialName) {
@@ -229,10 +265,21 @@ function openMaterialEditor(material = null) {
 function toggleBHCurveInputs() {
   const isNonlinear =
     document.getElementById("material-bh-type").value === "nonlinear";
-  document.getElementById("nonlinear-properties-section").style.display =
-    isNonlinear ? "block" : "none";
-  document.getElementById("linear-properties-section").style.display =
-    isNonlinear ? "none" : "block";
+  const nonlinearSection = document.getElementById(
+    "nonlinear-properties-section"
+  );
+  const linearSection = document.getElementById("linear-properties-section");
+
+  if (isNonlinear) {
+    nonlinearSection.style.display = "block";
+    nonlinearSection.open = true;
+    linearSection.style.display = "none";
+  } else {
+    nonlinearSection.style.display = "none";
+    nonlinearSection.open = false;
+    linearSection.style.display = "block";
+  }
+
   updateBHChart();
 }
 
@@ -250,8 +297,8 @@ function addBHPointRow(b = "", h = "") {
   const tableBody = document.querySelector("#bh-curve-table tbody");
   const row = tableBody.insertRow();
   row.innerHTML = `
-        <td><input type="number" class="bh-b" value="${b}" step="0.1"></td>
-        <td><input type="number" class="bh-h" value="${h}" step="10"></td>
+        <td><input type="number" class="bh-b" value="${b}" step="any"></td>
+        <td><input type="number" class="bh-h" value="${h}" step="any"></td>
         <td><button type="button" class="button danger remove-bh-point-btn">&times;</button></td>
     `;
   row.querySelector(".remove-bh-point-btn").addEventListener("click", () => {

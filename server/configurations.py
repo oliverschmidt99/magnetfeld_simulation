@@ -26,7 +26,7 @@ def sanitize_filename(name):
 
 @configurations_bp.route("/configurations", methods=["GET"])
 def list_configurations():
-    """Listet alle gespeicherten .json Konfigurationen aus dem 'configurations'-Ordner auf."""
+    """Listet alle gespeicherten .json Konfigurationen auf."""
     try:
         files = [
             f.replace(".json", "")
@@ -43,18 +43,26 @@ def list_configurations():
 
 @configurations_bp.route("/simulation_runs", methods=["GET"])
 def list_simulation_runs():
-    """Durchsucht den 'simulations'-Ordner und listet alle 'simulation_run.json' auf."""
+    """Durchsucht den 'simulations'-Ordner und listet alle abgeschlossenen Läufe auf."""
     runs = []
     if not os.path.exists(SIMULATIONS_DIR):
         return jsonify([])
-    for root, _, files in os.walk(SIMULATIONS_DIR):
-        if "simulation_run.json" in files:
-            # Erstelle einen relativen Pfad für die Anzeige und die API
-            relative_path = os.path.relpath(root, SIMULATIONS_DIR)
-            # Formatieren des Namens für eine schönere Anzeige
-            display_name = relative_path.replace(os.path.sep, " / ")
-            runs.append({"path": relative_path, "name": display_name})
-    return jsonify(sorted(runs, key=lambda x: x["name"], reverse=True))
+
+    for date_folder in sorted(os.listdir(SIMULATIONS_DIR), reverse=True):
+        date_path = os.path.join(SIMULATIONS_DIR, date_folder)
+        if not os.path.isdir(date_path):
+            continue
+
+        for run_folder in sorted(os.listdir(date_path), reverse=True):
+            run_path = os.path.join(date_path, run_folder)
+            sim_run_json = os.path.join(run_path, "simulation_run.json")
+
+            if os.path.isdir(run_path) and os.path.exists(sim_run_json):
+                relative_path = os.path.join(date_folder, run_folder)
+                display_name = relative_path.replace(os.path.sep, " / ")
+                runs.append({"path": relative_path, "name": display_name})
+
+    return jsonify(runs)
 
 
 @configurations_bp.route("/configurations", methods=["POST"])
@@ -80,7 +88,7 @@ def save_configuration():
 
 @configurations_bp.route("/configurations/<filename>", methods=["GET"])
 def load_configuration(filename):
-    """Lädt eine spezifische Konfigurationsdatei aus dem 'configurations'-Ordner."""
+    """Lädt eine spezifische Konfigurationsdatei."""
     sanitized_name = f"{sanitize_filename(filename)}.json"
     filepath = os.path.join(CONFIG_DIR, sanitized_name)
 
@@ -96,8 +104,7 @@ def load_configuration(filename):
 
 @configurations_bp.route("/simulation_runs/<path:run_path>", methods=["GET"])
 def load_simulation_run(run_path):
-    """Lädt eine 'simulation_run.json' aus einem Unterordner des 'simulations'-Ordners."""
-    # Der Pfad wird sicher zusammengesetzt, um Directory Traversal zu vermeiden
+    """Lädt eine 'simulation_run.json' aus einem Unterordner."""
     safe_path = os.path.abspath(
         os.path.join(SIMULATIONS_DIR, run_path, "simulation_run.json")
     )

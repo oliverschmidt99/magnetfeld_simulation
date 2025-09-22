@@ -1,29 +1,31 @@
 // static/js/configurator-main.js
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Stellt sicher, dass das Skript nur auf der Simulationsseite läuft
-  if (document.getElementById("simulation-form")) {
-    initializeConfigurator();
-  }
-});
-
 // Globale Variablen für den Zustand, die von anderen Skripten verwendet werden
-const library = JSON.parse(
-  document.getElementById("library-data").textContent || "{}"
-);
-const spielraumData = JSON.parse(
-  document.getElementById("spielraum-data").textContent || "{}"
-);
-const schrittweitenData = JSON.parse(
-  document.getElementById("schrittweiten-data").textContent || "{}"
-);
-const startposData = JSON.parse(
-  document.getElementById("startpos-data").textContent || "{}"
-);
-
+let library, spielraumData, schrittweitenData, startposData;
 let phaseCounter = 0;
 let assemblyCounter = 0;
 let standaloneCounter = 0;
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Stellt sicher, dass das Skript nur auf der Simulationsseite läuft
+  if (document.getElementById("simulation-form")) {
+    // Initialisiere die globalen Daten-Konstanten, NACHDEM das DOM geladen ist
+    library = JSON.parse(
+      document.getElementById("library-data").textContent || "{}"
+    );
+    spielraumData = JSON.parse(
+      document.getElementById("spielraum-data").textContent || "{}"
+    );
+    schrittweitenData = JSON.parse(
+      document.getElementById("schrittweiten-data").textContent || "{}"
+    );
+    startposData = JSON.parse(
+      document.getElementById("startpos-data").textContent || "{}"
+    );
+
+    initializeConfigurator();
+  }
+});
 
 /**
  * Initialisiert die gesamte Konfigurator-Seite.
@@ -44,7 +46,6 @@ function initializeConfigurator() {
 
   // Event-Listener, die bei jeder Änderung den Zustand speichern und die Vorschau aktualisieren
   form.addEventListener("input", (e) => {
-    // Spezielle Behandlung für Richtungspresets, um direkte Aktualisierung zu erzwingen
     if (e.target.classList.contains("direction-preset")) {
       updateDirectionInputs(e.target);
     }
@@ -64,7 +65,6 @@ function initializeConfigurator() {
   document.getElementById("ratedCurrent").addEventListener("change", () => {
     updateParametersFromCsv();
     updatePhaseCurrents();
-    // Baugruppen-Dropdowns müssen auch aktualisiert werden, da sie vom Nennstrom abhängen
     const data = gatherFormData();
     const asmList = document.getElementById("assemblies-list");
     asmList.innerHTML = "";
@@ -109,22 +109,14 @@ function initializeConfigurator() {
     .getElementById("load-sim-run-btn")
     .addEventListener("click", loadSimulationRun);
 
-  // Richte Drag & Drop für den Dateiupload ein
   setupDragAndDrop();
-
-  // Lade den letzten gespeicherten Zustand oder initialisiere die Seite
   loadState();
-
-  // Fülle die Dropdowns mit gespeicherten Konfigurationen
   populateLoadOptions();
   populateSimulationRunOptions();
 }
 
 /**
  * Hilfsfunktion, um eine Funktion nur nach einer kurzen Pause auszuführen (Debouncing).
- * Verhindert, dass bei jeder kleinen Eingabe eine Neuberechnung stattfindet.
- * @param {Function} func Die auszuführende Funktion.
- * @param {number} delay Die Verzögerung in Millisekunden.
  */
 function debounce(func, delay) {
   let timeout;

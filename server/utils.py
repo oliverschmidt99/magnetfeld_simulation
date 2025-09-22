@@ -21,6 +21,16 @@ TAGS_FILE = "tags.json"
 RESULTS_DIR = "res"
 
 
+def _safe_float(value, default=0.0):
+    """Wandelt einen Wert sicher in einen Float um."""
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
 def load_json(file_path, default_data=None):
     """Lädt JSON-Daten aus einer Datei."""
     try:
@@ -56,11 +66,8 @@ def generate_unique_id():
 
 def parse_direction_to_vector(direction_dict: Dict) -> Tuple[float, float]:
     """Wandelt ein Richtungs-Dictionary in einen normalisierten (x, y) Vektor um."""
-    try:
-        x = float(direction_dict.get("x", 0))
-        y = float(direction_dict.get("y", 0))
-    except (ValueError, TypeError):
-        x, y = 0.0, 0.0
+    x = _safe_float(direction_dict.get("x"))
+    y = _safe_float(direction_dict.get("y"))
 
     if x == 0 and y == 0:
         return (0.0, 0.0)
@@ -75,14 +82,18 @@ def calculate_position_steps(
     """Berechnet alle Positionsschritte."""
     all_steps = []
 
+    start_pos = start_pos or {}
+    bewegung = bewegung or {}
+    schrittweiten = schrittweiten or {}
+
     conductors = sorted(list(set([key.split("_")[1] for key in start_pos.keys()])))
     if not conductors:
         conductors = ["L1", "L2", "L3"]
 
     start_pos_vec = {
         leiter: {
-            "x": float(start_pos.get(f"x_{leiter}", 0)),
-            "y": float(start_pos.get(f"y_{leiter}", 0)),
+            "x": _safe_float(start_pos.get(f"x_{leiter}")),
+            "y": _safe_float(start_pos.get(f"y_{leiter}")),
         }
         for leiter in conductors
     }
@@ -92,12 +103,11 @@ def calculate_position_steps(
 
     for i in range(1, 5):
         pos_key = f"Pos{i}"
-        step_width_str = schrittweiten.get(pos_key)
+        step_width = _safe_float(schrittweiten.get(pos_key))
 
-        if not step_width_str or float(step_width_str) == 0:
+        if step_width == 0:
             continue
 
-        step_width = float(step_width_str)
         next_pos = copy.deepcopy(all_steps[-1])
 
         for leiter in conductors:

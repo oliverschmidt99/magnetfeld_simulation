@@ -8,6 +8,9 @@
 {% endblock %}
 
 {% block content %}
+<script id="library-data" type="application/json">
+    {{ library|tojson|safe }}
+</script>
 <script id="spielraum-data" type="application/json">
     {{ spielraum_data|tojson|safe }}
 </script>

@@ -402,31 +402,101 @@ def process_assembly_for_viz(asm_data, step, library_data, scene_elements, step_
 def process_standalone_for_viz(comp_data, library_data, scene_elements, step_coords):
     """Verarbeitet ein Standalone-Bauteil für die SVG-Visualisierung."""
     pos = comp_data.get("position", {"x": 0, "y": 0})
-    sheet = add_details_to_standalone(comp_data, library_data).get("component_details")
+    sheet_details = add_details_to_standalone(comp_data, library_data).get(
+        "component_details"
+    )
 
-    if sheet:
-        s_geo = sheet["specificProductInformation"]["geometry"]
+    if sheet_details:
+        s_geo = sheet_details["specificProductInformation"]["geometry"]
         rotation = comp_data.get("rotation", 0)
-        scene_elements.append(
-            {
-                "type": "rect",
-                "x": pos["x"] - s_geo.get("width", 0) / 2,
-                "y": pos["y"] - s_geo.get("height", 0) / 2,
-                "width": s_geo.get("width", 0),
-                "height": s_geo.get("height", 0),
-                "fill": "#a9a9a9",
-                "transform": f"rotate({-rotation} {pos['x']} {pos['y']})",
-            }
-        )
+
+        # Logik für Blechpakete
+        if s_geo.get("type") == "SheetPackage":
+            sheet_count = int(s_geo.get("sheetCount", 1))
+            sheet_thickness = s_geo.get("sheetThickness", 0)
+            height = s_geo.get("height", 0)
+            with_insulation = s_geo.get("withInsulation", False)
+            insulation_thickness = (
+                s_geo.get("insulationThickness", 0) if with_insulation else 0
+            )
+
+            total_width = (sheet_count * sheet_thickness) + (2 * insulation_thickness)
+
+            # Startpunkt für das Zeichnen (linke Kante des Pakets)
+            current_x_offset = -total_width / 2
+
+            # Gemeinsamer Transform für alle Teile des Pakets
+            transform = f"rotate({-rotation} {pos.get('x', 0)} {pos.get('y', 0)})"
+
+            # Linke Isolierung zeichnen
+            if with_insulation and insulation_thickness > 0:
+                scene_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos.get("x", 0) + current_x_offset,
+                        "y": pos.get("y", 0) - height / 2,
+                        "width": insulation_thickness,
+                        "height": height,
+                        "fill": "#e9ecef",  # Helles Grau für Isolierung
+                        "transform": transform,
+                    }
+                )
+                current_x_offset += insulation_thickness
+
+            # Bleche zeichnen
+            for _ in range(sheet_count):
+                scene_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos.get("x", 0) + current_x_offset,
+                        "y": pos.get("y", 0) - height / 2,
+                        "width": sheet_thickness,
+                        "height": height,
+                        "fill": "#a9a9a9",  # Dunkleres Grau für Stahl
+                        "transform": transform,
+                    }
+                )
+                current_x_offset += sheet_thickness
+
+            # Rechte Isolierung zeichnen
+            if with_insulation and insulation_thickness > 0:
+                scene_elements.append(
+                    {
+                        "type": "rect",
+                        "x": pos.get("x", 0) + current_x_offset,
+                        "y": pos.get("y", 0) - height / 2,
+                        "width": insulation_thickness,
+                        "height": height,
+                        "fill": "#e9ecef",  # Helles Grau für Isolierung
+                        "transform": transform,
+                    }
+                )
+
+        else:  # Fallback für andere/einfache Bauteile
+            width = s_geo.get("width", 0)
+            height = s_geo.get("height", 0)
+            scene_elements.append(
+                {
+                    "type": "rect",
+                    "x": pos.get("x", 0) - width / 2,
+                    "y": pos.get("y", 0) - height / 2,
+                    "width": width,
+                    "height": height,
+                    "fill": "#a9a9a9",
+                    "transform": f"rotate({-rotation} {pos.get('x', 0)} {pos.get('y', 0)})",
+                }
+            )
+
         step_coords["components"].append(
             {
                 "name": comp_data.get("name"),
                 "type": "Standalone",
-                "x": pos["x"],
-                "y": pos["y"],
+                "x": pos.get("x", 0),
+                "y": pos.get("y", 0),
                 "rotation": rotation,
             }
         )
+
     return scene_elements, step_coords
 
 

@@ -8,9 +8,6 @@
 {% endblock %}
 
 {% block content %}
-<script id="library-data" type="application/json">
-    {{ library|tojson|safe }}
-</script>
 <script id="spielraum-data" type="application/json">
     {{ spielraum_data|tojson|safe }}
 </script>
@@ -20,7 +17,6 @@
 <script id="startpos-data" type="application/json">
     {{ startpos_data|tojson|safe }}
 </script>
-
 <div class="container simulation-page-container">
     <div class="preview-section card">
         <h3>Simulations-Vorschau</h3>
@@ -61,16 +57,11 @@
         <div class="main-column">
             <form id="simulation-form">
                 <div id="config-sections">
-                    <div id="config-params" class="config-section active">
-                    </div>
-                    <div id="config-phases" class="config-section">
-                    </div>
-                    <div id="config-assemblies" class="config-section">
-                    </div>
-                    <div id="config-standalone" class="config-section">
-                    </div>
-                    <div id="config-summary" class="config-section">
-                    </div>
+                    <div id="config-params" class="config-section active"></div>
+                    <div id="config-phases" class="config-section"></div>
+                    <div id="config-assemblies" class="config-section"></div>
+                    <div id="config-standalone" class="config-section"></div>
+                    <div id="config-summary" class="config-section"></div>
                 </div>
             </form>
             <hr>
@@ -101,6 +92,9 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/configurator_templates.js') }}"></script>
-<script src="{{ url_for('static', filename='js/configurator.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configurator-state.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configurator-ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configurator-visualization.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configurator-simulation.js') }}"></script>
+<script src="{{ url_for('static', filename='js/configurator-main.js') }}"></script>
 {% endblock %}

@@ -1,18 +1,14 @@
+# server/api.py
 """
 Dieses Modul stellt die API-Endpunkte für die Anwendung bereit.
 """
 
+import json
+import sqlite3
 from flask import Blueprint, jsonify, request
 
-from .utils import load_json, save_data, TAGS_FILE, LIBRARY_FILE
-from .csv_editor import (
-    list_csv_files,
-    get_csv_data,
-    save_csv_data,
-    get_bewegungen_data,
-    save_bewegungen_data,
-    get_bewegungen_options,
-)
+# KORREKTUR: Geändert von ".db" zu "server.db" für einen absoluten Import
+from server.db import get_db
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -20,25 +16,104 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 # --- Tag Management ---
 @api_bp.route("/tags", methods=["GET"])
 def get_tags():
-    """Gibt alle verfügbaren Tags zurück."""
-    tags_data = load_json(TAGS_FILE, {"categories": []})
-    return jsonify(tags_data)
+    """Gibt alle verfügbaren Tags aus der Datenbank zurück."""
+    db = get_db()
+    cursor = db.execute(
+        "SELECT name, category, color FROM tags ORDER BY category, name"
+    )
+    tags_by_category = {}
+    for row in cursor.fetchall():
+        cat = row["category"]
+        if cat not in tags_by_category:
+            tags_by_category[cat] = []
+        tags_by_category[cat].append({"name": row["name"], "color": row["color"]})
+
+    categories_list = [
+        {"name": cat, "tags": tags} for cat, tags in tags_by_category.items()
+    ]
+    return jsonify({"categories": categories_list})
 
 
 @api_bp.route("/tags", methods=["POST"])
 def update_tags():
-    """Speichert die gesamte Tag-Struktur."""
+    """Speichert die gesamte Tag-Struktur in der Datenbank."""
     data = request.json
-    save_data(TAGS_FILE, data)
-    return jsonify({"success": True, "message": "Tags gespeichert."})
+    db = get_db()
+    try:
+        with db:
+            db.execute("DELETE FROM tags")
+            for category in data.get("categories", []):
+                for tag in category.get("tags", []):
+                    db.execute(
+                        "INSERT INTO tags (name, category, color) VALUES (?, ?, ?)",
+                        (tag["name"], category["name"], tag["color"]),
+                    )
+        return jsonify({"success": True, "message": "Tags erfolgreich gespeichert."})
+    except sqlite3.Error as e:
+        return (
+            jsonify(
+                {"success": False, "message": f"Fehler beim Speichern der Tags: {e}"}
+            ),
+            500,
+        )
 
 
 # --- Library Management ---
 @api_bp.route("/library", methods=["GET"])
 def get_library():
-    """Gibt die gesamte Bauteil-Bibliothek zurück."""
-    library_data = load_json(LIBRARY_FILE, {"components": {}, "materials": []})
-    return jsonify(library_data)
+    """Gibt die gesamte Bauteil-Bibliothek aus der Datenbank zurück."""
+    db = get_db()
+    library = {"materials": [], "components": {}}
+
+    # Materialien laden
+    materials_cursor = db.execute("SELECT * FROM materials ORDER BY name")
+    for mat_row in materials_cursor.fetchall():
+        material = dict(mat_row)
+        bh_cursor = db.execute(
+            "SELECT b_value, h_value FROM bh_curve_points WHERE material_id = ?",
+            (material["id"],),
+        )
+        material["bh_curve"] = [
+            [row["b_value"], row["h_value"]] for row in bh_cursor.fetchall()
+        ]
+        del material["id"]
+        library["materials"].append(material)
+
+    # Bauteile laden
+    components_cursor = db.execute("SELECT * FROM components ORDER BY type, name")
+    for comp_row in components_cursor.fetchall():
+        comp_type = comp_row["type"]
+        if comp_type not in library["components"]:
+            library["components"][comp_type] = []
+
+        component = {
+            "templateProductInformation": {
+                "name": comp_row["name"],
+                "productName": comp_row["productName"],
+                "manufacturer": comp_row["manufacturer"],
+                "manufacturerNumber": comp_row["manufacturerNumber"],
+                "companyNumber": comp_row["companyNumber"],
+                "uniqueNumber": comp_row["uniqueNumber"],
+            },
+            "specificProductInformation": json.loads(
+                comp_row["specificProductInformation"] or "{}"
+            ),
+        }
+
+        tags_cursor = db.execute(
+            """
+            SELECT t.name FROM tags t
+            JOIN component_tags ct ON t.id = ct.tag_id
+            WHERE ct.component_id = ?
+        """,
+            (comp_row["id"],),
+        )
+        component["templateProductInformation"]["tags"] = [
+            row["name"] for row in tags_cursor.fetchall()
+        ]
+        library["components"][comp_type].append(component)
+
+    return jsonify(library)
 
 
 @api_bp.route("/library", methods=["POST"])
@@ -46,143 +121,151 @@ def update_library():
     """Aktualisiert oder löscht ein Bauteil oder Material in der Bibliothek."""
     data = request.json
     action = data.get("action")
+    db = get_db()
 
-    library = load_json(LIBRARY_FILE, {"components": {}, "materials": []})
+    try:
+        with db:  # Startet eine Transaktion
+            if action == "save":
+                return save_component(db, data)
+            if action == "delete":
+                return delete_component(db, data)
+            if action == "save_material":
+                return save_material(db, data)
+            if action == "delete_material":
+                return delete_material(db, data)
 
-    if action == "save":
-        component_type = data.get("type")
-        original_name = data.get("originalName")
-        component_data = data.get("component")
-        if component_type not in library["components"]:
-            library["components"][component_type] = []
-        components_list = library["components"][component_type]
-        if original_name:
-            found = False
-            for i, comp in enumerate(components_list):
-                if (
-                    comp.get("templateProductInformation", {}).get("name")
-                    == original_name
-                ):
-                    components_list[i] = component_data
-                    found = True
-                    break
-            if not found:
-                return (
-                    jsonify({"message": f"Bauteil '{original_name}' nicht gefunden."}),
-                    404,
-                )
-        else:
-            components_list.append(component_data)
-        save_data(LIBRARY_FILE, library)
-        return jsonify({"message": "Bauteil erfolgreich gespeichert."}), 200
+        return jsonify({"message": "Aktion nicht erfolgreich oder ungültig."}), 400
 
-    elif action == "delete":
-        component_type = data.get("type")
-        original_name = data.get("originalName")
-        if component_type in library["components"]:
-            components_list = library["components"][component_type]
-            new_list = [
-                c
-                for c in components_list
-                if c.get("templateProductInformation", {}).get("name") != original_name
-            ]
-            if len(new_list) < len(components_list):
-                library["components"][component_type] = new_list
-                save_data(LIBRARY_FILE, library)
-                return jsonify({"message": f"Bauteil '{original_name}' gelöscht."}), 200
-            else:
-                return (
-                    jsonify({"message": f"Bauteil '{original_name}' nicht gefunden."}),
-                    404,
-                )
-
-    elif action == "save_material":
-        material_data = data.get("material")
-        original_name = data.get("originalName")
-        if not library.get("materials"):
-            library["materials"] = []
-
-        if original_name:  # Material bearbeiten
-            found = False
-            for i, mat in enumerate(library["materials"]):
-                if mat.get("name") == original_name:
-                    library["materials"][i] = material_data
-                    found = True
-                    break
-            if not found:
-                return (
-                    jsonify({"message": f"Material '{original_name}' nicht gefunden."}),
-                    404,
-                )
-        else:  # Neues Material
-            library["materials"].append(material_data)
-
-        save_data(LIBRARY_FILE, library)
-        return jsonify({"message": "Material erfolgreich gespeichert."}), 200
-
-    elif action == "delete_material":
-        original_name = data.get("originalName")
-        if library.get("materials"):
-            new_list = [
-                m for m in library["materials"] if m.get("name") != original_name
-            ]
-            if len(new_list) < len(library["materials"]):
-                library["materials"] = new_list
-                save_data(LIBRARY_FILE, library)
-                return (
-                    jsonify({"message": f"Material '{original_name}' gelöscht."}),
-                    200,
-                )
-            else:
-                return (
-                    jsonify({"message": f"Material '{original_name}' nicht gefunden."}),
-                    404,
-                )
-
-    return jsonify({"message": "Aktion nicht erfolgreich oder ungültig."}), 400
+    except sqlite3.Error as e:
+        return jsonify({"message": f"Ein Datenbankfehler ist aufgetreten: {e}"}), 500
 
 
-# --- Routen für den CSV-Editor ---
-@api_bp.route("/csv-files", methods=["GET"])
-def get_csv_files():
-    """Listet die verfügbaren CSV-Dateien auf."""
-    return jsonify(list_csv_files())
+def save_component(db, data):
+    """Speichert ein einzelnes Bauteil."""
+    comp = data.get("component", {})
+    tpi = comp.get("templateProductInformation", {})
+    spi = comp.get("specificProductInformation", {})
+    original_name = data.get("originalName")
+    comp_type = data.get("type")
+
+    if original_name:  # Update
+        comp_id_row = db.execute(
+            "SELECT id FROM components WHERE name = ?", (original_name,)
+        ).fetchone()
+        if not comp_id_row:
+            return (
+                jsonify({"message": "Zu aktualisierendes Bauteil nicht gefunden."}),
+                404,
+            )
+        comp_id = comp_id_row["id"]
+        db.execute(
+            """
+            UPDATE components SET name=?, productName=?, manufacturer=?, manufacturerNumber=?,
+                               companyNumber=?, uniqueNumber=?, specificProductInformation=?
+            WHERE id=?
+        """,
+            (
+                tpi.get("name"),
+                tpi.get("productName"),
+                tpi.get("manufacturer"),
+                tpi.get("manufacturerNumber"),
+                tpi.get("companyNumber"),
+                tpi.get("uniqueNumber"),
+                json.dumps(spi),
+                comp_id,
+            ),
+        )
+    else:  # Insert
+        cursor = db.execute(
+            """
+            INSERT INTO components (type, name, productName, manufacturer, manufacturerNumber,
+                                companyNumber, uniqueNumber, specificProductInformation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+            (
+                comp_type,
+                tpi.get("name"),
+                tpi.get("productName"),
+                tpi.get("manufacturer"),
+                tpi.get("manufacturerNumber"),
+                tpi.get("companyNumber"),
+                tpi.get("uniqueNumber"),
+                json.dumps(spi),
+            ),
+        )
+        comp_id = cursor.lastrowid
+
+    # Tags aktualisieren
+    db.execute("DELETE FROM component_tags WHERE component_id = ?", (comp_id,))
+    for tag_name in tpi.get("tags", []):
+        tag_id_row = db.execute(
+            "SELECT id FROM tags WHERE name = ?", (tag_name,)
+        ).fetchone()
+        if tag_id_row:
+            db.execute(
+                "INSERT INTO component_tags (component_id, tag_id) VALUES (?, ?)",
+                (comp_id, tag_id_row["id"]),
+            )
+
+    return jsonify({"message": "Bauteil erfolgreich gespeichert."}), 200
 
 
-@api_bp.route("/csv-data/<filename>", methods=["GET"])
-def get_csv_file_data(filename):
-    """Gibt den Inhalt einer bestimmten CSV-Datei zurück."""
-    data = get_csv_data(filename)
-    if data is None:
-        return jsonify({"error": "Datei nicht gefunden."}), 404
-    return jsonify(data)
+def delete_component(db, data):
+    """Löscht ein einzelnes Bauteil."""
+    original_name = data.get("originalName")
+    db.execute("DELETE FROM components WHERE name = ?", (original_name,))
+    return jsonify({"message": f"Bauteil '{original_name}' gelöscht."}), 200
 
 
-@api_bp.route("/csv-data/<filename>", methods=["POST"])
-def save_csv_file_data(filename):
-    """Speichert Daten in eine bestimmte CSV-Datei."""
-    data = request.json
-    success, message = save_csv_data(filename, data)
-    if not success:
-        return jsonify({"message": message}), 500
-    return jsonify({"message": message})
+def save_material(db, data):
+    """Speichert ein einzelnes Material."""
+    mat = data.get("material", {})
+    original_name = data.get("originalName")
+
+    if original_name:  # Update
+        mat_id_row = db.execute(
+            "SELECT id FROM materials WHERE name = ?", (original_name,)
+        ).fetchone()
+        if not mat_id_row:
+            return (
+                jsonify({"message": "Zu aktualisierendes Material nicht gefunden."}),
+                404,
+            )
+        mat_id = mat_id_row["id"]
+        db.execute(
+            "UPDATE materials SET name=?, is_nonlinear=?, mu_x=?, mu_y=? WHERE id=?",
+            (
+                mat.get("name"),
+                mat.get("is_nonlinear", 0),
+                mat.get("mu_x", 1),
+                mat.get("mu_y", 1),
+                mat_id,
+            ),
+        )
+        db.execute("DELETE FROM bh_curve_points WHERE material_id = ?", (mat_id,))
+    else:  # Insert
+        cursor = db.execute(
+            "INSERT INTO materials (name, is_nonlinear, mu_x, mu_y) VALUES (?, ?, ?, ?)",
+            (
+                mat.get("name"),
+                mat.get("is_nonlinear", 0),
+                mat.get("mu_x", 1),
+                mat.get("mu_y", 1),
+            ),
+        )
+        mat_id = cursor.lastrowid
+
+    for point in mat.get("bh_curve", []):
+        db.execute(
+            "INSERT INTO bh_curve_points (material_id, b_value, h_value) VALUES (?, ?, ?)",
+            (mat_id, point[0], point[1]),
+        )
+
+    return jsonify({"message": "Material erfolgreich gespeichert."}), 200
 
 
-@api_bp.route("/bewegungen-data", methods=["GET"])
-def get_bewegungen_file_data():
-    """Gibt die Daten und Optionen für 3_bewegungen.csv zurück."""
-    rows = get_bewegungen_data()
-    options = get_bewegungen_options()
-    if rows is None:
-        return jsonify({"error": "Datei nicht gefunden."}), 404
-    return jsonify({"rows": rows, "options": options})
-
-
-@api_bp.route("/bewegungen-data", methods=["POST"])
-def save_bewegungen_file_data():
-    """Speichert Daten in die Datei 3_bewegungen.csv."""
-    data = request.json
-    success, message = save_bewegungen_data(data)
-    if not success:
-        return jsonify({"message": message}), 500
-    return jsonify({"message": message})
+def delete_material(db, data):
+    """Löscht ein einzelnes Material."""
+    original_name = data.get("originalName")
+    db.execute("DELETE FROM materials WHERE name = ?", (original_name,))
+    return jsonify({"message": f"Material '{original_name}' gelöscht."}), 200

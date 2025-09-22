@@ -2,6 +2,9 @@
 
 let progressInterval;
 
+/**
+ * Startet den Simulationsprozess im Backend.
+ */
 function startSimulation() {
   const outputElement = document.getElementById("simulation-output");
   const progressContainer = document.getElementById("simulation-progress");
@@ -31,6 +34,9 @@ function startSimulation() {
     });
 }
 
+/**
+ * Fragt den Fortschritt der Simulation periodisch vom Backend ab.
+ */
 function pollProgress() {
   let startTime = Date.now();
   const timerElement = document.getElementById("progress-timer");
@@ -75,6 +81,11 @@ function pollProgress() {
   }, 2000);
 }
 
+/**
+ * Formatiert Sekunden in ein lesbares Zeitformat (z.B. 1h 2m 3s).
+ * @param {number} seconds Die zu formatierende Zeit in Sekunden.
+ * @returns {string} Ein formatierter Zeit-String.
+ */
 function formatTime(seconds) {
   if (seconds < 60) {
     return `${Math.round(seconds)}s`;

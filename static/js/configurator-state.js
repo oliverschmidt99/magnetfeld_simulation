@@ -87,81 +87,104 @@ function gatherFormData() {
  * Speichert den aktuellen Formularzustand im localStorage des Browsers.
  */
 function saveState() {
-  const state = gatherFormData();
-  localStorage.setItem("configuratorState", JSON.stringify(state));
-  console.log("State saved to localStorage."); // Hilfreich für die Fehlersuche
+  const data = gatherFormData();
+  localStorage.setItem("latestSimConfig", JSON.stringify(data));
 }
 
 /**
- * Lädt den Zustand aus dem localStorage und wendet ihn an.
- * Wenn kein Zustand gefunden wird, wird mit Standardwerten initialisiert.
+ * Lädt den Zustand aus dem localStorage oder aus einem übergebenen Objekt und wendet ihn auf das Formular an.
+ * @param {object} [data=null] - Ein optionales Konfigurationsobjekt zum Laden.
  */
-function loadState() {
-  const stateString = localStorage.getItem("configuratorState");
-  if (stateString) {
-    console.log("Found state in localStorage. Applying it now.");
-    const state = JSON.parse(stateString);
-    applyState(state);
-  } else {
-    console.log("No state found. Initializing with default values.");
-    // Standard-Initialisierung, wenn kein Zustand gespeichert ist
+function loadState(data = null) {
+  const configData =
+    data || JSON.parse(localStorage.getItem("latestSimConfig"));
+
+  if (!configData) {
     updateParametersFromCsv();
     addPhase({ name: "L1", phaseShiftDeg: 0 });
     addPhase({ name: "L2", phaseShiftDeg: 120 });
     addPhase({ name: "L3", phaseShiftDeg: -120 });
     updateVisualization();
+    return;
   }
-}
 
-/**
- * Wendet ein gegebenes Zustandsobjekt auf das Formular an.
- * @param {object} state Das anzuwendende Zustandsobjekt.
- */
-function applyState(state) {
-  const form = document.getElementById("simulation-form");
-  if (!form || !state || !state.simulationParams) return;
+  const {
+    simulationParams,
+    electricalSystem,
+    assemblies,
+    standAloneComponents,
+  } = configData;
 
-  const params = state.simulationParams;
+  document.getElementById("ratedCurrent").value =
+    simulationParams.ratedCurrent || "5000";
 
-  // Allgemeine Parameter
-  form.querySelector("#ratedCurrent").value = params.ratedCurrent;
-  form.querySelector("#problemDepthM").value = params.problemDepthM;
+  // Wichtig: Zuerst die CSV-basierten Werte setzen, dann mit den gespeicherten Werten überschreiben
+  updateParametersFromCsv();
 
-  // Spielraum
-  form.querySelector("#spielraumLaenge").value = params.spielraum.Laenge;
-  form.querySelector("#spielraumBreite").value = params.spielraum.Breite;
+  if (simulationParams.startpositionen) {
+    document.getElementById("startX_L1").value =
+      simulationParams.startpositionen.x_L1;
+    document.getElementById("startY_L1").value =
+      simulationParams.startpositionen.y_L1;
+    document.getElementById("startX_L2").value =
+      simulationParams.startpositionen.x_L2;
+    document.getElementById("startY_L2").value =
+      simulationParams.startpositionen.y_L2;
+    document.getElementById("startX_L3").value =
+      simulationParams.startpositionen.x_L3;
+    document.getElementById("startY_L3").value =
+      simulationParams.startpositionen.y_L3;
+  }
 
-  // Startpositionen
-  form.querySelector("#startX_L1").value = params.startpositionen.x_L1;
-  form.querySelector("#startY_L1").value = params.startpositionen.y_L1;
-  form.querySelector("#startX_L2").value = params.startpositionen.x_L2;
-  form.querySelector("#startY_L2").value = params.startpositionen.y_L2;
-  form.querySelector("#startX_L3").value = params.startpositionen.x_L3;
-  form.querySelector("#startY_L3").value = params.startpositionen.y_L3;
+  if (simulationParams.bewegungsRichtungen) {
+    document.getElementById("directionL1_x").value =
+      simulationParams.bewegungsRichtungen.L1?.x || 0;
+    document.getElementById("directionL1_y").value =
+      simulationParams.bewegungsRichtungen.L1?.y || 0;
+    document.getElementById("directionL2_x").value =
+      simulationParams.bewegungsRichtungen.L2?.x || 0;
+    document.getElementById("directionL2_y").value =
+      simulationParams.bewegungsRichtungen.L2?.y || 0;
+    document.getElementById("directionL3_x").value =
+      simulationParams.bewegungsRichtungen.L3?.x || 0;
+    document.getElementById("directionL3_y").value =
+      simulationParams.bewegungsRichtungen.L3?.y || 0;
+  }
 
-  // Bewegungsrichtungen
-  form.querySelector("#directionL1_x").value = params.bewegungsRichtungen.L1.x;
-  form.querySelector("#directionL1_y").value = params.bewegungsRichtungen.L1.y;
-  form.querySelector("#directionL2_x").value = params.bewegungsRichtungen.L2.x;
-  form.querySelector("#directionL2_y").value = params.bewegungsRichtungen.L2.y;
-  form.querySelector("#directionL3_x").value = params.bewegungsRichtungen.L3.x;
-  form.querySelector("#directionL3_y").value = params.bewegungsRichtungen.L3.y;
+  document.getElementById("problemDepthM").value =
+    simulationParams.problemDepthM;
 
-  // Schrittweiten
-  form.querySelector("#schrittweitePos1").value = params.schrittweiten.Pos1;
-  form.querySelector("#schrittweitePos2").value = params.schrittweiten.Pos2;
-  form.querySelector("#schrittweitePos3").value = params.schrittweiten.Pos3;
-  form.querySelector("#schrittweitePos4").value = params.schrittweiten.Pos4;
+  if (simulationParams.spielraum) {
+    document.getElementById("spielraumLaenge").value =
+      simulationParams.spielraum.Laenge;
+    document.getElementById("spielraumBreite").value =
+      simulationParams.spielraum.Breite;
+  }
+  if (simulationParams.schrittweiten) {
+    document.getElementById("schrittweitePos1").value =
+      simulationParams.schrittweiten.Pos1;
+    document.getElementById("schrittweitePos2").value =
+      simulationParams.schrittweiten.Pos2;
+    document.getElementById("schrittweitePos3").value =
+      simulationParams.schrittweiten.Pos3;
+    document.getElementById("schrittweitePos4").value =
+      simulationParams.schrittweiten.Pos4;
+  }
 
-  // Analyse-Parameter
-  form.querySelector("#I_1_mes").value = params.I_1_mes;
-  form.querySelector("#I_2_mes").value = params.I_2_mes;
-  form.querySelector("#I_3_mes").value = params.I_3_mes;
-  form.querySelector("#phaseStart").value = params.phaseSweep.start;
-  form.querySelector("#phaseEnd").value = params.phaseSweep.end;
-  form.querySelector("#phaseStep").value = params.phaseSweep.step;
+  document.getElementById("I_1_mes").value = simulationParams.I_1_mes || "0";
+  document.getElementById("I_2_mes").value = simulationParams.I_2_mes || "0";
+  document.getElementById("I_3_mes").value = simulationParams.I_3_mes || "0";
 
-  // Dynamische Listen leeren
+  if (simulationParams.phaseSweep) {
+    document.getElementById("phaseStart").value =
+      simulationParams.phaseSweep.start || "0";
+    document.getElementById("phaseEnd").value =
+      simulationParams.phaseSweep.end || "180";
+    document.getElementById("phaseStep").value =
+      simulationParams.phaseSweep.step || "5";
+  }
+
+  // Dynamische Listen leeren und neu aufbauen
   document.getElementById("electrical-system-list").innerHTML = "";
   document.getElementById("assemblies-list").innerHTML = "";
   document.getElementById("standalone-list").innerHTML = "";
@@ -169,22 +192,141 @@ function applyState(state) {
   assemblyCounter = 0;
   standaloneCounter = 0;
 
-  // Listen aus dem Zustand neu aufbauen
-  (state.electricalSystem || []).forEach((phase) => addPhase(phase));
-  (state.assemblies || []).forEach((assembly) => addAssembly(assembly));
-  (state.standAloneComponents || []).forEach((comp) => addStandalone(comp));
+  (electricalSystem || []).forEach(addPhase);
+  (assemblies || []).forEach(addAssembly);
+  (standAloneComponents || []).forEach(addStandalone);
 
-  // Dropdowns aktualisieren und die richtigen Werte auswählen
+  // Dropdowns aktualisieren und korrekte Werte auswählen
   updateAssemblyPhaseDropdowns();
-  Array.from(document.querySelectorAll("#assemblies-list .list-item")).forEach(
-    (item, index) => {
-      const phaseSelect = item.querySelector(".assembly-phase-select");
-      if (state.assemblies[index] && phaseSelect) {
-        phaseSelect.value = state.assemblies[index].phaseName;
-      }
+  (assemblies || []).forEach((assembly, index) => {
+    const select = document.querySelector(
+      `#assembly-${index + 1} .assembly-phase-select`
+    );
+    if (select) select.value = assembly.phaseName;
+  });
+
+  // Am Ende die Visualisierung aktualisieren
+  updateVisualization();
+}
+
+async function populateLoadOptions() {
+  const select = document.getElementById("load-config-select");
+  try {
+    const response = await fetch("/api/configurations");
+    const configs = await response.json();
+    select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+    configs.forEach((name) => {
+      select.add(new Option(name, name));
+    });
+  } catch (error) {
+    console.error("Fehler beim Laden der Konfigurationen:", error);
+  }
+}
+
+async function populateSimulationRunOptions() {
+  const select = document.getElementById("load-sim-run-select");
+  try {
+    const response = await fetch("/api/simulation_runs");
+    const runs = await response.json();
+    select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+    runs.forEach((run) => {
+      select.add(new Option(run.name, run.path));
+    });
+  } catch (error) {
+    console.error("Fehler beim Laden der Simulationsläufe:", error);
+  }
+}
+
+async function saveConfiguration() {
+  const name = document.getElementById("simulationName").value;
+  if (!name) {
+    alert("Bitte geben Sie einen Namen für die Konfiguration an.");
+    return;
+  }
+  const data = gatherFormData();
+
+  try {
+    const response = await fetch("/api/configurations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, data }),
+    });
+    const result = await response.json();
+    alert(result.message || result.error);
+    if (!result.error) {
+      populateLoadOptions();
     }
+  } catch (error) {
+    alert("Ein Fehler ist aufgetreten: " + error);
+  }
+}
+
+async function loadConfiguration() {
+  const name = document.getElementById("load-config-select").value;
+  if (!name) return;
+  try {
+    const response = await fetch(`/api/configurations/${name}`);
+    const data = await response.json();
+    loadState(data.data || data); // Passt sich an beide Speicherformate an
+    document.getElementById("simulationName").value = name;
+    alert(`Konfiguration '${name}' geladen.`);
+  } catch (error) {
+    alert("Fehler beim Laden der Konfiguration: " + error);
+  }
+}
+
+async function loadSimulationRun() {
+  const path = document.getElementById("load-sim-run-select").value;
+  if (!path) return;
+  try {
+    const response = await fetch(`/api/simulation_runs/${path}`);
+    const data = await response.json();
+    loadState(data);
+    alert(`Konfiguration aus Lauf '${path}' geladen.`);
+  } catch (error) {
+    alert("Fehler beim Laden des Simulationslaufs: " + error);
+  }
+}
+
+function setupDragAndDrop() {
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("file-input");
+
+  dropZone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener(
+    "change",
+    (e) => e.target.files.length && handleFile(e.target.files[0])
   );
 
-  // Zum Schluss die Visualisierung aktualisieren
-  updateVisualization();
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("drop-zone--over");
+  });
+  ["dragleave", "dragend"].forEach((type) => {
+    dropZone.addEventListener(type, () =>
+      dropZone.classList.remove("drop-zone--over")
+    );
+  });
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    dropZone.classList.remove("drop-zone--over");
+  });
+}
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const jsonData = JSON.parse(event.target.result);
+      const configData = jsonData.simulationParams ? jsonData : jsonData.data;
+      if (!configData || !configData.simulationParams)
+        throw new Error("Invalide JSON-Struktur.");
+      loadState(configData);
+      alert(`Konfiguration '${file.name}' geladen.`);
+    } catch (e) {
+      alert(`Fehler beim Verarbeiten der Datei: ${e.message}`);
+    }
+  };
+  reader.readAsText(file);
 }

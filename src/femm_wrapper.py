@@ -4,6 +4,74 @@ Ein Wrapper für die pyfemm-Bibliothek, um die API zu kapseln und die
 Testbarkeit sowie die zukünftige Wartung zu erleichtern.
 """
 import femm
+import pandas as pd
+
+# Definition der Blockintegral-Typen mit Namen, Formelzeichen und Einheiten
+BLOCK_INTEGRAL_TYPES = {
+    0: {"name": "A·J-Integral", "symbol": "W_AJ", "unit": "J"},
+    1: {"name": "A-Integral", "symbol": "A_int", "unit": "Wb·m"},
+    2: {"name": "Magnetische Feldenergie", "symbol": "W_m", "unit": "J"},
+    3: {"name": "Hysterese- und Blechverluste", "symbol": "P_h", "unit": "W"},
+    4: {"name": "Ohmsche Verluste", "symbol": "P_R", "unit": "W"},
+    5: {"name": "Blockquerschnittsfläche", "symbol": "A_Block", "unit": "m²"},
+    6: {"name": "Gesamtverluste", "symbol": "P_ges", "unit": "W"},
+    7: {"name": "Gesamtstrom", "symbol": "I_ges", "unit": "A"},
+    8: {"name": "Integral von Bx über Block", "symbol": "Φx", "unit": "Wb"},
+    9: {"name": "Integral von By über Block", "symbol": "Φy", "unit": "Wb"},
+    10: {"name": "Blockvolumen", "symbol": "V_Block", "unit": "m³"},
+    11: {
+        "name": "x-Anteil der Lorentzkraft (stationär)",
+        "symbol": "F_x,L,ss",
+        "unit": "N",
+    },
+    12: {
+        "name": "y-Anteil der Lorentzkraft (stationär)",
+        "symbol": "F_y,L,ss",
+        "unit": "N",
+    },
+    13: {"name": "x-Anteil der 2·Lorentzkraft", "symbol": "F_x,L,2x", "unit": "N"},
+    14: {"name": "y-Anteil der 2·Lorentzkraft", "symbol": "F_y,L,2x", "unit": "N"},
+    15: {"name": "Lorentz-Drehmoment (stationär)", "symbol": "M_L,ss", "unit": "N·m"},
+    16: {
+        "name": "2·Komponente des Lorentz-Drehmoments",
+        "symbol": "M_L,2x",
+        "unit": "N·m",
+    },
+    17: {"name": "Magnetische Koenergie", "symbol": "W_c", "unit": "J"},
+    18: {
+        "name": "x-Anteil der WST-Kraft (stationär)",
+        "symbol": "F_x,WST,ss",
+        "unit": "N",
+    },
+    19: {
+        "name": "y-Anteil der WST-Kraft (stationär)",
+        "symbol": "F_y,WST,ss",
+        "unit": "N",
+    },
+    20: {"name": "x-Anteil der 2·WST-Kraft", "symbol": "F_x,WST,2x", "unit": "N"},
+    21: {"name": "y-Anteil der 2·WST-Kraft", "symbol": "F_y,WST,2x", "unit": "N"},
+    22: {"name": "WST-Drehmoment (stationär)", "symbol": "M_WST,ss", "unit": "N·m"},
+    23: {
+        "name": "2·Komponente des WST-Drehmoments",
+        "symbol": "M_WST,2x",
+        "unit": "N·m",
+    },
+    24: {"name": "R² (Trägheitsmoment / Dichte)", "symbol": "R²", "unit": "m⁴"},
+    25: {"name": "x-Anteil der 1·WST-Kraft", "symbol": "F_x,WST,1x", "unit": "N"},
+    26: {"name": "y-Anteil der 1·WST-Kraft", "symbol": "F_y,WST,1x", "unit": "N"},
+    27: {
+        "name": "1·Komponente des WST-Drehmoments",
+        "symbol": "M_WST,1x",
+        "unit": "N·m",
+    },
+    28: {"name": "x-Anteil der 1·Lorentzkraft", "symbol": "F_x,L,1x", "unit": "N"},
+    29: {"name": "y-Anteil der 1·Lorentzkraft", "symbol": "F_y,L,1x", "unit": "N"},
+    30: {
+        "name": "1·Komponente des Lorentz-Drehmoments",
+        "symbol": "M_L,1x",
+        "unit": "N·m",
+    },
+}
 
 
 class FEMMSession:
@@ -162,3 +230,30 @@ class FEMMSession:
     def clear_contour(self):
         """Löscht den aktuellen Konturpfad."""
         femm.mo_clearcontour()
+
+    def get_all_block_integrals_for_group(self, group_id, as_dataframe=False):
+        """
+        Ruft alle Blockintegral-Typen (0-30) für eine gegebene group_id ab.
+
+        Args:
+            group_id (int): Die ID der Gruppe, die analysiert werden soll.
+            as_dataframe (bool): Wenn True, wird das Ergebnis als Pandas DataFrame zurückgegeben.
+
+        Returns:
+            dict or pd.DataFrame: Ein Dictionary oder DataFrame mit allen Integral-Ergebnissen.
+        """
+        results = {"group_id": group_id, "integrals": {}}
+
+        for int_type, data in BLOCK_INTEGRAL_TYPES.items():
+            value = self.get_group_block_integral(int_type, group_id)
+            # Kopiere die Daten, um das Original-Dictionary nicht zu verändern
+            result_data = data.copy()
+            result_data["value"] = value
+            results["integrals"][int_type] = result_data
+
+        if as_dataframe:
+            df = pd.DataFrame.from_dict(results["integrals"], orient="index")
+            df.index.name = "type_id"
+            return df
+
+        return results

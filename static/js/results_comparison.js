@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Zustand und Daten
   let simulationRuns = [];
   let charts = { 1: null, 2: null };
+  let plotDataCache = { 1: null, 2: null };
   let globalAnimationInterval = null;
 
   // --- HELPER FUNCTIONS ---
@@ -200,6 +201,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const runSelector = document.getElementById(`run-selector-${id}`);
     const currentSelector = document.getElementById(`current-selector-${id}`);
     const yAxisSelector = document.getElementById(`y-axis-selector-${id}`);
+    const complexPartSelector = document.querySelector(
+      `#column-${id} .complex-part-selector`
+    );
     const plotDiv = document.getElementById(`plot-div-${id}`);
     const loadingMsg = document.getElementById(`loading-message-${id}`);
     const previewContainer = document.getElementById(
@@ -225,7 +229,27 @@ document.addEventListener("DOMContentLoaded", () => {
       handleRunChange(event.detail || {})
     );
     currentSelector.addEventListener("change", () => fetchPlotData());
-    yAxisSelector.addEventListener("change", () => fetchPlotData());
+
+    yAxisSelector.addEventListener("change", () => {
+      const selectedOptionValue = yAxisSelector.value;
+      const selectedOptionData = plotDataCache[id]?.columns.find(
+        (c) => c.value === selectedOptionValue
+      );
+
+      if (selectedOptionData && selectedOptionData.is_complex) {
+        complexPartSelector.classList.remove("initially-hidden");
+      } else {
+        complexPartSelector.classList.add("initially-hidden");
+      }
+      fetchPlotData();
+    });
+
+    complexPartSelector
+      .querySelectorAll('input[type="radio"]')
+      .forEach((radio) => {
+        radio.addEventListener("change", () => fetchPlotData());
+      });
+
     angleSlider.addEventListener("input", () =>
       updatePlotByIndex(angleSlider.value)
     );
@@ -297,6 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
       femmContainer.classList.add("initially-hidden");
       currentSelector.disabled = true;
       yAxisSelector.disabled = true;
+      complexPartSelector.classList.add("initially-hidden");
     }
 
     function fetchFullPreview(runFolder) {
@@ -320,7 +345,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function fetchPlotData(preselectYAxis = null) {
       const runIndex = runSelector.value;
       const currentGroup = currentSelector.value;
-      const desiredYAxis = preselectYAxis || yAxisSelector.value;
+      const desiredYAxisBase = preselectYAxis || yAxisSelector.value;
+      const partSelection =
+        complexPartSelector.querySelector("input:checked").value;
 
       if (!runIndex || !currentGroup || !currentPositionGroup) {
         return;
@@ -337,8 +364,9 @@ document.addEventListener("DOMContentLoaded", () => {
         current_group: currentGroup,
       });
 
-      if (desiredYAxis) {
-        queryParams.append("y_axis", desiredYAxis);
+      if (desiredYAxisBase) {
+        queryParams.append("y_axis", desiredYAxisBase);
+        queryParams.append("part", partSelection);
       }
 
       selectedConductors.forEach((c) => queryParams.append("conductors[]", c));
@@ -356,6 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
           loadingMsg.style.display = "none";
           if (data.error) throw new Error(data.error);
 
+          plotDataCache[id] = { columns: data.columns };
           const currentlySelectedYAxis = yAxisSelector.value;
           yAxisSelector.innerHTML = "";
           data.columns.forEach((col) =>
@@ -370,14 +399,25 @@ document.addEventListener("DOMContentLoaded", () => {
             yAxisSelector.value = currentlySelectedYAxis;
           } else if (
             Array.from(yAxisSelector.options).some(
-              (o) => o.value === desiredYAxis
+              (o) => o.value === desiredYAxisBase
             )
           ) {
-            yAxisSelector.value = desiredYAxis;
+            yAxisSelector.value = desiredYAxisBase;
           } else if (data.columns.length > 0) {
             yAxisSelector.value = data.columns[0].value;
           }
+
           yAxisSelector.disabled = false;
+
+          // Update complex selector visibility based on the new selection
+          const selectedOptionData = plotDataCache[id]?.columns.find(
+            (c) => c.value === yAxisSelector.value
+          );
+          if (selectedOptionData && selectedOptionData.is_complex) {
+            complexPartSelector.classList.remove("initially-hidden");
+          } else {
+            complexPartSelector.classList.add("initially-hidden");
+          }
 
           if (id === 1 && conductorSelector.innerHTML === "") {
             conductorSelector.innerHTML = "";

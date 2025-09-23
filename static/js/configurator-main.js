@@ -30,16 +30,34 @@ document.addEventListener("DOMContentLoaded", () => {
 /**
  * Initialisiert die gesamte Konfigurator-Seite.
  */
-function initializeConfigurator() {
+async function initializeConfigurator() {
+  // Zuerst die Blockintegral-Typen vom Backend holen
+  let integralTypes = {};
+  try {
+    const response = await fetch("/api/block_integral_types");
+    if (!response.ok) throw new Error("Netzwerk-Antwort war nicht ok.");
+    integralTypes = await response.json();
+  } catch (error) {
+    console.error("Fehler beim Laden der Blockintegral-Typen:", error);
+    const analysisContainer = document.getElementById("config-analysis");
+    if (analysisContainer) {
+      analysisContainer.innerHTML =
+        "<p style='color: red;'>Fehler: Die Analyse-Optionen konnten nicht geladen werden.</p>";
+    }
+  }
+
   // HTML-Templates für die verschiedenen Sektionen laden
   document.getElementById("config-params").innerHTML = getParamsHtml();
   document.getElementById("config-phases").innerHTML = getPhasesHtml();
   document.getElementById("config-assemblies").innerHTML = getAssembliesHtml();
   document.getElementById("config-standalone").innerHTML = getStandaloneHtml();
+  document.getElementById("config-analysis").innerHTML =
+    getAnalysisSettingsHtml(integralTypes);
   document.getElementById("config-summary").innerHTML = getSummaryHtml();
 
-  // Navigation initialisieren
+  // Navigation und Steuer-Elemente initialisieren
   initializeVerticalNavigation("config-nav", "config-sections");
+  setupAnalysisControls(); // NEU: Event Listeners für Buttons hinzufügen
 
   const form = document.getElementById("simulation-form");
   const debouncedUpdate = debounce(updateVisualization, 400);
@@ -113,6 +131,25 @@ function initializeConfigurator() {
   loadState();
   populateLoadOptions();
   populateSimulationRunOptions();
+}
+
+/**
+ * Fügt Event Listeners für die "Alle auswählen/abwählen"-Buttons hinzu.
+ */
+function setupAnalysisControls() {
+  const selectAllBtn = document.getElementById("select-all-integrals");
+  const deselectAllBtn = document.getElementById("deselect-all-integrals");
+  const checkboxes = document.querySelectorAll(
+    "#config-analysis .checkbox-item input"
+  );
+
+  selectAllBtn?.addEventListener("click", () => {
+    checkboxes.forEach((cb) => (cb.checked = true));
+  });
+
+  deselectAllBtn?.addEventListener("click", () => {
+    checkboxes.forEach((cb) => (cb.checked = false));
+  });
 }
 
 /**

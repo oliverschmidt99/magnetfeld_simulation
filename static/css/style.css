@@ -769,3 +769,68 @@ footer {
 footer p {
     margin: 0;
 }
+
+.analysis-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 0.75rem 2rem; /* Zeilen-Abstand | Spalten-Abstand */
+    margin-top: 1rem;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: flex-start;
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin-top: 0.3em;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    width: auto; /* Überschreibt die globalen 100% Breite für Inputs */
+}
+
+.checkbox-item label {
+    font-weight: normal;
+    cursor: pointer;
+    line-height: 1.4;
+    margin-bottom: 0;
+}
+
+.checkbox-item label strong {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #0d6efd;
+}
+
+.button-group-radio {
+    display: flex;
+    gap: 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+.button-group-radio input {
+    display: none;
+}
+
+.button-group-radio label {
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    margin-bottom: 0;
+    font-weight: normal;
+}
+
+.button-group-radio input:checked + label {
+    background-color: #0d6efd;
+    color: white;
+    font-weight: bold;
+}

@@ -143,9 +143,12 @@ def create_chartjs_data(df, x_col, y_col, selected_conductors):
     for i, conductor in enumerate(conductors):
         conductor_df = df_filtered[df_filtered["conductor"] == conductor]
         data_points = []
+        # Stelle sicher, dass y_col existiert, bevor darauf zugegriffen wird
+        if y_col not in conductor_df.columns:
+            continue
         conductor_data_map = pd.Series(
             conductor_df[y_col].values, index=conductor_df[x_col].values
-        )
+        ).to_dict()
         for label in labels:
             data_points.append(conductor_data_map.get(label, None))
 
@@ -178,70 +181,93 @@ def get_plot_data():
         return jsonify({"error": f"Datei '{csv_file}' nicht gefunden."}), 404
 
     try:
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, dtype=str, keep_default_na=False)
         conductors = df["conductor"].unique().tolist()
 
-        # Konvertiere alle relevanten Spalten in numerische Werte
-        cols_to_convert = [
-            "Iprim_sim_real_A",
-            "Iprim_sim_imag_A",
-            "Isec_real_A",
-            "Isec_imag_A",
-            "circuit_voltage_real_V",
-            "circuit_voltage_imag_V",
-            "Flux_real_Wb",
-            "Flux_imag_Wb",
-            "B_avg_T",
-            "H_avg_real_Am",
-            "H_avg_imag_Am",
-        ]
-        for col in cols_to_convert:
-            if col in df.columns:
+        # Konvertiere komplexe Zahlen-Strings in komplexe Zahlen
+        for col in df.columns:
+            if (
+                df[col].dtype == "object"
+                and df[col].str.contains(r"\(.*\)", na=False).any()
+            ):
+                try:
+                    df[col] = df[col].apply(
+                        lambda x: complex(x) if isinstance(x, str) and "(" in x else x
+                    )
+                except (ValueError, TypeError):
+                    pass
+
+        # Extrahiere Real- und Imaginärteile
+        for col in df.select_dtypes(include=[np.complex128]).columns:
+            df[f"{col}_real"] = df[col].apply(lambda x: x.real)
+            df[f"{col}_imag"] = df[col].apply(lambda x: x.imag)
+            df.drop(columns=[col], inplace=True)
+
+        # Konvertiere alle restlichen Spalten in numerische Werte
+        for col in df.columns:
+            if col not in ["conductor", "pos_name", "current_name", "run_identifier"]:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        for real_col, imag_col, abs_col in [
-            ("Iprim_sim_real_A", "Iprim_sim_imag_A", "Iprim_sim_abs_A"),
-            ("Isec_real_A", "Isec_imag_A", "Isec_abs_A"),
-            (
-                "circuit_voltage_real_V",
-                "circuit_voltage_imag_V",
-                "circuit_voltage_abs_V",
-            ),
-            ("Flux_real_Wb", "Flux_imag_Wb", "Flux_abs_Wb"),
-            ("H_avg_real_Am", "H_avg_imag_Am", "H_avg_abs_Am"),
-        ]:
-            if real_col in df.columns and imag_col in df.columns:
-                df[abs_col] = np.sqrt(df[real_col] ** 2 + df[imag_col] ** 2)
-
+        # Berechne Beträge für komplexe Spaltenpaare
         all_columns = df.columns.tolist()
-        plot_columns = [
-            col
-            for col in all_columns
-            if col
-            not in [
+        base_names_for_abs = set()
+
+        for col in all_columns:
+            if col.endswith("_real"):
+                base_name = col.rsplit("_real", 1)[0]
+                imag_col = f"{base_name}_imag"
+                abs_col = f"{base_name}_abs"
+                if imag_col in df.columns:
+                    df[abs_col] = np.sqrt(
+                        df[col].astype(float) ** 2 + df[imag_col].astype(float) ** 2
+                    )
+                    base_names_for_abs.add(base_name)
+
+        # Intelligente Gruppierung von Spalten für die Dropdown-Liste
+        plot_columns = []
+        processed_bases = set()
+
+        # Priorisiere komplexe Gruppen
+        for base in sorted(list(base_names_for_abs)):
+            if base not in processed_bases:
+                plot_columns.append(
+                    {"name": base.replace("_", " "), "value": base, "is_complex": True}
+                )
+                processed_bases.add(base)
+
+        # Füge restliche (nicht-komplexe) Spalten hinzu
+        for col in all_columns:
+            if col.endswith(("_real", "_imag", "_abs")):
+                continue
+
+            if col not in [
                 "conductor",
                 "phaseAngle_deg",
                 "run_identifier",
                 "pos_name",
                 "current_name",
-            ]
-            and "pos_" not in col
-        ]
+            ] and not col.startswith("pos_"):
+                plot_columns.append(
+                    {"name": col.replace("_", " "), "value": col, "is_complex": False}
+                )
 
-        columns_for_frontend = [
-            {"value": col, "name": col.replace("_", " ")} for col in plot_columns
-        ]
+        y_axis_variable_base = request.args.get("y_axis")
+        part_selection = request.args.get("part", "abs")
 
-        y_axis_variable = request.args.get("y_axis")
+        if not y_axis_variable_base and plot_columns:
+            y_axis_variable_base = plot_columns[0]["value"]
 
-        if not y_axis_variable or y_axis_variable not in df.columns:
-            y_axis_variable = plot_columns[0] if plot_columns else None
+        selected_col_info = next(
+            (c for c in plot_columns if c["value"] == y_axis_variable_base), None
+        )
 
-        if not y_axis_variable:
-            return (
-                jsonify({"error": "Keine darstellbaren Daten in der Datei gefunden."}),
-                400,
-            )
+        if selected_col_info and selected_col_info["is_complex"]:
+            y_axis_variable = f"{y_axis_variable_base}_{part_selection}"
+        else:
+            y_axis_variable = y_axis_variable_base
+
+        if y_axis_variable not in df.columns:
+            y_axis_variable = y_axis_variable_base  # Fallback
 
         selected_conductors = request.args.getlist("conductors[]")
         y_axis_label_for_chart = y_axis_variable.replace("_", " ")
@@ -254,14 +280,17 @@ def get_plot_data():
             {
                 "chart_data": chart_data,
                 "conductors": conductors,
-                "columns": columns_for_frontend,
+                "columns": plot_columns,
                 "x_axis_label": "Phasenwinkel (°)",
                 "y_axis_label": y_axis_label_for_chart,
             }
         )
     except (IOError, pd.errors.ParserError, KeyError, ValueError) as e:
         current_app.logger.error(f"Error in get_plot_data: {e}", exc_info=True)
-        return jsonify({"error": "Ein interner Serverfehler ist aufgetreten."}), 500
+        return (
+            jsonify({"error": f"Ein interner Serverfehler ist aufgetreten: {e}"}),
+            500,
+        )
 
 
 @analysis_bp.route("/analysis/femm_plots", methods=["GET"])

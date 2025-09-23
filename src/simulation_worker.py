@@ -33,7 +33,7 @@ def run_single_simulation(task_params):
         femm.save_as(fem_file)
         results = run_analysis_and_collect_results(
             femm,
-            step_config["assemblies"],
+            step_config,  # Gebe die gesamte step_config weiter
             angle_deg,
             step_positions,
             run_identifier,
@@ -185,7 +185,7 @@ def build_femm_geometry(femm, step_config):
 
 def run_analysis_and_collect_results(
     femm,
-    assemblies,
+    step_config,  # Geändert von 'assemblies' zu 'step_config'
     angle_deg,
     step_positions,
     run_identifier,
@@ -194,7 +194,7 @@ def run_analysis_and_collect_results(
     femm_files_dir,
 ):
     """
-    Führt die Analyse durch, sammelt die korrigierten Ergebnisse und speichert Plots.
+    Führt die Analyse durch, sammelt alle Blockintegrale und speichert Plots.
     """
     femm.analyze(1)
     femm.load_solution()
@@ -213,19 +213,39 @@ def run_analysis_and_collect_results(
     vector_plot_path = os.path.join(plots_dir, f"{run_identifier}_vector_H.png")
     femm.save_bitmap(vector_plot_path)
 
+    # Die Liste der ausgewählten Integrale aus der Konfiguration holen
+    selected_integrals = step_config.get("simulation_meta", {}).get("selectedIntegrals")
+
     results = []
+    assemblies = step_config["assemblies"]
     for i, asm in enumerate(assemblies):
         phase_name = asm["phaseName"]
         has_transformer = "transformer_details" in asm and asm["transformer_details"]
 
+        # Basis-Informationen für diesen Leiter sammeln
+        res = {
+            "pos_name": pos_name,
+            "current_name": current_name,
+            "run_identifier": run_identifier,
+            "conductor": phase_name,
+            "phaseAngle_deg": angle_deg,
+        }
+
+        # Immer die Integrale für den Leiter (Kupferschiene) abfragen
         conductor_group_id = i * 10 + 1
-        i_prim_sim_complex = femm.get_group_block_integral(7, conductor_group_id)
+        conductor_integrals = femm.get_all_block_integrals_for_group(conductor_group_id)
+        for int_type, data in conductor_integrals["integrals"].items():
+            if selected_integrals is None or int_type in selected_integrals:
+                # Erstelle den Spaltennamen aus Symbol und Einheit
+                col_name = f"conductor_{data['symbol']}_{data['unit']}"
+                # Konvertiere komplexe Zahlen in Strings
+                res[col_name] = (
+                    str(data["value"])
+                    if isinstance(data["value"], complex)
+                    else data["value"]
+                )
 
-        i_sec_real_a, i_sec_imag_a = 0, 0
-        circuit_voltage_complex = 0 + 0j
-        b_avg_t, h_avg_complex, p_joule_w, w_mag_j = 0, 0 + 0j, 0, 0
-        flux_wb_complex = 0 + 0j
-
+        # Wenn ein Wandler vorhanden ist, dessen Eigenschaften und Integrale abfragen
         if has_transformer:
             (
                 i_sec_real_a,
@@ -233,57 +253,29 @@ def run_analysis_and_collect_results(
                 circuit_voltage_complex,
             ) = femm.get_circuit_properties(phase_name)
 
+            res.update(
+                {
+                    "Isec_real_A": i_sec_real_a,
+                    "Isec_imag_A": i_sec_imag_a,
+                    "circuit_voltage_real_V": circuit_voltage_complex.real,
+                    "circuit_voltage_imag_V": circuit_voltage_complex.imag,
+                }
+            )
+
             core_group_id = i * 10 + 2
+            core_integrals = femm.get_all_block_integrals_for_group(core_group_id)
+            for int_type, data in core_integrals["integrals"].items():
+                if selected_integrals is None or int_type in selected_integrals:
+                    # Erstelle den Spaltennamen aus Symbol und Einheit
+                    col_name = f"core_{data['symbol']}_{data['unit']}"
+                    # Konvertiere komplexe Zahlen in Strings
+                    res[col_name] = (
+                        str(data["value"])
+                        if isinstance(data["value"], complex)
+                        else data["value"]
+                    )
 
-            # --- KORREKTUR START ---
-
-            # 1. Komplexen Vektor für mittlere Flussdichte B (Bx + j*By) holen
-            b_avg_complex = femm.get_group_block_integral(18, core_group_id)
-            # 2. Korrekt den Betrag (Magnitude) berechnen
-            b_avg_t = np.abs(b_avg_complex)
-
-            # Komplexen Vektor für mittlere Feldstärke H holen (war bereits korrekt)
-            h_avg_complex = femm.get_group_block_integral(19, core_group_id)
-
-            # 3. Korrekte Integral-Typen für Verluste und Energie verwenden
-            p_joule_w = femm.get_group_block_integral(
-                6, core_group_id
-            )  # Typ 6 für Joule'sche Verluste
-            w_mag_j = femm.get_group_block_integral(
-                5, core_group_id
-            )  # Typ 5 für gespeicherte Energie
-
-            # 4. Magnetischen Fluss korrekt berechnen
-            # Holt die Querschnittsfläche des Kerns in mm^2 (Integral-Typ 4)
-            core_area_mm2 = femm.get_group_block_integral(4, core_group_id)
-            # Konvertiere die Fläche in m^2
-            core_area_m2 = core_area_mm2 * 1e-6
-            # Berechne den komplexen Fluss (Φx + j*Φy) in Wb durch Multiplikation
-            flux_wb_complex = b_avg_complex * core_area_m2
-
-            # --- KORREKTUR ENDE ---
-
-        res = {
-            "pos_name": pos_name,
-            "current_name": current_name,
-            "run_identifier": run_identifier,
-            "conductor": phase_name,
-            "phaseAngle_deg": angle_deg,
-            "Iprim_sim_real_A": i_prim_sim_complex.real,
-            "Iprim_sim_imag_A": i_prim_sim_complex.imag,
-            "Isec_real_A": i_sec_real_a,
-            "Isec_imag_A": i_sec_imag_a,
-            "circuit_voltage_real_V": circuit_voltage_complex.real,
-            "circuit_voltage_imag_V": circuit_voltage_complex.imag,
-            "B_avg_T": b_avg_t,
-            "H_avg_real_Am": h_avg_complex.real,
-            "H_avg_imag_Am": h_avg_complex.imag,
-            "P_joule_W": p_joule_w,
-            "W_mag_J": w_mag_j,
-            "Flux_real_Wb": flux_wb_complex.real,
-            "Flux_imag_Wb": flux_wb_complex.imag,
-        }
-
+        # Positionsdaten hinzufügen
         flat_positions = {
             f"pos_{p}_{ax}": val
             for p, coords in step_positions.items()

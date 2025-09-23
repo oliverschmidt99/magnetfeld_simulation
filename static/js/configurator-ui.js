@@ -382,6 +382,39 @@ function getStandaloneHtml() {
     `;
 }
 
+function getAnalysisSettingsHtml(integralTypes) {
+  if (!integralTypes || Object.keys(integralTypes).length === 0) {
+    return `<h2>Analyse & Ausgabe-Einstellungen</h2><p>Optionen konnten nicht geladen werden.</p>`;
+  }
+  let checkboxesHtml = Object.entries(integralTypes)
+    .map(
+      ([id, data]) => `
+        <div class="checkbox-item">
+            <input type="checkbox" id="integral-${id}" data-integral-id="${id}" checked>
+            <label for="integral-${id}">
+                <strong>${data.symbol} (${data.unit})</strong>: ${data.name}
+            </label>
+        </div>
+    `
+    )
+    .join("");
+
+  return `
+        <h2>Analyse- & Ausgabe-Einstellungen</h2>
+        <div class="param-card full-width">
+            <h4>Blockintegrale für CSV-Export auswählen</h4>
+            <p>Wähle hier aus, welche der 31 möglichen Blockintegrale berechnet und in der finalen CSV-Datei gespeichert werden sollen. Das hilft, die Dateigröße zu reduzieren.</p>
+            <div class="analysis-controls">
+                <button type="button" id="select-all-integrals" class="button secondary">Alle auswählen</button>
+                <button type="button" id="deselect-all-integrals" class="button secondary">Alle abwählen</button>
+            </div>
+            <div class="checkbox-grid">
+                ${checkboxesHtml}
+            </div>
+        </div>
+    `;
+}
+
 function getSummaryHtml() {
   return `
         <div class="config-management-section">

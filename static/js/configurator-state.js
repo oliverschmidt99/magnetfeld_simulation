@@ -6,6 +6,9 @@
  */
 function gatherFormData() {
   const form = document.getElementById("simulation-form");
+  const selectedIntegrals = Array.from(
+    form.querySelectorAll('#config-analysis input[type="checkbox"]:checked')
+  ).map((cb) => parseInt(cb.dataset.integralId, 10));
   return {
     simulationParams: {
       ratedCurrent: form.querySelector("#ratedCurrent").value,
@@ -80,6 +83,9 @@ function gatherFormData() {
       enabled:
         document.getElementById(`toggle-standalone-${index}`)?.checked ?? true,
     })),
+    simulationMeta: {
+      selectedIntegrals: selectedIntegrals,
+    },
   };
 }
 
@@ -113,6 +119,7 @@ function loadState(data = null) {
     electricalSystem,
     assemblies,
     standAloneComponents,
+    simulationMeta,
   } = configData;
 
   document.getElementById("ratedCurrent").value =
@@ -201,6 +208,22 @@ function loadState(data = null) {
     );
     if (select) select.value = assembly.phaseName;
   });
+
+  if (simulationMeta && simulationMeta.selectedIntegrals) {
+    const integralIds = simulationMeta.selectedIntegrals;
+    document
+      .querySelectorAll('#config-analysis input[type="checkbox"]')
+      .forEach((cb) => {
+        cb.checked = integralIds.includes(parseInt(cb.dataset.integralId, 10));
+      });
+  } else {
+    // Fallback: Alle auswählen, wenn nichts im Lade-Objekt steht
+    document
+      .querySelectorAll('#config-analysis input[type="checkbox"]')
+      .forEach((cb) => {
+        cb.checked = true;
+      });
+  }
 
   updateVisualization();
 }

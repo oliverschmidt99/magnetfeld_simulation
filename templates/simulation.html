@@ -51,6 +51,10 @@
                 <h4>Eigenständige Bauteile</h4>
                 <p>Abschirmbleche etc. hinzufügen.</p>
             </a>
+            <a href="#" class="nav-link" data-target="config-analysis">
+                <h4>Analyse &amp; Ausgabe</h4>
+                <p>Festlegen, welche Ergebnisse gespeichert werden.</p>
+            </a>
             <a href="#" class="nav-link" data-target="config-summary">
                 <h4>Übersicht &amp; Verwaltung</h4>
                 <p>Kontrolle und Speicherung.</p>
@@ -64,6 +68,7 @@
                     <div id="config-phases" class="config-section"></div>
                     <div id="config-assemblies" class="config-section"></div>
                     <div id="config-standalone" class="config-section"></div>
+                    <div id="config-analysis" class="config-section"></div>
                     <div id="config-summary" class="config-section"></div>
                 </div>
             </form>
@@ -93,6 +98,8 @@
         </div>
     </div>
 </div>
+
+
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/configurator-state.js') }}"></script>

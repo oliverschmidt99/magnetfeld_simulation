@@ -20,6 +20,8 @@ from server.utils import (
     calculate_label_positions,
 )
 from server import db
+from server.json_provider import CustomJSONProvider  # Importiere den neuen Provider
+from src.femm_wrapper import BLOCK_INTEGRAL_TYPES
 
 # --- Konstanten und Pfade ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +30,7 @@ SIMULATIONS_DIR = "simulations"
 
 # --- App-Initialisierung ---
 app = Flask(__name__)
+app.json = CustomJSONProvider(app)  # Weise den benutzerdefinierten Provider zu
 db.init_app(app)
 
 # Logging konfigurieren
@@ -212,6 +215,7 @@ def generate_simulation():
         "assemblies": final_assemblies,
         "standAloneComponents": standalone_with_details,
         "simulation_meta": {
+            **data.get("simulationMeta", {}),
             "nennstrom_A": sim_params.get("ratedCurrent"),
             "bewegungsgruppe": sim_params.get("bewegungsRichtungen"),
             "simulationsraum": sim_params.get("spielraum"),
@@ -292,8 +296,6 @@ def visualize_configuration():
 
 
 # --- Hilfsfunktionen ---
-
-
 def add_details_to_assembly(assembly_data, library_data):
     """Fügt Bauteil-Details aus der Bibliothek zu einem Assembly hinzu."""
     if assembly_data.get("transformerName"):
@@ -498,6 +500,12 @@ def process_standalone_for_viz(comp_data, library_data, scene_elements, step_coo
         )
 
     return scene_elements, step_coords
+
+
+@app.route("/api/block_integral_types")
+def get_block_integral_types():
+    """Stellt die Definitionen der Blockintegrale für das Frontend bereit."""
+    return jsonify(BLOCK_INTEGRAL_TYPES)
 
 
 if __name__ == "__main__":

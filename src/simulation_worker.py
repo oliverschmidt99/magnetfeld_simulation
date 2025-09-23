@@ -194,7 +194,7 @@ def run_analysis_and_collect_results(
     femm_files_dir,
 ):
     """
-    Führt die Analyse durch, sammelt die Roh-Ergebnisse und speichert Plots.
+    Führt die Analyse durch, sammelt die korrigierten Ergebnisse und speichert Plots.
     """
     femm.analyze(1)
     femm.load_solution()
@@ -234,11 +234,34 @@ def run_analysis_and_collect_results(
             ) = femm.get_circuit_properties(phase_name)
 
             core_group_id = i * 10 + 2
-            b_avg_t = femm.get_group_block_integral(18, core_group_id)
+
+            # --- KORREKTUR START ---
+
+            # 1. Komplexen Vektor für mittlere Flussdichte B (Bx + j*By) holen
+            b_avg_complex = femm.get_group_block_integral(18, core_group_id)
+            # 2. Korrekt den Betrag (Magnitude) berechnen
+            b_avg_t = np.abs(b_avg_complex)
+
+            # Komplexen Vektor für mittlere Feldstärke H holen (war bereits korrekt)
             h_avg_complex = femm.get_group_block_integral(19, core_group_id)
-            p_joule_w = femm.get_group_block_integral(5, core_group_id)
-            w_mag_j = femm.get_group_block_integral(6, core_group_id)
-            flux_wb_complex = femm.get_group_block_integral(8, core_group_id)
+
+            # 3. Korrekte Integral-Typen für Verluste und Energie verwenden
+            p_joule_w = femm.get_group_block_integral(
+                6, core_group_id
+            )  # Typ 6 für Joule'sche Verluste
+            w_mag_j = femm.get_group_block_integral(
+                5, core_group_id
+            )  # Typ 5 für gespeicherte Energie
+
+            # 4. Magnetischen Fluss korrekt berechnen
+            # Holt die Querschnittsfläche des Kerns in mm^2 (Integral-Typ 4)
+            core_area_mm2 = femm.get_group_block_integral(4, core_group_id)
+            # Konvertiere die Fläche in m^2
+            core_area_m2 = core_area_mm2 * 1e-6
+            # Berechne den komplexen Fluss (Φx + j*Φy) in Wb durch Multiplikation
+            flux_wb_complex = b_avg_complex * core_area_m2
+
+            # --- KORREKTUR ENDE ---
 
         res = {
             "pos_name": pos_name,

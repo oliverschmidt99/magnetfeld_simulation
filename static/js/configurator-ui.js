@@ -176,8 +176,12 @@ function addAssembly(data = {}) {
 
   let transformerOptions = '<option value="">Kein Wandler</option>';
   transformerOptions += (library.components?.transformers || [])
-    .filter((t) =>
-      (t.templateProductInformation.tags || []).includes(searchTag)
+    .filter(
+      (t) =>
+        (t.templateProductInformation.tags || []).includes(searchTag) ||
+        (t.specificProductInformation.electrical &&
+          t.specificProductInformation.electrical.primaryRatedCurrentA ==
+            nennstrom)
     )
     .map(
       (t) =>

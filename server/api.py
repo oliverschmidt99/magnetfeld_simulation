@@ -353,22 +353,45 @@ def save_material(db, data):
     """Speichert ein einzelnes Material in der Datenbank."""
     mat = data.get("material", {})
     original_name = data.get("originalName")
+    new_name = mat.get("name")
 
-    if original_name:
+    if not new_name:
+        return jsonify({"message": "Materialname darf nicht leer sein."}), 400
+
+    # Prüfen, ob der neue Name bereits von einem ANDEREN Material verwendet wird.
+    existing_material_row = db.execute(
+        "SELECT id, name FROM materials WHERE name = ?", (new_name,)
+    ).fetchone()
+
+    if original_name:  # --- BEARBEITUNGS-MODUS ---
         mat_id_row = db.execute(
             "SELECT id FROM materials WHERE name = ?", (original_name,)
         ).fetchone()
         if not mat_id_row:
             return (
-                jsonify({"message": "Zu aktualisierendes Material nicht gefunden."}),
+                jsonify({"message": f"Material '{original_name}' nicht gefunden."}),
                 404,
             )
+
         mat_id = mat_id_row["id"]
+
+        # Wenn der Name geändert wurde und der neue Name schon existiert -> Fehler
+        if new_name != original_name and existing_material_row:
+            return (
+                jsonify(
+                    {
+                        "message": f"Ein anderes Material mit dem Namen '{new_name}' existiert bereits."
+                    }
+                ),
+                409,
+            )
+
+        # Update durchführen
         db.execute(
             """UPDATE materials SET name=?, is_nonlinear=?, mu_x=?, mu_y=?, hc=?, sigma=?, j=?,
                lamination_type=?, lam_thickness=?, lam_fill_factor=? WHERE id=?""",
             (
-                mat.get("name"),
+                new_name,
                 mat.get("is_nonlinear", 0),
                 mat.get("mu_x", 1),
                 mat.get("mu_y", 1),
@@ -382,13 +405,24 @@ def save_material(db, data):
             ),
         )
         db.execute("DELETE FROM bh_curve_points WHERE material_id = ?", (mat_id,))
-    else:
+
+    else:  # --- ERSTELLEN-MODUS ---
+        if existing_material_row:
+            return (
+                jsonify(
+                    {
+                        "message": f"Ein Material mit dem Namen '{new_name}' existiert bereits."
+                    }
+                ),
+                409,
+            )
+
         cursor = db.execute(
             """INSERT INTO materials (name, is_nonlinear, mu_x, mu_y, hc, sigma, j,
                lamination_type, lam_thickness, lam_fill_factor)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                mat.get("name"),
+                new_name,
                 mat.get("is_nonlinear", 0),
                 mat.get("mu_x", 1),
                 mat.get("mu_y", 1),
@@ -402,10 +436,10 @@ def save_material(db, data):
         )
         mat_id = cursor.lastrowid
 
+    # BH-Kurvenpunkte für beide Fälle (Erstellen & Bearbeiten) neu schreiben
     for point in mat.get("bh_curve", []):
         db.execute(
-            "INSERT INTO bh_curve_points (material_id, b_value, h_value) "
-            "VALUES (?, ?, ?)",
+            "INSERT INTO bh_curve_points (material_id, b_value, h_value) VALUES (?, ?, ?)",
             (mat_id, point[0], point[1]),
         )
 

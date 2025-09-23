@@ -135,7 +135,16 @@
         <div class="material-editor-layout">
             <div class="component-preview-container">
                 <h3>Vorschau der B-H Kurve</h3>
-                <div class="component-preview"><canvas id="bh-curve-chart"></canvas></div>
+                <div class="chart-container-wrapper">
+                    <div class="component-preview chart-half">
+                        <canvas id="bh-chart-linear"></canvas>
+                        <p class="chart-title">Lineare Skalierung</p>
+                    </div>
+                    <div class="component-preview chart-half">
+                        <canvas id="bh-chart-log"></canvas>
+                        <p class="chart-title">Logarithmische H-Achse</p>
+                    </div>
+                </div>
                 <div class="form-group btn-margin-top">
                     <button type="button" id="import-femm-material-btn" class="button secondary">Aus FEMM-Bibliothek
                         importieren</button>

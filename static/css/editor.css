@@ -208,7 +208,7 @@
 }
 
 .material-editor-layout .component-preview {
-    height: 300px;
+    height: 300px; /* Feste Höhe für die Chart-Container */
 }
 
 /* Stile für FEMM Import Modal */
@@ -248,4 +248,24 @@
 
 #femm-material-list-container .femm-material-list li:hover {
     background-color: #dee2e6;
+}
+
+.chart-container-wrapper {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+.chart-half {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-title {
+    text-align: center;
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
 }

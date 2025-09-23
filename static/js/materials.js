@@ -1,6 +1,7 @@
 // static/js/materials.js
 
-let bhChart = null;
+let bhChartLinear = null;
+let bhChartLog = null;
 let currentEditingMaterial = null;
 
 function initializeMaterialEditor(library) {
@@ -130,13 +131,6 @@ async function importFemmMaterial(materialName) {
   const importModal = document.getElementById("femm-import-modal");
   importModal.style.display = "none";
 
-  const editorModal = document.getElementById("material-editor-modal");
-  editorModal.style.display = "flex";
-
-  document.getElementById(
-    "material-editor-title"
-  ).textContent = `Importiere ${materialName}...`;
-
   try {
     const response = await fetch(
       `/api/femm_material_details/${encodeURIComponent(materialName)}`
@@ -147,16 +141,13 @@ async function importFemmMaterial(materialName) {
         err.error || "Material-Details konnten nicht geladen werden."
       );
     }
-
     const props = await response.json();
 
-    openMaterialEditor();
+    // Populate the form without resetting the editor state
     document.getElementById(
       "material-editor-title"
     ).textContent = `Material importieren: ${props.name || materialName}`;
-
     document.getElementById("material-name").value = props.name || materialName;
-    document.getElementById("material-name").disabled = false;
     document.getElementById("material-bh-type").value = props.is_nonlinear
       ? "nonlinear"
       : "linear";
@@ -170,14 +161,13 @@ async function importFemmMaterial(materialName) {
     if (props.is_nonlinear && props.bh_curve && props.bh_curve.length > 0) {
       props.bh_curve.forEach((p) => addBHPointRow(p[0], p[1]));
     } else {
-      addBHPointRow(0, 0);
+      addBHPointRow(0, 0); // Add a default empty row if no curve data
     }
 
     toggleBHCurveInputs();
     updateBHChart();
   } catch (error) {
     alert(`Fehler beim Importieren von ${materialName}: ${error.message}`);
-    document.getElementById("material-editor-modal").style.display = "none";
   }
 }
 
@@ -218,7 +208,7 @@ function openMaterialEditor(material = null) {
   if (material) {
     title.textContent = `Material bearbeiten: ${material.name}`;
     nameInput.value = material.name;
-    nameInput.disabled = true;
+    nameInput.disabled = true; // Name kann beim Bearbeiten nicht geändert werden (Schlüssel)
     bhTypeSelect.value = material.is_nonlinear ? "nonlinear" : "linear";
     document.getElementById("material-mur-x").value = material.mu_x || 1;
     document.getElementById("material-mur-y").value = material.mu_y || 1;
@@ -315,20 +305,23 @@ function addBHPointRow(b = "", h = "") {
 function updateBHChart() {
   const isNonlinear =
     document.getElementById("material-bh-type").value === "nonlinear";
-  const ctx = document.getElementById("bh-curve-chart").getContext("2d");
+  const ctxLinear = document.getElementById("bh-chart-linear").getContext("2d");
+  const ctxLog = document.getElementById("bh-chart-log").getContext("2d");
 
-  if (bhChart) bhChart.destroy();
+  if (bhChartLinear) bhChartLinear.destroy();
+  if (bhChartLog) bhChartLog.destroy();
 
-  if (!isNonlinear) {
+  const displayMessage = (ctx, message) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.font = "16px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.fillStyle = "#6c757d";
     ctx.textAlign = "center";
-    ctx.fillText(
-      "Lineares Material, keine Kurve.",
-      ctx.canvas.width / 2,
-      ctx.canvas.height / 2
-    );
+    ctx.fillText(message, ctx.canvas.width / 2, ctx.canvas.height / 2);
+  };
+
+  if (!isNonlinear) {
+    displayMessage(ctxLinear, "Lineares Material.");
+    displayMessage(ctxLog, "Lineares Material.");
     return;
   }
 
@@ -340,26 +333,55 @@ function updateBHChart() {
     }))
     .sort((a, b) => a.x - b.x);
 
-  bhChart = new Chart(ctx, {
+  const chartData = {
+    datasets: [
+      {
+        label: "B-H Kurve",
+        data: dataPoints,
+        borderColor: "#0d6efd",
+        backgroundColor: "#0d6efd",
+        showLine: true,
+        tension: 0.2,
+      },
+    ],
+  };
+
+  // Linearer Chart
+  bhChartLinear = new Chart(ctxLinear, {
     type: "scatter",
-    data: {
-      datasets: [
-        {
-          label: "B-H Kurve",
-          data: dataPoints,
-          borderColor: "#0d6efd",
-          backgroundColor: "#0d6efd",
-          showLine: true,
-          tension: 0.2,
-        },
-      ],
-    },
+    data: chartData,
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
       scales: {
-        x: { title: { display: true, text: "Magnetische Feldstärke H (A/m)" } },
-        y: { title: { display: true, text: "Magnetische Flussdichte B (T)" } },
+        x: {
+          type: "linear",
+          title: { display: true, text: "H (A/m)" },
+        },
+        y: {
+          title: { display: true, text: "B (T)" },
+        },
+      },
+    },
+  });
+
+  // Logarithmischer Chart
+  bhChartLog = new Chart(ctxLog, {
+    type: "scatter",
+    data: chartData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          type: "logarithmic",
+          title: { display: true, text: "H (A/m)" },
+        },
+        y: {
+          title: { display: true, text: "B (T)" },
+        },
       },
     },
   });

@@ -19,25 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let charts = { 1: null, 2: null };
   let globalAnimationInterval = null;
 
-  // --- HELPER FUNCTIONS (DEFINED FIRST) ---
-
-  function equalizeCardHeights() {
-    setTimeout(() => {
-      const cards1 = document.querySelectorAll("#column-1 > .card");
-      const cards2 = document.querySelectorAll("#column-2 > .card");
-      const numCards = Math.min(cards1.length, cards2.length);
-
-      for (let i = 0; i < numCards; i++) {
-        cards1[i].style.minHeight = "auto";
-        cards2[i].style.minHeight = "auto";
-        const height1 = cards1[i].offsetHeight;
-        const height2 = cards2[i].offsetHeight;
-        const maxHeight = Math.max(height1, height2);
-        cards1[i].style.minHeight = `${maxHeight}px`;
-        cards2[i].style.minHeight = `${maxHeight}px`;
-      }
-    }, 250);
-  }
+  // --- HELPER FUNCTIONS ---
 
   function enableImagePanZoom(wrapperId, imageElement, transformState) {
     const wrapper = document.getElementById(wrapperId);
@@ -315,7 +297,6 @@ document.addEventListener("DOMContentLoaded", () => {
       femmContainer.classList.add("initially-hidden");
       currentSelector.disabled = true;
       yAxisSelector.disabled = true;
-      equalizeCardHeights();
     }
 
     function fetchFullPreview(runFolder) {
@@ -330,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
             data.room,
             onStepClick
           );
-          equalizeCardHeights();
         })
         .catch((err) => {
           previewContainer.innerHTML = `<p class="loading-message" style="color:red;">Vorschau-Fehler: ${err.message}</p>`;
@@ -461,7 +441,6 @@ document.addEventListener("DOMContentLoaded", () => {
             playBtn.disabled = true;
           }
           updateGlobalSlider();
-          equalizeCardHeights();
         })
         .catch((err) => {
           densityLoading.textContent = "Fehler beim Laden.";
@@ -491,7 +470,6 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       });
       plotDiv.classList.remove("initially-hidden");
-      equalizeCardHeights();
     }
 
     function updatePlotByIndex(indexStr, fromGlobal = false) {

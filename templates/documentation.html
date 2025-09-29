@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+{% block title %}Dokumentation{% endblock %}
+
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Theoretische Grundlagen</h2>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <h3>Ersatzschaltbild (ESB) des Stromwandlers</h3>
+        <p>
+            Das folgende interaktive Diagramm wird aus der Datei <code>assets/ersatzschaltbild.xml</code> geladen.
+        </p>
+
+        <div class="mxgraph" style="max-width:100%;border:1px solid #dee2e6;border-radius:4px;"
+            data-mxgraph="{{ diagram_xml | safe }}"></div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://viewer.diagrams.net/js/viewer-static.min.js"></script>
+{% endblock %}

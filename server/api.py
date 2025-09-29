@@ -148,7 +148,6 @@ def parse_fem_material_properties(fem_content, material_name):
                     try:
                         parts = line.strip().split()
                         if len(parts) >= 2:
-                            # KORREKTUR: Werte in der richtigen Reihenfolge einlesen (B, H)
                             b, h = map(float, parts[0:2])
                             props["bh_curve"].append([b, h])
                     except (ValueError, IndexError):
@@ -215,7 +214,7 @@ def get_library():
     for mat_row in materials_cursor.fetchall():
         material = dict(mat_row)
         bh_cursor = db.execute(
-            "SELECT b_value, h_value FROM bh_curve_points " "WHERE material_id = ?",
+            "SELECT b_value, h_value FROM bh_curve_points WHERE material_id = ?",
             (material["id"],),
         )
         material["bh_curve"] = [
@@ -244,8 +243,8 @@ def get_library():
         }
         tags_cursor = db.execute(
             (
-                "SELECT t.name FROM tags t JOIN component_tags ct ON t.id = ct.tag_id "
-                "WHERE ct.component_id = ?"
+                "SELECT t.name FROM tags t JOIN component_tags ct "
+                "ON t.id = ct.tag_id WHERE ct.component_id = ?"
             ),
             (comp_row["id"],),
         )
@@ -297,8 +296,9 @@ def save_component(db, data):
             )
         comp_id = comp_id_row["id"]
         db.execute(
-            """UPDATE components SET name=?, productName=?, manufacturer=?, manufacturerNumber=?,
-               companyNumber=?, uniqueNumber=?, specificProductInformation=? WHERE id=?""",
+            """UPDATE components SET name=?, productName=?, manufacturer=?,
+               manufacturerNumber=?, companyNumber=?, uniqueNumber=?,
+               specificProductInformation=? WHERE id=?""",
             (
                 tpi.get("name"),
                 tpi.get("productName"),
@@ -312,9 +312,9 @@ def save_component(db, data):
         )
     else:
         cursor = db.execute(
-            """INSERT INTO components (type, name, productName, manufacturer, manufacturerNumber,
-               companyNumber, uniqueNumber, specificProductInformation)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO components (type, name, productName, manufacturer,
+               manufacturerNumber, companyNumber, uniqueNumber,
+               specificProductInformation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 comp_type,
                 tpi.get("name"),
@@ -358,12 +358,11 @@ def save_material(db, data):
     if not new_name:
         return jsonify({"message": "Materialname darf nicht leer sein."}), 400
 
-    # Prüfen, ob der neue Name bereits von einem ANDEREN Material verwendet wird.
     existing_material_row = db.execute(
         "SELECT id, name FROM materials WHERE name = ?", (new_name,)
     ).fetchone()
 
-    if original_name:  # --- BEARBEITUNGS-MODUS ---
+    if original_name:
         mat_id_row = db.execute(
             "SELECT id FROM materials WHERE name = ?", (original_name,)
         ).fetchone()
@@ -375,7 +374,6 @@ def save_material(db, data):
 
         mat_id = mat_id_row["id"]
 
-        # Wenn der Name geändert wurde und der neue Name schon existiert -> Fehler
         if new_name != original_name and existing_material_row:
             return (
                 jsonify(
@@ -386,10 +384,10 @@ def save_material(db, data):
                 409,
             )
 
-        # Update durchführen
         db.execute(
-            """UPDATE materials SET name=?, is_nonlinear=?, mu_x=?, mu_y=?, hc=?, sigma=?, j=?,
-               lamination_type=?, lam_thickness=?, lam_fill_factor=? WHERE id=?""",
+            """UPDATE materials SET name=?, is_nonlinear=?, mu_x=?, mu_y=?, hc=?,
+               sigma=?, j=?, lamination_type=?, lam_thickness=?, lam_fill_factor=?
+               WHERE id=?""",
             (
                 new_name,
                 mat.get("is_nonlinear", 0),
@@ -406,7 +404,7 @@ def save_material(db, data):
         )
         db.execute("DELETE FROM bh_curve_points WHERE material_id = ?", (mat_id,))
 
-    else:  # --- ERSTELLEN-MODUS ---
+    else:
         if existing_material_row:
             return (
                 jsonify(
@@ -436,7 +434,6 @@ def save_material(db, data):
         )
         mat_id = cursor.lastrowid
 
-    # BH-Kurvenpunkte für beide Fälle (Erstellen & Bearbeiten) neu schreiben
     for point in mat.get("bh_curve", []):
         db.execute(
             "INSERT INTO bh_curve_points (material_id, b_value, h_value) VALUES (?, ?, ?)",
@@ -451,3 +448,61 @@ def delete_material(db, data):
     original_name = data.get("originalName")
     db.execute("DELETE FROM materials WHERE name = ?", (original_name,))
     return jsonify({"message": f"Material '{original_name}' gelöscht."}), 200
+
+
+# --- Measurement Endpoints ---
+@api_bp.route("/measurements/<int:component_id>/<string:phase>", methods=["GET"])
+def get_measurements(component_id, phase):
+    """Gibt alle Messungen für ein bestimmtes Bauteil und eine Phase zurück."""
+    db = get_db()
+    cursor = db.execute(
+        """SELECT percent_nominal, position, measured_primary,
+           measured_secondary, burden_resistance
+           FROM measurements WHERE component_id = ? AND phase = ?""",
+        (component_id, phase),
+    )
+    rows = cursor.fetchall()
+    return jsonify([dict(row) for row in rows])
+
+
+@api_bp.route("/measurements", methods=["POST"])
+def save_measurements():
+    """Speichert einen Satz von Messdaten für ein Bauteil und eine Phase."""
+    data = request.json
+    component_id = data.get("component_id")
+    phase = data.get("phase")
+    measurements = data.get("measurements")
+
+    if not all([component_id, phase, isinstance(measurements, list)]):
+        return jsonify({"message": "Ungültige Daten."}), 400
+
+    db = get_db()
+    try:
+        with db:
+            db.execute(
+                "DELETE FROM measurements WHERE component_id = ? AND phase = ?",
+                (component_id, phase),
+            )
+            for meas in measurements:
+                if (
+                    meas.get("measured_primary") is not None
+                    or meas.get("measured_secondary") is not None
+                ):
+                    db.execute(
+                        """INSERT INTO measurements
+                           (component_id, phase, percent_nominal, position,
+                           measured_primary, measured_secondary, burden_resistance)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            component_id,
+                            phase,
+                            meas.get("percent_nominal"),
+                            meas.get("position"),
+                            meas.get("measured_primary"),
+                            meas.get("measured_secondary"),
+                            meas.get("burden_resistance"),
+                        ),
+                    )
+        return jsonify({"message": "Messungen erfolgreich gespeichert."})
+    except sqlite3.Error as e:
+        return jsonify({"message": f"Datenbankfehler: {e}"}), 500

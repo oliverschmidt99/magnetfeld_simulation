@@ -27,6 +27,7 @@ from src.femm_wrapper import BLOCK_INTEGRAL_TYPES
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SIMULATION_RUN_FILE = "simulation_run.json"
 SIMULATIONS_DIR = "simulations"
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
 # --- App-Initialisierung ---
 app = Flask(__name__)
@@ -146,6 +147,29 @@ def library():
     return render_template(
         "library.html", library=library_data, timestamp=int(time.time())
     )
+
+
+@app.route("/measurements")
+def measurements():
+    """Zeigt die Seite für die Messwerterfassung."""
+    with app.app_context():
+        library_data = get_library_from_db()
+    return render_template("measurements.html", library=library_data)
+
+
+@app.route("/documentation")
+def documentation():
+    """Zeigt die Seite für das Ersatzschaltbild."""
+    xml_path = os.path.join(ASSETS_DIR, "ersatzschaltbild.xml")
+    try:
+        with open(xml_path, "r", encoding="utf-8") as f:
+            diagram_data = json.dumps(f.read())
+    except FileNotFoundError:
+        diagram_data = json.dumps(
+            "<mxfile><diagram>Diagramm nicht gefunden!</diagram></mxfile>"
+        )
+
+    return render_template("documentation.html", diagram_xml=diagram_data)
 
 
 @app.route("/settings")
@@ -423,14 +447,9 @@ def process_standalone_for_viz(comp_data, library_data, scene_elements, step_coo
             )
 
             total_width = (sheet_count * sheet_thickness) + (2 * insulation_thickness)
-
-            # Startpunkt für das Zeichnen (linke Kante des Pakets)
             current_x_offset = -total_width / 2
-
-            # Gemeinsamer Transform für alle Teile des Pakets
             transform = f"rotate({-rotation} {pos.get('x', 0)} {pos.get('y', 0)})"
 
-            # Linke Isolierung zeichnen
             if with_insulation and insulation_thickness > 0:
                 scene_elements.append(
                     {
@@ -439,13 +458,12 @@ def process_standalone_for_viz(comp_data, library_data, scene_elements, step_coo
                         "y": pos.get("y", 0) - height / 2,
                         "width": insulation_thickness,
                         "height": height,
-                        "fill": "#e9ecef",  # Helles Grau für Isolierung
+                        "fill": "#e9ecef",
                         "transform": transform,
                     }
                 )
                 current_x_offset += insulation_thickness
 
-            # Bleche zeichnen
             for _ in range(sheet_count):
                 scene_elements.append(
                     {
@@ -454,13 +472,12 @@ def process_standalone_for_viz(comp_data, library_data, scene_elements, step_coo
                         "y": pos.get("y", 0) - height / 2,
                         "width": sheet_thickness,
                         "height": height,
-                        "fill": "#a9a9a9",  # Dunkleres Grau für Stahl
+                        "fill": "#a9a9a9",
                         "transform": transform,
                     }
                 )
                 current_x_offset += sheet_thickness
 
-            # Rechte Isolierung zeichnen
             if with_insulation and insulation_thickness > 0:
                 scene_elements.append(
                     {
@@ -469,12 +486,12 @@ def process_standalone_for_viz(comp_data, library_data, scene_elements, step_coo
                         "y": pos.get("y", 0) - height / 2,
                         "width": insulation_thickness,
                         "height": height,
-                        "fill": "#e9ecef",  # Helles Grau für Isolierung
+                        "fill": "#e9ecef",
                         "transform": transform,
                     }
                 )
 
-        else:  # Fallback für andere/einfache Bauteile
+        else:  # Fallback
             width = s_geo.get("width", 0)
             height = s_geo.get("height", 0)
             scene_elements.append(

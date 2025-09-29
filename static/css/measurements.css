@@ -1,0 +1,77 @@
+/* static/css/measurements.css */
+.global-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+}
+
+.phase-input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.phase-context h3 {
+    margin-top: 0;
+    text-align: center;
+    color: #0d6efd;
+}
+
+.table-wrapper {
+    margin-top: 1rem;
+    /* height und overflow entfernt, damit die Tabelle nicht mehr scrollt */
+}
+
+.measurement-table {
+    width: 100%;
+}
+
+.measurement-table input {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    -moz-appearance: textfield; /* Firefox */
+}
+.measurement-table input::-webkit-outer-spin-button,
+.measurement-table input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.measurement-table .error-cell {
+    font-weight: bold;
+    text-align: right;
+    padding-right: 1rem;
+    min-width: 70px;
+}
+
+.subtle-text, .last-saved-span {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 0.85rem;
+    text-align: center;
+    display: block;
+    margin-top: 0.5rem;
+    height: 1em; /* Sorgt für stabilen Platz */
+}
+
+.diagram-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.chart-card h4 {
+    text-align: center;
+    margin-top: 0;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 350px;
+}

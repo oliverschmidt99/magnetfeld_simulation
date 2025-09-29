@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+{% block title %}Messungen{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/measurements.css') }}">
+{% endblock %}
+
+{% block sub_nav %}
+<div class="sub-nav-bar">
+    <h2>Messwerterfassung &amp; Analyse</h2>
+</div>
+{% endblock %}
+
+
+
+
+<script type="text/javascript" src="https://viewer.diagrams.net/js/viewer-static.min.js"></script>
+
+
+{% block content %}
+<script id="library-data" type="application/json">
+    {{ library|tojson|safe }}
+</script>
+
+
+
+<div class="container measurement-container">
+    <div class="card global-controls">
+        <div class="form-group">
+            <label for="strom-gruppe-selector">1. Strom Gruppe wählen</label>
+            <select id="strom-gruppe-selector">
+                <option value="">-- Gruppe wählen --</option>
+                <option value="A">Gruppe A (600A - 800A)</option>
+                <option value="B">Gruppe B (1000A - 2500A)</option>
+                <option value="C">Gruppe C (3000A - 5000A)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="transformer-selector">2. Wandler für alle Phasen wählen</label>
+            <select id="transformer-selector" disabled>
+                <option value="">-- Bitte Gruppe wählen --</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="accuracy-class-selector">Genauigkeitsklasse</label>
+            <select id="accuracy-class-selector">
+                <option value="all">Alle Klassen</option>
+                <option value="0.1">Klasse 0.1</option>
+                <option value="0.2">Klasse 0.2</option>
+                <option value="0.5">Klasse 0.5</option>
+                <option value="1.0">Klasse 1.0</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <button type="button" id="save-all-btn" class="button">Alle Messungen speichern</button>
+        </div>
+    </div>
+
+    <div class="phase-input-grid">
+        <div class="card phase-context" id="context-L1">
+            <h3>Messwerte für L1</h3>
+            <div class="form-group">
+                <label for="burden-resistance-L1">Bürde R (Ω)</label>
+                <input type="number" id="burden-resistance-L1" class="burden-input" step="0.01" value="1.0">
+            </div>
+            <div class="table-wrapper">
+                <table class="summary-table measurement-table" id="measurement-table-L1">
+                    <thead>
+                        <tr>
+                            <th>%</th>
+                            <th>I_prim (A)</th>
+                            <th>I_sek (mA)</th>
+                            <th>Fehler (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <span class="last-saved-span" id="last-saved-L1"></span>
+        </div>
+
+        <div class="card phase-context" id="context-L2">
+            <h3>Messwerte für L2</h3>
+            <div class="form-group">
+                <label for="burden-resistance-L2">Bürde R (Ω)</label>
+                <input type="number" id="burden-resistance-L2" class="burden-input" step="0.01" value="1.0">
+            </div>
+            <div class="table-wrapper">
+                <table class="summary-table measurement-table" id="measurement-table-L2">
+                    <thead>
+                        <tr>
+                            <th>%</th>
+                            <th>I_prim (A)</th>
+                            <th>I_sek (mA)</th>
+                            <th>Fehler (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <span class="last-saved-span" id="last-saved-L2"></span>
+        </div>
+
+        <div class="card phase-context" id="context-L3">
+            <h3>Messwerte für L3</h3>
+            <div class="form-group">
+                <label for="burden-resistance-L3">Bürde R (Ω)</label>
+                <input type="number" id="burden-resistance-L3" class="burden-input" step="0.01" value="1.0">
+            </div>
+            <div class="table-wrapper">
+                <table class="summary-table measurement-table" id="measurement-table-L3">
+                    <thead>
+                        <tr>
+                            <th>%</th>
+                            <th>I_prim (A)</th>
+                            <th>I_sek (mA)</th>
+                            <th>Fehler (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <span class="last-saved-span" id="last-saved-L3"></span>
+        </div>
+    </div>
+
+
+    <div class="diagram-grid">
+        <div id="chart-container-L1" class="card chart-card">
+            <h4>Fehlerdiagramm L1</h4>
+            <div class="chart-wrapper">
+                <canvas id="error-chart-L1"></canvas>
+            </div>
+        </div>
+        <div id="chart-container-L2" class="card chart-card">
+            <h4>Fehlerdiagramm L2</h4>
+            <div class="chart-wrapper">
+                <canvas id="error-chart-L2"></canvas>
+            </div>
+        </div>
+        <div id="chart-container-L3" class="card chart-card">
+            <h4>Fehlerdiagramm L3</h4>
+            <div class="chart-wrapper">
+                <canvas id="error-chart-L3"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/measurements.js') }}"></script>
+{% endblock %}

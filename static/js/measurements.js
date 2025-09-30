@@ -273,6 +273,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleTransformerSelect() {
     const componentId = transformerSelector.value;
+
+    // Setze die Genauigkeitsklasse basierend auf dem gewählten Wandler
+    if (componentId) {
+      const transformer = transformers.find(
+        (t) => t.templateProductInformation.name === componentId
+      );
+      if (
+        transformer &&
+        transformer.specificProductInformation.electrical.accuracyClass
+      ) {
+        const accuracyClass =
+          transformer.specificProductInformation.electrical.accuracyClass;
+        // Prüfe, ob die Klasse als Option existiert
+        const optionExists = Array.from(accuracyClassSelector.options).some(
+          (opt) => opt.value === accuracyClass
+        );
+        if (optionExists) {
+          accuracyClassSelector.value = accuracyClass;
+        } else {
+          accuracyClassSelector.value = "all"; // Fallback, falls Klasse nicht im Dropdown ist
+        }
+      } else {
+        accuracyClassSelector.value = "all"; // Fallback, falls keine Klasse definiert ist
+      }
+    } else {
+      accuracyClassSelector.value = "all"; // Zurücksetzen, wenn kein Wandler gewählt ist
+    }
+
     ["L1", "L2", "L3"].forEach((phase) => {
       const tableBody = document
         .getElementById(`measurement-table-${phase}`)

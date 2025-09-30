@@ -285,6 +285,11 @@ def save_component(db, data):
     original_name = data.get("originalName")
     comp_type = data.get("type")
 
+    # Stelle sicher, dass die neuen Felder im JSON-Objekt sind, bevor es gespeichert wird
+    if comp_type == "transformers" and "electrical" in spi:
+        spi["electrical"]["ratedBurdenVA"] = spi["electrical"].get("ratedBurdenVA")
+        spi["electrical"]["accuracyClass"] = spi["electrical"].get("accuracyClass")
+
     if original_name:
         comp_id_row = db.execute(
             "SELECT id FROM components WHERE name = ?", (original_name,)

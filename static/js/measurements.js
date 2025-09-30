@@ -12,6 +12,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const RHO_20 = 0.0178; // Ohm * mm^2 / m
   const RHO_80 = 0.02195; // Ohm * mm^2 / m
 
+  const E_SERIES = {
+    E3: [1.0, 2.2, 4.7],
+    E6: [1.0, 1.5, 2.2, 3.3, 4.7, 6.8],
+    E12: [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2],
+    E24: [
+      1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9,
+      4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1,
+    ],
+  };
+
   // Globale DOM-Elemente
   const stromGruppeSelector = document.getElementById("strom-gruppe-selector");
   const transformerSelector = document.getElementById("transformer-selector");
@@ -76,6 +86,19 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     saveAllButton.addEventListener("click", saveAllMeasurements);
 
+    // Globale Listener für Bürden-Komponenten
+    document
+      .querySelectorAll(
+        ".global-burden-section .burden-calc-input, .global-burden-section input[type='radio']"
+      )
+      .forEach((el) => {
+        el.addEventListener("input", () => {
+          ["L1", "L2", "L3"].forEach((phase) =>
+            calculateAndDisplayBurden(phase)
+          );
+        });
+      });
+
     ["L1", "L2", "L3"].forEach((phase) => {
       document
         .querySelectorAll(`#context-${phase} .resistance-calc-input`)
@@ -85,17 +108,8 @@ document.addEventListener("DOMContentLoaded", () => {
           )
         );
       document
-        .querySelectorAll(`#context-${phase} .burden-calc-input`)
-        .forEach((el) =>
-          el.addEventListener("input", () => calculateAndDisplayBurden(phase))
-        );
-      document
-        .querySelectorAll(`input[name="temp-selector-${phase}"]`)
-        .forEach((radio) => {
-          radio.addEventListener("change", () =>
-            calculateAndDisplayBurden(phase)
-          );
-        });
+        .getElementById(`e-series-selector-${phase}`)
+        .addEventListener("input", () => calculateAndDisplayBurden(phase));
 
       createErrorChart(phase);
     });
@@ -136,80 +150,181 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function calculateAndDisplayBurden(phase) {
+    // 1. Inputs auslesen (jetzt global)
     const length = parseFloat(
-      document.getElementById(`cable-length-${phase}`).value
+      document.getElementById(`cable-length-global`).value
     );
     const area = parseFloat(
-      document.getElementById(`cable-cross-section-${phase}`).value
+      document.getElementById(`cable-cross-section-global`).value
     );
     const meter_r = parseFloat(
-      document.getElementById(`meter-resistance-${phase}`).value
+      document.getElementById(`meter-resistance-global`).value
     );
     const temp = document.querySelector(
-      `input[name="temp-selector-${phase}"]:checked`
+      `input[name="temp-selector-global"]:checked`
     ).value;
-
     const rho = temp === "80" ? RHO_80 : RHO_20;
 
-    const r_cable_span = document.getElementById(`rcable-result-${phase}`);
-    const s_burden_span = document.getElementById(`sburden-result-${phase}`);
-    const total_burden_input = document.getElementById(
-      `burden-resistance-${phase}`
-    );
-    const burden_status_div = document.getElementById(`burden-status-${phase}`);
-
-    let r_cable = NaN;
-    if (!isNaN(length) && !isNaN(area) && area > 0) {
-      r_cable = (rho * length) / area;
-      r_cable_span.textContent = `${r_cable.toFixed(4)} Ω`;
-    } else {
-      r_cable_span.textContent = "-- Ω";
-    }
-
-    let total_burden_r = NaN;
-    if (!isNaN(r_cable) && !isNaN(meter_r)) {
-      total_burden_r = r_cable + meter_r;
-      total_burden_input.value = total_burden_r.toFixed(4);
-    } else {
-      total_burden_input.value = "";
-    }
-
-    // Berechnung der Scheinleistung (Bürde in VA)
+    // 2. Wandler-Daten holen
     const componentId = transformerSelector.value;
-    if (componentId && !isNaN(total_burden_r)) {
-      const transformer = transformers.find(
-        (t) => t.templateProductInformation.name === componentId
-      );
-      const ratioStr =
-        transformer.specificProductInformation.electrical.ratio || "0/0";
-      const [, sekNenn] = ratioStr.split("/").map(Number);
+    if (!componentId) return;
+    const transformer = transformers.find(
+      (t) => t.templateProductInformation.name === componentId
+    );
+    const ratedBurdenVA =
+      transformer?.specificProductInformation?.electrical?.ratedBurdenVA || 0;
+    const ratioStr =
+      transformer?.specificProductInformation?.electrical?.ratio || "0/0";
+    const [, sekNenn] = ratioStr.split("/").map(Number);
 
-      if (sekNenn) {
-        const s_burden = total_burden_r * sekNenn ** 2;
-        s_burden_span.textContent = `${s_burden.toFixed(4)} VA`;
+    // 3. Berechnungen durchführen
+    let s_cable = 0,
+      s_meter = 0,
+      s_ist = 0;
+    if (!isNaN(length) && !isNaN(area) && area > 0 && sekNenn > 0) {
+      const r_cable = (rho * length) / area;
+      s_cable = r_cable * sekNenn ** 2;
+    }
+    if (!isNaN(meter_r) && sekNenn > 0) {
+      s_meter = meter_r * sekNenn ** 2;
+    }
+    s_ist = s_cable + s_meter;
 
-        // Status-Anzeige
-        const ratedBurdenVA =
-          transformer.specificProductInformation.electrical.ratedBurdenVA || 0;
-        if (ratedBurdenVA > 0) {
-          if (s_burden > ratedBurdenVA) {
-            burden_status_div.innerHTML = `<span class="status-error">Überbürdung</span> (Nenn: ${ratedBurdenVA} VA)`;
-          } else if (s_burden < ratedBurdenVA) {
-            burden_status_div.innerHTML = `<span class="status-warning">Unterbürdung</span> (Nenn: ${ratedBurdenVA} VA)`;
-          } else {
-            burden_status_div.innerHTML = `<span class="status-ok">Nennbürde erreicht</span> (${ratedBurdenVA} VA)`;
-          }
-        } else {
-          burden_status_div.innerHTML = `<span>Keine Nennbürde definiert</span>`;
-        }
+    // 4. UI-Elemente aktualisieren
+    document.getElementById(
+      `snenn-result-${phase}`
+    ).textContent = `${ratedBurdenVA.toFixed(4)} VA`;
+    document.getElementById(
+      `scable-result-${phase}`
+    ).textContent = `${s_cable.toFixed(4)} VA`;
+    document.getElementById(
+      `smeter-result-${phase}`
+    ).textContent = `${s_meter.toFixed(4)} VA`;
+    document.getElementById(
+      `sist-result-${phase}`
+    ).textContent = `${s_ist.toFixed(4)} VA`;
+
+    // 5. Status aktualisieren
+    const burden_status_div = document.getElementById(`burden-status-${phase}`);
+    if (ratedBurdenVA > 0) {
+      if (s_ist > ratedBurdenVA) {
+        burden_status_div.innerHTML = `<span class="status-error">Überbürdung</span> (Ist > Nenn)`;
+      } else if (s_ist < ratedBurdenVA * 0.25) {
+        burden_status_div.innerHTML = `<span class="status-warning">Starke Unterbürdung</span> (Ist < 25% Nenn)`;
       } else {
-        s_burden_span.textContent = "-- VA";
-        burden_status_div.innerHTML = `<span>Status: --</span>`;
+        burden_status_div.innerHTML = `<span class="status-ok">Bürde im zulässigen Bereich</span>`;
       }
     } else {
-      s_burden_span.textContent = "-- VA";
-      burden_status_div.innerHTML = `<span>Status: --</span>`;
+      burden_status_div.innerHTML = `<span>Keine Nennbürde definiert</span>`;
     }
+
+    // 6. Vorwiderstand-Empfehlung berechnen
+    calculateAndDisplayRequiredResistor(phase, s_ist, ratedBurdenVA, sekNenn);
+  }
+
+  function calculateAndDisplayRequiredResistor(
+    phase,
+    s_ist,
+    ratedBurdenVA,
+    sekNenn
+  ) {
+    const recommendationDiv = document.getElementById(
+      `resistor-recommendation-output-${phase}`
+    );
+    const newBurdenStatusDiv = document.getElementById(
+      `new-burden-status-${phase}`
+    );
+    recommendationDiv.innerHTML = "";
+    newBurdenStatusDiv.innerHTML = "";
+
+    if (!ratedBurdenVA || ratedBurdenVA <= 0 || !sekNenn || sekNenn <= 0) {
+      recommendationDiv.innerHTML = `<p class="subtle-text">Nennbürde/Übersetzung nicht definiert.</p>`;
+      return;
+    }
+
+    if (s_ist >= ratedBurdenVA) {
+      recommendationDiv.innerHTML = `<p class="status-error">Bürde bereits zu hoch. Kein Vorwiderstand möglich.</p>`;
+      return;
+    }
+
+    const s_kompensiert = ratedBurdenVA - s_ist;
+    if (s_kompensiert <= 0.01) {
+      // Kleine Toleranz
+      recommendationDiv.innerHTML = `<p class="status-ok">Nennbürde bereits erreicht. Kein Vorwiderstand nötig.</p>`;
+      return;
+    }
+
+    const r_kompensiert_ideal = s_kompensiert / sekNenn ** 2;
+    const r_min = r_kompensiert_ideal * 0.8; // -20% Toleranz
+    const r_max = r_kompensiert_ideal * 1.2; // +20% Toleranz
+
+    const selectedSeries = document.getElementById(
+      `e-series-selector-${phase}`
+    ).value;
+    const e_base = E_SERIES[selectedSeries];
+
+    const e_series_full = [];
+    [-2, -1, 0, 1, 2].forEach((potenz) => {
+      e_base.forEach((val) => {
+        e_series_full.push(parseFloat((val * 10 ** potenz).toPrecision(3)));
+      });
+    });
+
+    let candidates = e_series_full.filter((r) => r >= r_min && r <= r_max);
+    let best_fit_under = null;
+    let best_fit_overall = null;
+    let smallest_diff_under = Infinity;
+    let smallest_diff_overall = Infinity;
+
+    for (const r of candidates) {
+      // Finde besten Kandidaten (insgesamt)
+      const diff_overall = Math.abs(r - r_kompensiert_ideal);
+      if (diff_overall < smallest_diff_overall) {
+        smallest_diff_overall = diff_overall;
+        best_fit_overall = r;
+      }
+      // Finde besten Kandidaten, der die Nennbürde nicht überschreitet
+      if (r * sekNenn ** 2 <= s_kompensiert) {
+        const diff_under = r_kompensiert_ideal - r;
+        if (diff_under < smallest_diff_under) {
+          smallest_diff_under = diff_under;
+          best_fit_under = r;
+        }
+      }
+    }
+
+    // Bevorzuge den besten Fit unter der Nennbürde, ansonsten den besten Fit insgesamt
+    const recommendedResistor =
+      best_fit_under !== null ? best_fit_under : best_fit_overall;
+
+    let message = `
+        <p>Idealer Kompensations-R: <strong>${r_kompensiert_ideal.toFixed(
+          3
+        )} Ω</strong></p>
+        <p class="subtle-text">(Toleranzbereich: ${r_min.toFixed(
+          3
+        )} Ω - ${r_max.toFixed(3)} Ω)</p>
+    `;
+
+    if (recommendedResistor) {
+      const s_neu = s_ist + recommendedResistor * sekNenn ** 2;
+      const prozent_neu = ((s_neu / ratedBurdenVA) * 100).toFixed(1);
+
+      let statusClass = "status-ok";
+      if (prozent_neu > 100) {
+        statusClass = "status-warning";
+      }
+
+      message += `<p class="${statusClass}"><strong>Empfehlung (${selectedSeries}): ${recommendedResistor} Ω</strong></p>`;
+
+      newBurdenStatusDiv.innerHTML = `<span class="${statusClass}">Neue Gesamtbürde: ${s_neu.toFixed(
+        3
+      )} VA (${prozent_neu}% der Nennbürde)</span>`;
+    } else {
+      message += `<p class="status-warning">Kein passender Standard-Widerstand (${selectedSeries}) im ±20% Bereich gefunden.</p>`;
+    }
+
+    recommendationDiv.innerHTML = message;
   }
 
   async function loadAllInitialData() {
@@ -515,9 +630,22 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       const component_db_id = transformers.indexOf(transformer) + 1;
 
-      const totalBurden = parseFloat(
-        document.getElementById(`burden-resistance-${phase}`).value
-      );
+      // HINWEIS: Speichert den Widerstand von Kabel + Messgerät, nicht die Gesamtbürde inkl. Vorwiderstand
+      const meter_r =
+        parseFloat(document.getElementById(`meter-resistance-global`).value) ||
+        0;
+      const length =
+        parseFloat(document.getElementById(`cable-length-global`).value) || 0;
+      const area =
+        parseFloat(
+          document.getElementById(`cable-cross-section-global`).value
+        ) || 0;
+      const temp = document.querySelector(
+        `input[name="temp-selector-global"]:checked`
+      ).value;
+      const rho = temp === "80" ? RHO_80 : RHO_20;
+      const r_cable = area > 0 ? (rho * length) / area : 0;
+      const totalBurdenResistance = r_cable + meter_r;
 
       const dataToSave = measurementData[phase][componentId];
       const payload = {
@@ -525,7 +653,7 @@ document.addEventListener("DOMContentLoaded", () => {
         phase: phase,
         measurements: dataToSave.points.map((p) => ({
           ...p,
-          burden_resistance: totalBurden,
+          burden_resistance: totalBurdenResistance,
         })),
       };
       try {

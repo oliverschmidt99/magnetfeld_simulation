@@ -49,11 +49,47 @@
         </div>
     </div>
 
+    <div class="card burden-calculation-section global-burden-section">
+        <h4>Globale Bürden-Komponenten (für alle Phasen)</h4>
+        <div class="global-burden-grid">
+            <div class="form-group">
+                <label>Temperatur für ρ</label>
+                <div class="button-group-radio">
+                    <input type="radio" id="temp-20-global" name="temp-selector-global" value="20" checked><label
+                        for="temp-20-global">20°C</label>
+                    <input type="radio" id="temp-80-global" name="temp-selector-global" value="80"><label
+                        for="temp-80-global">80°C</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="cable-length-global">Kabellänge (Hin+Zurück in m)</label>
+                <input type="number" id="cable-length-global" class="burden-calc-input" step="0.1" value="2.0">
+            </div>
+            <div class="form-group">
+                <label for="cable-cross-section-global">Kabelquerschnitt (mm²)</label>
+                <select id="cable-cross-section-global" class="burden-calc-input">
+                    <option value="0.5">0,5</option>
+                    <option value="0.75">0,75</option>
+                    <option value="1.0" selected>1,0</option>
+                    <option value="1.5">1,5</option>
+                    <option value="2.5">2,5</option>
+                    <option value="4.0">4,0</option>
+                    <option value="6.0">6,0</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="meter-resistance-global">Messgerät-Innenwiderstand (Ω)</label>
+                <input type="number" id="meter-resistance-global" class="burden-calc-input" step="0.01" value="0.1">
+            </div>
+        </div>
+    </div>
+
+
     <div class="phase-input-grid">
         <div class="card phase-context" id="context-L1">
             <h3>Messwerte für L1</h3>
             <div class="resistance-measurement-section">
-                <h4>1. Sekundärwiderstand (R_S)</h4>
+                <h4>1. Sekundärwicklungs-Widerstand (R_S)</h4>
                 <div class="form-group">
                     <label>U_mess (V)</label>
                     <input type="number" id="u-mess-L1" class="resistance-calc-input" step="0.001">
@@ -67,54 +103,62 @@
                 </div>
             </div>
 
-            <div class="burden-calculation-section">
-                <h4>2. Bürdenberechnung (Last)</h4>
+            <div class="inductance-measurement-section">
+                <h4>2. Sekundärinduktivität (L_S)</h4>
                 <div class="form-group">
-                    <label>Temperatur für ρ</label>
-                    <div class="button-group-radio">
-                        <input type="radio" id="temp-20-L1" name="temp-selector-L1" value="20" checked><label
-                            for="temp-20-L1">20°C</label>
-                        <input type="radio" id="temp-80-L1" name="temp-selector-L1" value="80"><label
-                            for="temp-80-L1">80°C</label>
-                    </div>
+                    <label>U_mess (V)</label>
+                    <input type="number" id="u-mess-L-L1" class="inductance-calc-input" step="0.001">
                 </div>
                 <div class="form-group">
-                    <label for="cable-length-L1">Kabellänge (Hin+Zurück in m)</label>
-                    <input type="number" id="cable-length-L1" class="burden-calc-input" step="0.1" value="2.0">
+                    <label>I_mess (A)</label>
+                    <input type="number" id="i-mess-L-L1" class="inductance-calc-input" step="0.001">
                 </div>
                 <div class="form-group">
-                    <label for="cable-cross-section-L1">Kabelquerschnitt (mm²)</label>
-                    <select id="cable-cross-section-L1" class="burden-calc-input">
-                        <option value="0.5">0,5</option>
-                        <option value="0.75">0,75</option>
-                        <option value="1.0" selected>1,0</option>
-                        <option value="1.5">1,5</option>
-                        <option value="2.5">2,5</option>
-                        <option value="4.0">4,0</option>
-                        <option value="6.0">6,0</option>
-                    </select>
+                    <label>Phasenverschiebung φ (°)</label>
+                    <input type="number" id="phi-mess-L-L1" class="inductance-calc-input" step="0.1">
                 </div>
-                <div class="form-group">
-                    <label for="meter-resistance-L1">Messgerät-Innenwiderstand (Ω)</label>
-                    <input type="number" id="meter-resistance-L1" class="burden-calc-input" step="0.01" value="0.1">
-                </div>
-                <div class="burden-result">
-                    R_Kabel: <span id="rcable-result-L1">-- Ω</span>
+                <div class="inductance-result">
+                    X_S: <span id="xs-result-L1">-- Ω</span> | L_S: <span id="ls-result-L1">-- mH</span>
                 </div>
             </div>
 
             <div class="total-burden-section">
-                <h4>3. Gesamtbürde</h4>
-                <div class="form-group">
-                    <label for="burden-resistance-L1">Gesamtbürde R_B (Ω)</label>
-                    <input type="number" id="burden-resistance-L1" class="burden-input" step="0.0001" readonly>
-                </div>
-                <div class="burden-result">
-                    Gesamtbürde S_B: <span id="sburden-result-L1">-- VA</span>
+                <h4>3. Bürden-Analyse &amp; Kompensation</h4>
+                <div class="burden-summary">
+                    <div class="summary-item">
+                        <span>S_Nenn (Nennbürde):</span>
+                        <span id="snenn-result-L1">-- VA</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>S_Kabel (Leitungsbürde):</span>
+                        <span id="scable-result-L1">-- VA</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>S_Messgerät (Gerätebürde):</span>
+                        <span id="smeter-result-L1">-- VA</span>
+                    </div>
+                    <hr>
+                    <div class="summary-item total">
+                        <span>S_Ist (Gesamtbürde):</span>
+                        <span id="sist-result-L1">-- VA</span>
+                    </div>
                 </div>
                 <div id="burden-status-L1" class="burden-status">
                     <span>Status: --</span>
                 </div>
+                <div class="resistor-recommendation" id="resistor-recommendation-L1">
+                    <div class="form-group">
+                        <label for="e-series-selector-L1">E-Reihe für Vorwiderstand</label>
+                        <select id="e-series-selector-L1" class="e-series-selector">
+                            <option value="E3">E3 (40%)</option>
+                            <option value="E6">E6 (20%)</option>
+                            <option value="E12" selected>E12 (10%)</option>
+                            <option value="E24">E24 (5%)</option>
+                        </select>
+                    </div>
+                    <div id="resistor-recommendation-output-L1"></div>
+                </div>
+                <div id="new-burden-status-L1" class="burden-status"></div>
             </div>
 
             <div class="table-wrapper">
@@ -137,7 +181,7 @@
         <div class="card phase-context" id="context-L2">
             <h3>Messwerte für L2</h3>
             <div class="resistance-measurement-section">
-                <h4>1. Sekundärwiderstand (R_S)</h4>
+                <h4>1. Sekundärwicklungs-Widerstand (R_S)</h4>
                 <div class="form-group">
                     <label>U_mess (V)</label>
                     <input type="number" id="u-mess-L2" class="resistance-calc-input" step="0.001">
@@ -151,54 +195,62 @@
                 </div>
             </div>
 
-            <div class="burden-calculation-section">
-                <h4>2. Bürdenberechnung (Last)</h4>
+            <div class="inductance-measurement-section">
+                <h4>2. Sekundärinduktivität (L_S)</h4>
                 <div class="form-group">
-                    <label>Temperatur für ρ</label>
-                    <div class="button-group-radio">
-                        <input type="radio" id="temp-20-L2" name="temp-selector-L2" value="20" checked><label
-                            for="temp-20-L2">20°C</label>
-                        <input type="radio" id="temp-80-L2" name="temp-selector-L2" value="80"><label
-                            for="temp-80-L2">80°C</label>
-                    </div>
+                    <label>U_mess (V)</label>
+                    <input type="number" id="u-mess-L-L2" class="inductance-calc-input" step="0.001">
                 </div>
                 <div class="form-group">
-                    <label for="cable-length-L2">Kabellänge (Hin+Zurück in m)</label>
-                    <input type="number" id="cable-length-L2" class="burden-calc-input" step="0.1" value="2.0">
+                    <label>I_mess (A)</label>
+                    <input type="number" id="i-mess-L-L2" class="inductance-calc-input" step="0.001">
                 </div>
                 <div class="form-group">
-                    <label for="cable-cross-section-L2">Kabelquerschnitt (mm²)</label>
-                    <select id="cable-cross-section-L2" class="burden-calc-input">
-                        <option value="0.5">0,5</option>
-                        <option value="0.75">0,75</option>
-                        <option value="1.0" selected>1,0</option>
-                        <option value="1.5">1,5</option>
-                        <option value="2.5">2,5</option>
-                        <option value="4.0">4,0</option>
-                        <option value="6.0">6,0</option>
-                    </select>
+                    <label>Phasenverschiebung φ (°)</label>
+                    <input type="number" id="phi-mess-L-L2" class="inductance-calc-input" step="0.1">
                 </div>
-                <div class="form-group">
-                    <label for="meter-resistance-L2">Messgerät-Innenwiderstand (Ω)</label>
-                    <input type="number" id="meter-resistance-L2" class="burden-calc-input" step="0.01" value="0.1">
-                </div>
-                <div class="burden-result">
-                    R_Kabel: <span id="rcable-result-L2">-- Ω</span>
+                <div class="inductance-result">
+                    X_S: <span id="xs-result-L2">-- Ω</span> | L_S: <span id="ls-result-L2">-- mH</span>
                 </div>
             </div>
 
             <div class="total-burden-section">
-                <h4>3. Gesamtbürde</h4>
-                <div class="form-group">
-                    <label for="burden-resistance-L2">Gesamtbürde R_B (Ω)</label>
-                    <input type="number" id="burden-resistance-L2" class="burden-input" step="0.0001" readonly>
-                </div>
-                <div class="burden-result">
-                    Gesamtbürde S_B: <span id="sburden-result-L2">-- VA</span>
+                <h4>3. Bürden-Analyse &amp; Kompensation</h4>
+                <div class="burden-summary">
+                    <div class="summary-item">
+                        <span>S_Nenn (Nennbürde):</span>
+                        <span id="snenn-result-L2">-- VA</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>S_Kabel (Leitungsbürde):</span>
+                        <span id="scable-result-L2">-- VA</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>S_Messgerät (Gerätebürde):</span>
+                        <span id="smeter-result-L2">-- VA</span>
+                    </div>
+                    <hr>
+                    <div class="summary-item total">
+                        <span>S_Ist (Gesamtbürde):</span>
+                        <span id="sist-result-L2">-- VA</span>
+                    </div>
                 </div>
                 <div id="burden-status-L2" class="burden-status">
                     <span>Status: --</span>
                 </div>
+                <div class="resistor-recommendation" id="resistor-recommendation-L2">
+                    <div class="form-group">
+                        <label for="e-series-selector-L2">E-Reihe für Vorwiderstand</label>
+                        <select id="e-series-selector-L2" class="e-series-selector">
+                            <option value="E3">E3 (40%)</option>
+                            <option value="E6">E6 (20%)</option>
+                            <option value="E12" selected>E12 (10%)</option>
+                            <option value="E24">E24 (5%)</option>
+                        </select>
+                    </div>
+                    <div id="resistor-recommendation-output-L2"></div>
+                </div>
+                <div id="new-burden-status-L2" class="burden-status"></div>
             </div>
 
             <div class="table-wrapper">
@@ -221,7 +273,7 @@
         <div class="card phase-context" id="context-L3">
             <h3>Messwerte für L3</h3>
             <div class="resistance-measurement-section">
-                <h4>1. Sekundärwiderstand (R_S)</h4>
+                <h4>1. Sekundärwicklungs-Widerstand (R_S)</h4>
                 <div class="form-group">
                     <label>U_mess (V)</label>
                     <input type="number" id="u-mess-L3" class="resistance-calc-input" step="0.001">
@@ -235,54 +287,62 @@
                 </div>
             </div>
 
-            <div class="burden-calculation-section">
-                <h4>2. Bürdenberechnung (Last)</h4>
+            <div class="inductance-measurement-section">
+                <h4>2. Sekundärinduktivität (L_S)</h4>
                 <div class="form-group">
-                    <label>Temperatur für ρ</label>
-                    <div class="button-group-radio">
-                        <input type="radio" id="temp-20-L3" name="temp-selector-L3" value="20" checked><label
-                            for="temp-20-L3">20°C</label>
-                        <input type="radio" id="temp-80-L3" name="temp-selector-L3" value="80"><label
-                            for="temp-80-L3">80°C</label>
-                    </div>
+                    <label>U_mess (V)</label>
+                    <input type="number" id="u-mess-L-L3" class="inductance-calc-input" step="0.001">
                 </div>
                 <div class="form-group">
-                    <label for="cable-length-L3">Kabellänge (Hin+Zurück in m)</label>
-                    <input type="number" id="cable-length-L3" class="burden-calc-input" step="0.1" value="2.0">
+                    <label>I_mess (A)</label>
+                    <input type="number" id="i-mess-L-L3" class="inductance-calc-input" step="0.001">
                 </div>
                 <div class="form-group">
-                    <label for="cable-cross-section-L3">Kabelquerschnitt (mm²)</label>
-                    <select id="cable-cross-section-L3" class="burden-calc-input">
-                        <option value="0.5">0,5</option>
-                        <option value="0.75">0,75</option>
-                        <option value="1.0" selected>1,0</option>
-                        <option value="1.5">1,5</option>
-                        <option value="2.5">2,5</option>
-                        <option value="4.0">4,0</option>
-                        <option value="6.0">6,0</option>
-                    </select>
+                    <label>Phasenverschiebung φ (°)</label>
+                    <input type="number" id="phi-mess-L-L3" class="inductance-calc-input" step="0.1">
                 </div>
-                <div class="form-group">
-                    <label for="meter-resistance-L3">Messgerät-Innenwiderstand (Ω)</label>
-                    <input type="number" id="meter-resistance-L3" class="burden-calc-input" step="0.01" value="0.1">
-                </div>
-                <div class="burden-result">
-                    R_Kabel: <span id="rcable-result-L3">-- Ω</span>
+                <div class="inductance-result">
+                    X_S: <span id="xs-result-L3">-- Ω</span> | L_S: <span id="ls-result-L3">-- mH</span>
                 </div>
             </div>
 
             <div class="total-burden-section">
-                <h4>3. Gesamtbürde</h4>
-                <div class="form-group">
-                    <label for="burden-resistance-L3">Gesamtbürde R_B (Ω)</label>
-                    <input type="number" id="burden-resistance-L3" class="burden-input" step="0.0001" readonly>
-                </div>
-                <div class="burden-result">
-                    Gesamtbürde S_B: <span id="sburden-result-L3">-- VA</span>
+                <h4>3. Bürden-Analyse &amp; Kompensation</h4>
+                <div class="burden-summary">
+                    <div class="summary-item">
+                        <span>S_Nenn (Nennbürde):</span>
+                        <span id="snenn-result-L3">-- VA</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>S_Kabel (Leitungsbürde):</span>
+                        <span id="scable-result-L3">-- VA</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>S_Messgerät (Gerätebürde):</span>
+                        <span id="smeter-result-L3">-- VA</span>
+                    </div>
+                    <hr>
+                    <div class="summary-item total">
+                        <span>S_Ist (Gesamtbürde):</span>
+                        <span id="sist-result-L3">-- VA</span>
+                    </div>
                 </div>
                 <div id="burden-status-L3" class="burden-status">
                     <span>Status: --</span>
                 </div>
+                <div class="resistor-recommendation" id="resistor-recommendation-L3">
+                    <div class="form-group">
+                        <label for="e-series-selector-L3">E-Reihe für Vorwiderstand</label>
+                        <select id="e-series-selector-L3" class="e-series-selector">
+                            <option value="E3">E3 (40%)</option>
+                            <option value="E6">E6 (20%)</option>
+                            <option value="E12" selected>E12 (10%)</option>
+                            <option value="E24">E24 (5%)</option>
+                        </select>
+                    </div>
+                    <div id="resistor-recommendation-output-L3"></div>
+                </div>
+                <div id="new-burden-status-L3" class="burden-status"></div>
             </div>
 
             <div class="table-wrapper">

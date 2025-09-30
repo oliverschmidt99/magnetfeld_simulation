@@ -1,182 +1,181 @@
 /* static/css/measurements.css */
-.global-controls {
+.top-controls-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1.5rem;
     align-items: flex-end;
-    margin-bottom: 2rem;
+}
+.overall-status {
+    text-align: right;
+    font-weight: bold;
+    color: #495057;
+}
+.overall-status .status-value.complete { color: #198754; }
+.overall-status .status-value.incomplete { color: #dc3545; }
+
+
+.save-button-container {
+    text-align: center;
+    margin-top: 2rem;
 }
 
-.phase-input-grid {
+/* --- ACCORDION STYLES --- */
+.accordion {
+    margin-top: 1rem;
+}
+.accordion-item {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+.accordion-button {
+    background-color: #f8f9fa;
+    color: #495057;
+    cursor: pointer;
+    padding: 1rem;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.accordion-button label {
+    cursor: pointer;
+}
+.accordion-button:hover {
+    background-color: #e9ecef;
+}
+.accordion-button.active {
+    background-color: #e7f1ff;
+    color: #0d6efd;
+    border-bottom: 1px solid #dee2e6;
+}
+.accordion-content {
+    padding: 1.5rem;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background-color: #fff;
+}
+.accordion-item:nth-child(odd) .accordion-content {
+    background-color: #fdfdff;
+}
+
+.test-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
 }
-
-.phase-context h3 {
+.test-grid h4, .test-grid h5 {
     margin-top: 0;
     text-align: center;
+}
+
+
+/* --- LAYOUT FÜR PHASEN-SPALTEN --- */
+.phase-input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+.phase-context.hidden {
+    display: none;
+}
+.phase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+.phase-header h3 {
+    margin: 0;
     color: #0d6efd;
+}
+
+.resistance-measurement-section, .inductance-measurement-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.resistance-measurement-section:last-child, .inductance-measurement-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.resistance-result, .inductance-result {
+    margin-top: 1rem;
+    font-weight: bold;
+    text-align: center;
+    color: #0d6efd;
+    font-family: monospace;
 }
 
 .table-wrapper {
     margin-top: 1rem;
 }
 
-.table-wrapper h4 {
-    margin-bottom: 0.5rem;
-    color: #495057;
-    text-align: center;
-}
-
 .measurement-table {
     width: 100%;
 }
-
 .measurement-table input {
     width: 100%;
     padding: 6px;
     border: 1px solid #ced4da;
     border-radius: 4px;
-    -moz-appearance: textfield; /* Firefox */
-    appearance: textfield; /* Standard property */
 }
-.measurement-table input::-webkit-outer-spin-button,
-.measurement-table input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
 .measurement-table .error-cell {
     font-weight: bold;
     text-align: right;
     padding-right: 1rem;
     min-width: 70px;
+    color: #dc3545;
 }
-
-.subtle-text, .last-saved-span {
+.subtle-text {
     color: #6c757d;
     font-style: italic;
     font-size: 0.85rem;
-    text-align: center;
-    display: block;
-    margin-top: 0.5rem;
-    height: 1em; /* Sorgt für stabilen Platz */
 }
 
-/* STILE FÜR MESSSEKTIONEN */
-.resistance-measurement-section, .burden-calculation-section, .total-burden-section {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    border: 1px solid #e9ecef;
-    background-color: #f8f9fa;
-    border-radius: 4px;
+/* --- Bürden-Styling --- */
+.burden-summary {
+    font-size: 0.95rem;
 }
-
-.resistance-measurement-section h4, .burden-calculation-section h4, .total-burden-section h4 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    text-align: center;
-    color: #495057;
-    font-size: 1rem;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 0.5rem;
+.burden-summary .summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
 }
-
-.resistance-result, .burden-result {
-    margin-top: 1rem;
-    font-size: 1rem;
-    text-align: center;
-    color: #343a40;
+.burden-summary hr {
+    margin: 0.5rem 0;
+    border-color: #dee2e6;
+}
+.burden-summary .summary-item.total {
+    font-weight: bold;
+    font-size: 1.05rem;
+}
+.burden-summary span:last-child {
+    font-family: monospace;
     font-weight: bold;
 }
-
-.resistance-result span, .burden-result span {
-    color: #0d6efd;
-    font-family: monospace;
-    font-size: 1.1rem;
-}
-
 .burden-status {
     text-align: center;
     margin-top: 1rem;
     font-size: 1.1rem;
     font-weight: bold;
 }
+.burden-status .status-ok { color: #198754; }
+.burden-status .status-warning { color: #ffc107; }
+.burden-status .status-error { color: #dc3545; }
 
-.burden-status .status-ok { color: #198754; } /* Grün */
-.burden-status .status-warning { color: #ffc107; } /* Gelb */
-.burden-status .status-error { color: #dc3545; } /* Rot */
-
-
-/* Radio-Button-Gruppe */
-.button-group-radio {
-    display: flex;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    padding: 4px;
-    background-color: #e9ecef;
-}
-
-.button-group-radio input {
-    display: none;
-}
-
-.button-group-radio label {
-    flex: 1;
-    text-align: center;
-    padding: 6px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    margin-bottom: 0;
-    font-weight: normal;
-    background-color: #e9ecef;
-    color: #495057;
-}
-
-.button-group-radio input:checked + label {
-    background-color: #0d6efd;
-    color: white;
-    font-weight: bold;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.burden-input[readonly] {
-    background-color: #e9ecef;
-    cursor: not-allowed;
-}
-
-/* NEUE STILE FÜR DIE BÜRDEN-ZUSAMMENFASSUNG */
-.burden-summary {
-    margin-top: 1rem;
-    font-size: 0.95rem;
-}
-
-.burden-summary .summary-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.3rem 0;
-}
-
-.burden-summary hr {
-    margin: 0.5rem 0;
-    border-color: #dee2e6;
-}
-
-.burden-summary .summary-item.total {
-    font-weight: bold;
-    font-size: 1.05rem;
-}
-
-.burden-summary span:last-child {
-    font-family: monospace;
-    color: #0d6efd;
-    font-weight: bold;
-}
-
-/* STILE FÜR WIDERSTANDS-EMPFEHLUNG */
 .resistor-recommendation {
     margin-top: 1.5rem;
     padding: 1rem;
@@ -184,32 +183,4 @@
     background-color: #e7f1ff;
     border-radius: 4px;
     text-align: center;
-}
-
-.resistor-recommendation .recommendation-title {
-    margin-top: 0;
-    margin-bottom: 0.75rem;
-    font-size: 1rem;
-    color: #0b5ed7;
-}
-
-.resistor-recommendation p {
-    margin: 0.25rem 0;
-}
-
-.diagram-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
-    margin-top: 2rem;
-}
-
-.chart-card h4 {
-    text-align: center;
-    margin-top: 0;
-}
-
-.chart-wrapper {
-    position: relative;
-    height: 350px;
 }

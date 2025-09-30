@@ -26,6 +26,15 @@ function getTransformerFormHtml(data) {
     )
     .join("");
 
+  const classOptions = ["0.1", "0.2", "0.5", "1.0"]
+    .map(
+      (cls) =>
+        `<option value="${cls}" ${
+          ele.accuracyClass === cls ? "selected" : ""
+        }>Klasse ${cls}</option>`
+    )
+    .join("");
+
   const [ratioPrimary, ratioSecondary] = (ele.ratio || "/").split("/");
 
   return `
@@ -68,6 +77,18 @@ function getTransformerFormHtml(data) {
                     <input type="number" id="edit-ratio-secondary" placeholder="Sekundär" value="${
                       ratioSecondary || ""
                     }">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nennbürde (VA)</label>
+                    <input type="number" id="edit-ratedBurdenVA" step="0.1" value="${
+                      ele.ratedBurdenVA || ""
+                    }" placeholder="z.B. 5">
+                </div>
+                <div class="form-group">
+                    <label>Genauigkeitsklasse</label>
+                    <select id="edit-accuracyClass">${classOptions}</select>
                 </div>
             </div>
         </div>

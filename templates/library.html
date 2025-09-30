@@ -98,7 +98,7 @@
         <h2 id="editor-title">Bauteil bearbeiten</h2>
         <div class="editor-layout">
             <form id="component-editor-form" class="component-form">
-                <button type="submit" class="hidden" aria-label="Submit Form"></button>
+                <button type="submit" class="visually-hidden" aria-label="Submit Form"></button>
             </form>
             <div class="component-preview-container">
                 <h3>Vorschau</h3>
@@ -271,6 +271,8 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/tags.js') }}"></script>
 <script src="{{ url_for('static', filename='js/preview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/editor-forms.js') }}"></script>
+<script src="{{ url_for('static', filename='js/editor-api.js') }}"></script>
 <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/materials.js') }}"></script>
 <script src="{{ url_for('static', filename='js/library.js') }}"></script>

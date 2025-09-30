@@ -1,13 +1,16 @@
 // static/js/measurements.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Globale Variablen
+  // Globale Variablen & Konstanten
   const library = JSON.parse(
     document.getElementById("library-data").textContent
   );
   const transformers = library.components.transformers || [];
   let charts = { L1: null, L2: null, L3: null };
-  let measurementData = { L1: {}, L2: {}, L3: {} }; // Daten für jeden Trafo in jedem Kontext
+  let measurementData = { L1: {}, L2: {}, L3: {} };
+
+  const RHO_20 = 0.0178; // Ohm * mm^2 / m
+  const RHO_80 = 0.02195; // Ohm * mm^2 / m
 
   // Globale DOM-Elemente
   const stromGruppeSelector = document.getElementById("strom-gruppe-selector");
@@ -56,18 +59,15 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   };
 
-  // --- Debounce-Funktion für das Auto-Speichern ---
   function debounce(func, delay) {
     let timeout;
-    return function (...args) {
-      const context = this;
+    return (...args) => {
       clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), delay);
+      timeout = setTimeout(() => func.apply(this, args), delay);
     };
   }
   const debouncedSaveToLocalStorage = debounce(saveStateToLocalStorage, 1000);
 
-  // --- Initialisierung ---
   async function initialize() {
     stromGruppeSelector.addEventListener("change", handleGroupSelect);
     transformerSelector.addEventListener("change", handleTransformerSelect);
@@ -78,24 +78,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ["L1", "L2", "L3"].forEach((phase) => {
       document
-        .getElementById(`burden-resistance-${phase}`)
-        .addEventListener("input", (e) => {
-          const componentId = transformerSelector.value;
-          if (componentId) {
-            measurementData[phase][componentId].burden = parseFloat(
-              e.target.value
-            );
-            debouncedSaveToLocalStorage();
-          }
+        .querySelectorAll(`#context-${phase} .resistance-calc-input`)
+        .forEach((el) =>
+          el.addEventListener("input", () =>
+            calculateAndDisplayResistance(phase)
+          )
+        );
+      document
+        .querySelectorAll(`#context-${phase} .burden-calc-input`)
+        .forEach((el) =>
+          el.addEventListener("input", () => calculateAndDisplayBurden(phase))
+        );
+      document
+        .querySelectorAll(`input[name="temp-selector-${phase}"]`)
+        .forEach((radio) => {
+          radio.addEventListener("change", () =>
+            calculateAndDisplayBurden(phase)
+          );
         });
+
       createErrorChart(phase);
     });
 
     await loadAllInitialData();
-    loadStateFromLocalStorage(); // Lade unsaved changes
+    loadStateFromLocalStorage();
   }
 
-  // --- State Management (LocalStorage) ---
   function saveStateToLocalStorage() {
     const state = {
       selectedGroup: stromGruppeSelector.value,
@@ -103,24 +111,105 @@ document.addEventListener("DOMContentLoaded", () => {
       data: measurementData,
     };
     localStorage.setItem("measurementAutoSave", JSON.stringify(state));
-    console.log("Zwischenstand im Browser gespeichert.");
   }
 
   function loadStateFromLocalStorage() {
     const savedState = JSON.parse(localStorage.getItem("measurementAutoSave"));
     if (!savedState) return;
-
     measurementData = savedState.data;
-
     if (savedState.selectedGroup) {
       stromGruppeSelector.value = savedState.selectedGroup;
-      handleGroupSelect(); // Filtert die Wandlerliste
+      handleGroupSelect();
       if (savedState.selectedTransformer) {
         transformerSelector.value = savedState.selectedTransformer;
-        handleTransformerSelect(); // Zeigt die Daten an
+        handleTransformerSelect();
       }
     }
-    console.log("Zwischenstand aus Browser geladen.");
+  }
+
+  function calculateAndDisplayResistance(phase) {
+    const u_mess = parseFloat(document.getElementById(`u-mess-${phase}`).value);
+    const i_mess = parseFloat(document.getElementById(`i-mess-${phase}`).value);
+    const result_span = document.getElementById(`rs-result-${phase}`);
+    result_span.textContent =
+      i_mess && !isNaN(u_mess) ? `${(u_mess / i_mess).toFixed(4)} Ω` : "-- Ω";
+  }
+
+  function calculateAndDisplayBurden(phase) {
+    const length = parseFloat(
+      document.getElementById(`cable-length-${phase}`).value
+    );
+    const area = parseFloat(
+      document.getElementById(`cable-cross-section-${phase}`).value
+    );
+    const meter_r = parseFloat(
+      document.getElementById(`meter-resistance-${phase}`).value
+    );
+    const temp = document.querySelector(
+      `input[name="temp-selector-${phase}"]:checked`
+    ).value;
+
+    const rho = temp === "80" ? RHO_80 : RHO_20;
+
+    const r_cable_span = document.getElementById(`rcable-result-${phase}`);
+    const s_burden_span = document.getElementById(`sburden-result-${phase}`);
+    const total_burden_input = document.getElementById(
+      `burden-resistance-${phase}`
+    );
+    const burden_status_div = document.getElementById(`burden-status-${phase}`);
+
+    let r_cable = NaN;
+    if (!isNaN(length) && !isNaN(area) && area > 0) {
+      r_cable = (rho * length) / area;
+      r_cable_span.textContent = `${r_cable.toFixed(4)} Ω`;
+    } else {
+      r_cable_span.textContent = "-- Ω";
+    }
+
+    let total_burden_r = NaN;
+    if (!isNaN(r_cable) && !isNaN(meter_r)) {
+      total_burden_r = r_cable + meter_r;
+      total_burden_input.value = total_burden_r.toFixed(4);
+    } else {
+      total_burden_input.value = "";
+    }
+
+    // Berechnung der Scheinleistung (Bürde in VA)
+    const componentId = transformerSelector.value;
+    if (componentId && !isNaN(total_burden_r)) {
+      const transformer = transformers.find(
+        (t) => t.templateProductInformation.name === componentId
+      );
+      const ratioStr =
+        transformer.specificProductInformation.electrical.ratio || "0/0";
+      const [, sekNenn] = ratioStr.split("/").map(Number);
+
+      if (sekNenn) {
+        const s_burden = total_burden_r * sekNenn ** 2;
+        s_burden_span.textContent = `${s_burden.toFixed(4)} VA`;
+
+        // Status-Anzeige
+        const ratedBurdenVA =
+          transformer.specificProductInformation.electrical.ratedBurdenVA || 0;
+        if (ratedBurdenVA > 0) {
+          if (s_burden > ratedBurdenVA) {
+            burden_status_div.innerHTML = `<span class="status-error">Überbürdung</span> (Nenn: ${ratedBurdenVA} VA)`;
+          } else if (s_burden < ratedBurdenVA) {
+            burden_status_div.innerHTML = `<span class="status-warning">Unterbürdung</span> (Nenn: ${ratedBurdenVA} VA)`;
+          } else {
+            burden_status_div.innerHTML = `<span class="status-ok">Nennbürde erreicht</span> (${ratedBurdenVA} VA)`;
+          }
+        } else {
+          burden_status_div.innerHTML = `<span>Keine Nennbürde definiert</span>`;
+        }
+      } else {
+        s_burden_span.textContent = "-- VA";
+        burden_status_div.innerHTML = `<span>Status: --</span>`;
+      }
+    } else {
+      s_burden_span.textContent = "-- VA";
+      burden_status_div.innerHTML = `<span>Status: --</span>`;
+    }
   }
 
   async function loadAllInitialData() {
@@ -128,13 +217,11 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const transformer of transformers) {
         const componentName = transformer.templateProductInformation.name;
         const savedData = await fetchMeasurements(componentName, phase);
-
         measurementData[phase][componentName] = {
           details: transformer,
           points: getMeasurementPoints(),
           burden: savedData.length > 0 ? savedData[0].burden_resistance : 1.0,
         };
-
         const pointsMap = new Map(
           savedData.map((p) => [`${p.percent_nominal}`, p])
         );
@@ -179,10 +266,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     filteredTransformers.forEach((t) => {
       const name = t.templateProductInformation.name;
-      const option = new Option(name, name);
-      transformerSelector.add(option);
+      transformerSelector.add(new Option(name, name));
     });
-
     transformerSelector.disabled = false;
   }
 
@@ -196,9 +281,8 @@ document.addEventListener("DOMContentLoaded", () => {
         tableBody.innerHTML = "";
       } else {
         const data = measurementData[phase][componentId];
-        document.getElementById(`burden-resistance-${phase}`).value =
-          data.burden;
         generateMeasurementTable(phase, data);
+        calculateAndDisplayBurden(phase); // Berechne Bürde bei Auswahl
       }
       updateChart(phase);
     });
@@ -210,7 +294,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .getElementById(`measurement-table-${phase}`)
       .querySelector("tbody");
     tableBody.innerHTML = "";
-
     const transformer = data.details;
     const ratioStr =
       transformer.specificProductInformation.electrical.ratio || "0/0";
@@ -222,25 +305,22 @@ document.addEventListener("DOMContentLoaded", () => {
     data.points.forEach((p) => {
       const row = tableBody.insertRow();
       row.dataset.percent = p.percent_nominal;
-
       const sollPrim = nennstrom * (p.percent_nominal / 100);
-      const sollSek = ratio ? (sollPrim / ratio) * 1000 : 0; // in mA
+      const sollSek = ratio ? (sollPrim / ratio) * 1000 : 0;
       const error = calculateAmplitudeError(
         p.measured_primary,
         p.measured_secondary,
         ratio
       );
-
       row.innerHTML = `
-                <td>${p.percent_nominal}%</td>
-                <td><input type="number" step="0.1" class="measured-prim" value="${
-                  p.measured_primary || ""
-                }" placeholder="${sollPrim.toFixed(1)}"></td>
-                <td><input type="number" step="0.01" class="measured-sek" value="${
-                  p.measured_secondary || ""
-                }" placeholder="${sollSek.toFixed(2)}"></td>
-                <td class="error-cell">${error.toFixed(4)}</td>
-            `;
+        <td>${p.percent_nominal}%</td>
+        <td><input type="number" step="0.1" class="measured-prim" value="${
+          p.measured_primary || ""
+        }" placeholder="${sollPrim.toFixed(1)}"></td>
+        <td><input type="number" step="0.01" class="measured-sek" value="${
+          p.measured_secondary || ""
+        }" placeholder="${sollSek.toFixed(2)}"></td>
+        <td class="error-cell">${error.toFixed(4)}</td>`;
     });
 
     tableBody.querySelectorAll("input").forEach((input) => {
@@ -248,18 +328,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const row = e.target.closest("tr");
         const percent = parseInt(row.dataset.percent);
         const point = data.points.find((p) => p.percent_nominal === percent);
-
         point.measured_primary =
           parseFloat(row.querySelector(".measured-prim").value) || null;
         point.measured_secondary =
           parseFloat(row.querySelector(".measured-sek").value) || null;
-
         const newError = calculateAmplitudeError(
           point.measured_primary,
           point.measured_secondary,
           ratio
         );
         row.querySelector(".error-cell").textContent = newError.toFixed(4);
+
         updateChart(phase);
         debouncedSaveToLocalStorage();
       });
@@ -293,7 +372,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .getContext("2d");
     const datasets = [];
     const selectedClass = accuracyClassSelector.value;
-
     for (const [name, props] of Object.entries(accuracyClasses)) {
       if (selectedClass === "all" || selectedClass === name) {
         datasets.push({
@@ -316,13 +394,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     }
-
     if (dataSet && dataSet.details) {
       const ratioStr =
         dataSet.details.specificProductInformation.electrical.ratio || "0/0";
       const [primNenn, sekNenn] = ratioStr.split("/").map(Number);
       const ratio = primNenn && sekNenn ? primNenn / sekNenn : 0;
-
       const points = dataSet.points
         .filter((p) => p.measured_primary && p.measured_secondary)
         .map((p) => ({
@@ -333,7 +409,6 @@ document.addEventListener("DOMContentLoaded", () => {
             ratio
           ),
         }));
-
       datasets.push({
         label: dataSet.details.templateProductInformation.name,
         data: points,
@@ -344,7 +419,6 @@ document.addEventListener("DOMContentLoaded", () => {
         type: "scatter",
       });
     }
-
     if (charts[phase]) {
       charts[phase].data.datasets = datasets;
       charts[phase].update();
@@ -385,9 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
         (t) => t.templateProductInformation.name === componentName
       );
       if (!transformer) return [];
-
       const component_db_id = transformers.indexOf(transformer) + 1; // Workaround
-
       const response = await fetch(
         `/api/measurements/${component_db_id}/${phase}`
       );
@@ -408,24 +480,26 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Bitte zuerst einen Wandler auswählen.");
       return;
     }
-
     let successCount = 0;
     for (const phase of ["L1", "L2", "L3"]) {
       const transformer = transformers.find(
         (t) => t.templateProductInformation.name === componentId
       );
       const component_db_id = transformers.indexOf(transformer) + 1;
-      const dataToSave = measurementData[phase][componentId];
 
+      const totalBurden = parseFloat(
+        document.getElementById(`burden-resistance-${phase}`).value
+      );
+
+      const dataToSave = measurementData[phase][componentId];
       const payload = {
         component_id: component_db_id,
         phase: phase,
         measurements: dataToSave.points.map((p) => ({
           ...p,
-          burden_resistance: dataToSave.burden,
+          burden_resistance: totalBurden,
         })),
       };
-
       try {
         const response = await fetch("/api/measurements", {
           method: "POST",
@@ -448,7 +522,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (successCount === 3) {
       alert("Alle Messungen für L1, L2 und L3 erfolgreich gespeichert!");
-      localStorage.removeItem("measurementAutoSave"); // Lokalen Speicher nach Erfolg löschen
+      localStorage.removeItem("measurementAutoSave");
     }
   }
 

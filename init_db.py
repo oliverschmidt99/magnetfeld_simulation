@@ -1,10 +1,15 @@
 # init_db.py
+"""
+Initialisiert die Datenbank und fügt benötigte Tabellen hinzu.
+Dieses Skript sollte einmalig ausgeführt werden, um das Datenbankschema einzurichten.
+"""
 import sqlite3
 
 DATABASE_FILE = "database.db"
 
 # SQL-Befehl zum Erstellen der neuen Tabelle
-# "IF NOT EXISTS" stellt sicher, dass der Befehl keinen Fehler wirft, falls die Tabelle schon existiert.
+# "IF NOT EXISTS" stellt sicher, dass der Befehl keinen Fehler wirft,
+# falls die Tabelle schon existiert.
 CREATE_MEASUREMENTS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS measurements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

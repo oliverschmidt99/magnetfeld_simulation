@@ -26,6 +26,9 @@ function gatherComponentDataFromForm(type) {
       primaryRatedCurrentA:
         parseInt(form.querySelector("#edit-primaryRatedCurrentA")?.value) || 0,
       ratio: `${ratioPrimary}/${ratioSecondary}`,
+      ratedBurdenVA:
+        parseFloat(form.querySelector("#edit-ratedBurdenVA")?.value) || null,
+      accuracyClass: form.querySelector("#edit-accuracyClass")?.value || null,
     };
   } else if (type === "transformerSheets") {
     data.geometry = {

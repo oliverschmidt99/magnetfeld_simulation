@@ -12,18 +12,10 @@
 </div>
 {% endblock %}
 
-
-
-
-<script type="text/javascript" src="https://viewer.diagrams.net/js/viewer-static.min.js"></script>
-
-
 {% block content %}
 <script id="library-data" type="application/json">
     {{ library|tojson|safe }}
 </script>
-
-
 
 <div class="container measurement-container">
     <div class="card global-controls">
@@ -60,11 +52,73 @@
     <div class="phase-input-grid">
         <div class="card phase-context" id="context-L1">
             <h3>Messwerte für L1</h3>
-            <div class="form-group">
-                <label for="burden-resistance-L1">Bürde R (Ω)</label>
-                <input type="number" id="burden-resistance-L1" class="burden-input" step="0.01" value="1.0">
+            <div class="resistance-measurement-section">
+                <h4>1. Sekundärwiderstand (R_S)</h4>
+                <div class="form-group">
+                    <label>U_mess (V)</label>
+                    <input type="number" id="u-mess-L1" class="resistance-calc-input" step="0.001">
+                </div>
+                <div class="form-group">
+                    <label>I_mess (A)</label>
+                    <input type="number" id="i-mess-L1" class="resistance-calc-input" step="0.001">
+                </div>
+                <div class="resistance-result">
+                    R_S: <span id="rs-result-L1">-- Ω</span>
+                </div>
             </div>
+
+            <div class="burden-calculation-section">
+                <h4>2. Bürdenberechnung (Last)</h4>
+                <div class="form-group">
+                    <label>Temperatur für ρ</label>
+                    <div class="button-group-radio">
+                        <input type="radio" id="temp-20-L1" name="temp-selector-L1" value="20" checked><label
+                            for="temp-20-L1">20°C</label>
+                        <input type="radio" id="temp-80-L1" name="temp-selector-L1" value="80"><label
+                            for="temp-80-L1">80°C</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="cable-length-L1">Kabellänge (Hin+Zurück in m)</label>
+                    <input type="number" id="cable-length-L1" class="burden-calc-input" step="0.1" value="2.0">
+                </div>
+                <div class="form-group">
+                    <label for="cable-cross-section-L1">Kabelquerschnitt (mm²)</label>
+                    <select id="cable-cross-section-L1" class="burden-calc-input">
+                        <option value="0.5">0,5</option>
+                        <option value="0.75">0,75</option>
+                        <option value="1.0" selected>1,0</option>
+                        <option value="1.5">1,5</option>
+                        <option value="2.5">2,5</option>
+                        <option value="4.0">4,0</option>
+                        <option value="6.0">6,0</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="meter-resistance-L1">Messgerät-Innenwiderstand (Ω)</label>
+                    <input type="number" id="meter-resistance-L1" class="burden-calc-input" step="0.01" value="0.1">
+                </div>
+                <div class="burden-result">
+                    R_Kabel: <span id="rcable-result-L1">-- Ω</span>
+                </div>
+            </div>
+
+            <div class="total-burden-section">
+                <h4>3. Gesamtbürde</h4>
+                <div class="form-group">
+                    <label for="burden-resistance-L1">Gesamtbürde R_B (Ω)</label>
+                    <input type="number" id="burden-resistance-L1" class="burden-input" step="0.0001" readonly>
+                </div>
+                <div class="burden-result">
+                    Gesamtbürde S_B: <span id="sburden-result-L1">-- VA</span>
+                </div>
+                <div id="burden-status-L1" class="burden-status">
+                    <span>Status: --</span>
+                </div>
+            </div>
+
             <div class="table-wrapper">
+                <h4>4. Messpunkte</h4>
                 <table class="summary-table measurement-table" id="measurement-table-L1">
                     <thead>
                         <tr>
@@ -82,11 +136,73 @@
 
         <div class="card phase-context" id="context-L2">
             <h3>Messwerte für L2</h3>
-            <div class="form-group">
-                <label for="burden-resistance-L2">Bürde R (Ω)</label>
-                <input type="number" id="burden-resistance-L2" class="burden-input" step="0.01" value="1.0">
+            <div class="resistance-measurement-section">
+                <h4>1. Sekundärwiderstand (R_S)</h4>
+                <div class="form-group">
+                    <label>U_mess (V)</label>
+                    <input type="number" id="u-mess-L2" class="resistance-calc-input" step="0.001">
+                </div>
+                <div class="form-group">
+                    <label>I_mess (A)</label>
+                    <input type="number" id="i-mess-L2" class="resistance-calc-input" step="0.001">
+                </div>
+                <div class="resistance-result">
+                    R_S: <span id="rs-result-L2">-- Ω</span>
+                </div>
             </div>
+
+            <div class="burden-calculation-section">
+                <h4>2. Bürdenberechnung (Last)</h4>
+                <div class="form-group">
+                    <label>Temperatur für ρ</label>
+                    <div class="button-group-radio">
+                        <input type="radio" id="temp-20-L2" name="temp-selector-L2" value="20" checked><label
+                            for="temp-20-L2">20°C</label>
+                        <input type="radio" id="temp-80-L2" name="temp-selector-L2" value="80"><label
+                            for="temp-80-L2">80°C</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="cable-length-L2">Kabellänge (Hin+Zurück in m)</label>
+                    <input type="number" id="cable-length-L2" class="burden-calc-input" step="0.1" value="2.0">
+                </div>
+                <div class="form-group">
+                    <label for="cable-cross-section-L2">Kabelquerschnitt (mm²)</label>
+                    <select id="cable-cross-section-L2" class="burden-calc-input">
+                        <option value="0.5">0,5</option>
+                        <option value="0.75">0,75</option>
+                        <option value="1.0" selected>1,0</option>
+                        <option value="1.5">1,5</option>
+                        <option value="2.5">2,5</option>
+                        <option value="4.0">4,0</option>
+                        <option value="6.0">6,0</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="meter-resistance-L2">Messgerät-Innenwiderstand (Ω)</label>
+                    <input type="number" id="meter-resistance-L2" class="burden-calc-input" step="0.01" value="0.1">
+                </div>
+                <div class="burden-result">
+                    R_Kabel: <span id="rcable-result-L2">-- Ω</span>
+                </div>
+            </div>
+
+            <div class="total-burden-section">
+                <h4>3. Gesamtbürde</h4>
+                <div class="form-group">
+                    <label for="burden-resistance-L2">Gesamtbürde R_B (Ω)</label>
+                    <input type="number" id="burden-resistance-L2" class="burden-input" step="0.0001" readonly>
+                </div>
+                <div class="burden-result">
+                    Gesamtbürde S_B: <span id="sburden-result-L2">-- VA</span>
+                </div>
+                <div id="burden-status-L2" class="burden-status">
+                    <span>Status: --</span>
+                </div>
+            </div>
+
             <div class="table-wrapper">
+                <h4>4. Messpunkte</h4>
                 <table class="summary-table measurement-table" id="measurement-table-L2">
                     <thead>
                         <tr>
@@ -104,11 +220,73 @@
 
         <div class="card phase-context" id="context-L3">
             <h3>Messwerte für L3</h3>
-            <div class="form-group">
-                <label for="burden-resistance-L3">Bürde R (Ω)</label>
-                <input type="number" id="burden-resistance-L3" class="burden-input" step="0.01" value="1.0">
+            <div class="resistance-measurement-section">
+                <h4>1. Sekundärwiderstand (R_S)</h4>
+                <div class="form-group">
+                    <label>U_mess (V)</label>
+                    <input type="number" id="u-mess-L3" class="resistance-calc-input" step="0.001">
+                </div>
+                <div class="form-group">
+                    <label>I_mess (A)</label>
+                    <input type="number" id="i-mess-L3" class="resistance-calc-input" step="0.001">
+                </div>
+                <div class="resistance-result">
+                    R_S: <span id="rs-result-L3">-- Ω</span>
+                </div>
             </div>
+
+            <div class="burden-calculation-section">
+                <h4>2. Bürdenberechnung (Last)</h4>
+                <div class="form-group">
+                    <label>Temperatur für ρ</label>
+                    <div class="button-group-radio">
+                        <input type="radio" id="temp-20-L3" name="temp-selector-L3" value="20" checked><label
+                            for="temp-20-L3">20°C</label>
+                        <input type="radio" id="temp-80-L3" name="temp-selector-L3" value="80"><label
+                            for="temp-80-L3">80°C</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="cable-length-L3">Kabellänge (Hin+Zurück in m)</label>
+                    <input type="number" id="cable-length-L3" class="burden-calc-input" step="0.1" value="2.0">
+                </div>
+                <div class="form-group">
+                    <label for="cable-cross-section-L3">Kabelquerschnitt (mm²)</label>
+                    <select id="cable-cross-section-L3" class="burden-calc-input">
+                        <option value="0.5">0,5</option>
+                        <option value="0.75">0,75</option>
+                        <option value="1.0" selected>1,0</option>
+                        <option value="1.5">1,5</option>
+                        <option value="2.5">2,5</option>
+                        <option value="4.0">4,0</option>
+                        <option value="6.0">6,0</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="meter-resistance-L3">Messgerät-Innenwiderstand (Ω)</label>
+                    <input type="number" id="meter-resistance-L3" class="burden-calc-input" step="0.01" value="0.1">
+                </div>
+                <div class="burden-result">
+                    R_Kabel: <span id="rcable-result-L3">-- Ω</span>
+                </div>
+            </div>
+
+            <div class="total-burden-section">
+                <h4>3. Gesamtbürde</h4>
+                <div class="form-group">
+                    <label for="burden-resistance-L3">Gesamtbürde R_B (Ω)</label>
+                    <input type="number" id="burden-resistance-L3" class="burden-input" step="0.0001" readonly>
+                </div>
+                <div class="burden-result">
+                    Gesamtbürde S_B: <span id="sburden-result-L3">-- VA</span>
+                </div>
+                <div id="burden-status-L3" class="burden-status">
+                    <span>Status: --</span>
+                </div>
+            </div>
+
             <div class="table-wrapper">
+                <h4>4. Messpunkte</h4>
                 <table class="summary-table measurement-table" id="measurement-table-L3">
                     <thead>
                         <tr>
@@ -124,7 +302,6 @@
             <span class="last-saved-span" id="last-saved-L3"></span>
         </div>
     </div>
-
 
     <div class="diagram-grid">
         <div id="chart-container-L1" class="card chart-card">

@@ -9,7 +9,7 @@
 
 .phase-input-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
     gap: 2rem;
     margin-bottom: 2rem;
 }
@@ -22,7 +22,12 @@
 
 .table-wrapper {
     margin-top: 1rem;
-    /* height und overflow entfernt, damit die Tabelle nicht mehr scrollt */
+}
+
+.table-wrapper h4 {
+    margin-bottom: 0.5rem;
+    color: #495057;
+    text-align: center;
 }
 
 .measurement-table {
@@ -35,6 +40,7 @@
     border: 1px solid #ced4da;
     border-radius: 4px;
     -moz-appearance: textfield; /* Firefox */
+    appearance: textfield; /* Standard property */
 }
 .measurement-table input::-webkit-outer-spin-button,
 .measurement-table input::-webkit-inner-spin-button {
@@ -58,6 +64,92 @@
     margin-top: 0.5rem;
     height: 1em; /* Sorgt für stabilen Platz */
 }
+
+/* STILE FÜR MESSSEKTIONEN */
+.resistance-measurement-section, .burden-calculation-section, .total-burden-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.resistance-measurement-section h4, .burden-calculation-section h4, .total-burden-section h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #495057;
+    font-size: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+}
+
+.resistance-result, .burden-result {
+    margin-top: 1rem;
+    font-size: 1rem;
+    text-align: center;
+    color: #343a40;
+    font-weight: bold;
+}
+
+.resistance-result span, .burden-result span {
+    color: #0d6efd;
+    font-family: monospace;
+    font-size: 1.1rem;
+}
+
+.burden-status {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.burden-status .status-ok { color: #198754; } /* Grün */
+.burden-status .status-warning { color: #ffc107; } /* Gelb */
+.burden-status .status-error { color: #dc3545; } /* Rot */
+
+
+/* Radio-Button-Gruppe */
+.button-group-radio {
+    display: flex;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: #e9ecef;
+}
+
+.button-group-radio input {
+    display: none;
+}
+
+.button-group-radio label {
+    flex: 1;
+    text-align: center;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    margin-bottom: 0;
+    font-weight: normal;
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.button-group-radio input:checked + label {
+    background-color: #0d6efd;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.burden-input[readonly] {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+
+/* ENDE STILE */
 
 .diagram-grid {
     display: grid;

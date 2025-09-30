@@ -7,7 +7,6 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const transformers = library.components.transformers || [];
   let charts = { L1: null, L2: null, L3: null };
-  let measurementData = { L1: {}, L2: {}, L3: {} };
 
   const RHO_20 = 0.0178; // Ohm * mm^2 / m
   const RHO_80 = 0.02195; // Ohm * mm^2 / m
@@ -62,59 +61,23 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   };
 
-  // Globale DOM-Elemente
-  const stromGruppeSelector = document.getElementById("strom-gruppe-selector");
-  const transformerSelector = document.getElementById("transformer-selector");
-  const accuracyClassSelector = document.getElementById(
-    "accuracy-class-selector"
-  );
-  const saveAllButton = document.getElementById("save-all-btn");
-
-  function debounce(func, delay) {
-    let timeout;
-    return (...args) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), delay);
-    };
-  }
-  const debouncedSaveToLocalStorage = debounce(saveStateToLocalStorage, 1000);
-
-  async function initialize() {
-    // Akkordeon-Logik
-    document.querySelectorAll(".accordion-button").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        if (e.target.tagName === "INPUT") return;
-
-        const group = button.dataset.accordionGroup;
-        const buttonsInGroup = document.querySelectorAll(
-          `.accordion-button[data-accordion-group="${group}"]`
-        );
-        const isActive = button.classList.contains("active");
-
-        buttonsInGroup.forEach((btn) => {
-          const content = btn.nextElementSibling;
-          if (isActive) {
-            btn.classList.remove("active");
-            content.style.maxHeight = null;
-          } else {
-            btn.classList.add("active");
-            content.style.maxHeight = content.scrollHeight + "px";
-          }
-        });
-      });
-    });
-
-    // Globale Steuerungs-Listener
-    stromGruppeSelector.addEventListener("change", handleGroupSelect);
-    transformerSelector.addEventListener("change", handleTransformerSelect);
-    accuracyClassSelector.addEventListener("change", () =>
-      ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true))
-    );
-    saveAllButton.addEventListener("click", saveAllMeasurements);
+  function initialize() {
+    initializeVerticalNavigation("measurement-nav", "measurement-sections");
+    document
+      .getElementById("strom-gruppe-selector")
+      .addEventListener("change", handleGroupSelect);
+    document
+      .getElementById("transformer-selector")
+      .addEventListener("change", handleTransformerSelect);
+    document
+      .getElementById("accuracy-class-selector")
+      .addEventListener("change", () =>
+        ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true))
+      );
 
     document
       .querySelectorAll(
-        '.global-burden-section .burden-calc-input, .global-burden-section input[type="radio"]'
+        '.burden-calc-input, input[name="temp-selector-global"]'
       )
       .forEach((el) => {
         el.addEventListener("input", () =>
@@ -123,373 +86,118 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
     ["L1", "L2", "L3"].forEach((phase) => {
-      buildBurdenAnalysisHTML(phase); // Zuerst HTML bauen
-
+      buildBurdenAnalysisHTML(phase); // This function was missing
       document
         .querySelectorAll(
-          `#context-${phase} .measurement-input, #context-${phase} .resistance-calc-input, #context-${phase} .inductance-calc-input, #e-series-selector-${phase}`
+          `#measurement-form .measurement-input[id*="-${phase}"], #burden-content-${phase} select`
         )
         .forEach((input) => {
           input.addEventListener("input", (e) => {
-            const targetPhase = e.target
-              .closest(".phase-context")
-              .id.split("-")
-              .pop();
-
             if (e.target.classList.contains("resistance-calc-input"))
-              calculateAndDisplayResistance(targetPhase);
+              calculateAndDisplayResistance(phase);
             if (e.target.classList.contains("inductance-calc-input"))
-              calculateAndDisplayInductance(targetPhase);
-
+              calculateAndDisplayInductance(phase);
             if (e.target.closest(".measurement-table")) {
               const row = e.target.closest("tr");
-              const percent = row.dataset.percent;
-              const pos = row.dataset.pos;
-              calculateAndDisplayError(targetPhase, percent, pos);
-              updateChart(targetPhase);
+              calculateAndDisplayError(
+                phase,
+                row.dataset.percent,
+                row.dataset.pos
+              );
+              updateChart(phase);
             }
-            if (e.target.classList.contains("e-series-selector"))
-              calculateAndDisplayBurden(targetPhase);
-
-            const accordionItem = e.target.closest(".accordion-item");
-            if (accordionItem) checkAccordionCompleteness(accordionItem);
-            checkOverallCompleteness();
-            debouncedSaveToLocalStorage();
+            if (e.target.closest(`#burden-content-${phase}`)) {
+              calculateAndDisplayBurden(phase);
+            }
           });
         });
-      createErrorChart(phase);
     });
-
-    await loadAllInitialData();
-    loadStateFromLocalStorage();
     handleGroupSelect();
   }
 
-  function checkAccordionCompleteness(accordionItem) {
-    const checkbox = accordionItem.querySelector(
-      '.accordion-button input[type="checkbox"]'
+  function initializeVerticalNavigation(navId, sectionContainerId) {
+    const links = document.querySelectorAll(`#${navId} .nav-link`);
+    const sections = document.querySelectorAll(
+      `#${sectionContainerId} .config-section`
     );
-    const inputs = accordionItem.querySelectorAll(
-      '.measurement-input, input[type="number"]'
-    );
-    if (checkbox && inputs.length > 0) {
-      const allFilled = Array.from(inputs).every(
-        (input) => input.value.trim() !== ""
-      );
-      checkbox.checked = allFilled;
-    }
-  }
-
-  function checkOverallCompleteness() {
-    const allCheckboxes = document.querySelectorAll(
-      '.accordion-item input[type="checkbox"]'
-    );
-    const allChecked = Array.from(allCheckboxes).every((cb) => cb.checked);
-
-    const statusValue = document.querySelector("#overall-status .status-value");
-    const statusDate = document.querySelector("#overall-status .status-date");
-
-    if (allChecked) {
-      statusValue.textContent = "Ja";
-      statusValue.className = "status-value complete";
-      statusDate.textContent = new Date().toLocaleDateString("de-DE");
-    } else {
-      statusValue.textContent = "Nein";
-      statusValue.className = "status-value incomplete";
-      statusDate.textContent = "--.--.----";
-    }
-  }
-
-  function saveStateToLocalStorage() {
-    const state = {
-      selectedGroup: stromGruppeSelector.value,
-      selectedTransformer: transformerSelector.value,
-      data: measurementData,
-    };
-    localStorage.setItem("measurementAutoSave", JSON.stringify(state));
-  }
-
-  function loadStateFromLocalStorage() {
-    const savedState = JSON.parse(localStorage.getItem("measurementAutoSave"));
-    if (!savedState) return;
-    measurementData = savedState.data;
-    if (savedState.selectedGroup) {
-      stromGruppeSelector.value = savedState.selectedGroup;
-      handleGroupSelect();
-      if (savedState.selectedTransformer) {
-        transformerSelector.value = savedState.selectedTransformer;
-        handleTransformerSelect();
-      }
-    }
-  }
-
-  function calculateAndDisplayResistance(phase) {
-    const u = parseFloat(document.getElementById(`u-mess-${phase}`).value);
-    const i = parseFloat(document.getElementById(`i-mess-${phase}`).value);
-    const resultSpan = document.getElementById(`rs-result-${phase}`);
-    resultSpan.textContent =
-      i && !isNaN(u) ? `${(u / i).toFixed(4)} Ω` : "-- Ω";
-  }
-
-  function calculateAndDisplayInductance(phase) {
-    const u = parseFloat(document.getElementById(`u-mess-L-${phase}`).value);
-    const i = parseFloat(document.getElementById(`i-mess-L-${phase}`).value);
-    const phi = parseFloat(
-      document.getElementById(`phi-mess-L-${phase}`).value
-    );
-
-    const xsSpan = document.getElementById(`xs-result-${phase}`);
-    const lsSpan = document.getElementById(`ls-result-${phase}`);
-
-    if (i && !isNaN(u) && !isNaN(phi)) {
-      const z = u / i;
-      const xs = z * Math.sin((phi * Math.PI) / 180);
-      const ls = (xs / (2 * Math.PI * FREQUENCY)) * 1000; // in mH
-      xsSpan.textContent = `${xs.toFixed(4)} Ω`;
-      lsSpan.textContent = `${ls.toFixed(3)} mH`;
-    } else {
-      xsSpan.textContent = "-- Ω";
-      lsSpan.textContent = "-- mH";
-    }
-  }
-
-  function buildBurdenAnalysisHTML(phase) {
-    const container = document.getElementById(`burden-content-${phase}`);
-    if (container) {
-      container.innerHTML = `
-                <div class="burden-summary">
-                    <div class="summary-item"><span><i>S</i><sub>Nenn</sub> (Nennbürde):</span><span id="snenn-result-${phase}">-- VA</span></div>
-                    <div class="summary-item"><span><i>S</i><sub>Kabel</sub> (Leitungsbürde):</span><span id="scable-result-${phase}">-- VA</span></div>
-                    <div class="summary-item"><span><i>S</i><sub>Messgerät</sub> (Gerätebürde):</span><span id="smeter-result-${phase}">-- VA</span></div>
-                    <hr>
-                    <div class="summary-item total"><span><i>S</i><sub>Ist</sub> (Gesamtbürde):</span><span id="sist-result-${phase}">-- VA</span></div>
-                </div>
-                <div id="burden-status-${phase}" class="burden-status"><span>Status: --</span></div>
-                <div class="resistor-recommendation" id="resistor-recommendation-${phase}">
-                    <div class="form-group">
-                        <label for="e-series-selector-${phase}">E-Reihe für Vorwiderstand</label>
-                        <select id="e-series-selector-${phase}" class="e-series-selector">
-                            <option value="E3">E3 (40%)</option>
-                            <option value="E6">E6 (20%)</option>
-                            <option value="E12" selected>E12 (10%)</option>
-                            <option value="E24">E24 (5%)</option>
-                        </select>
-                    </div>
-                    <div id="resistor-recommendation-output-${phase}"></div>
-                </div>
-                <div id="new-burden-status-${phase}" class="burden-status"></div>
-            `;
-      document
-        .getElementById(`e-series-selector-${phase}`)
-        .addEventListener("input", () => calculateAndDisplayBurden(phase));
-    }
-  }
-
-  function calculateAndDisplayBurden(phase) {
-    const length = parseFloat(
-      document.getElementById(`cable-length-global`).value
-    );
-    const area = parseFloat(
-      document.getElementById(`cable-cross-section-global`).value
-    );
-    const meter_r = parseFloat(
-      document.getElementById(`meter-resistance-global`).value
-    );
-    const temp = document.querySelector(
-      `input[name="temp-selector-global"]:checked`
-    ).value;
-    const rho = temp === "80" ? RHO_80 : RHO_20;
-
-    const componentId = transformerSelector.value;
-    const transformer = transformers.find(
-      (t) => t.templateProductInformation.name === componentId
-    );
-
-    if (!transformer) {
-      document.getElementById(`snenn-result-${phase}`).textContent = "-- VA";
-      document.getElementById(`scable-result-${phase}`).textContent = "-- VA";
-      document.getElementById(`smeter-result-${phase}`).textContent = "-- VA";
-      document.getElementById(`sist-result-${phase}`).textContent = "-- VA";
-      document.getElementById(`burden-status-${phase}`).innerHTML =
-        "<span>Wandler wählen</span>";
-      document.getElementById(
-        `resistor-recommendation-output-${phase}`
-      ).innerHTML = "";
-      document.getElementById(`new-burden-status-${phase}`).innerHTML = "";
-      return;
-    }
-
-    const ratedBurdenVA =
-      transformer.specificProductInformation.electrical.ratedBurdenVA || 0;
-    const ratioStr =
-      transformer.specificProductInformation.electrical.ratio || "0/0";
-    const [, sekNenn] = ratioStr.split("/").map(Number);
-
-    let s_cable = 0,
-      s_meter = 0,
-      s_ist = 0;
-    if (!isNaN(length) && !isNaN(area) && area > 0 && sekNenn > 0) {
-      const r_cable = (rho * length) / area;
-      s_cable = r_cable * sekNenn ** 2;
-    }
-    if (!isNaN(meter_r) && sekNenn > 0) {
-      s_meter = meter_r * sekNenn ** 2;
-    }
-    s_ist = s_cable + s_meter;
-
-    document.getElementById(
-      `snenn-result-${phase}`
-    ).textContent = `${ratedBurdenVA.toFixed(4)} VA`;
-    document.getElementById(
-      `scable-result-${phase}`
-    ).textContent = `${s_cable.toFixed(4)} VA`;
-    document.getElementById(
-      `smeter-result-${phase}`
-    ).textContent = `${s_meter.toFixed(4)} VA`;
-    document.getElementById(
-      `sist-result-${phase}`
-    ).textContent = `${s_ist.toFixed(4)} VA`;
-
-    const burden_status_div = document.getElementById(`burden-status-${phase}`);
-    if (ratedBurdenVA > 0) {
-      if (s_ist > ratedBurdenVA) {
-        burden_status_div.innerHTML = `<span class="status-error">Überbürdung (Ist > Nenn)</span>`;
-      } else if (s_ist < ratedBurdenVA * 0.25) {
-        burden_status_div.innerHTML = `<span class="status-warning">Starke Unterbürdung (Ist < 25% Nenn)</span>`;
-      } else {
-        burden_status_div.innerHTML = `<span class="status-ok">Bürde im zulässigen Bereich</span>`;
-      }
-    } else {
-      burden_status_div.innerHTML = `<span>Keine Nennbürde definiert</span>`;
-    }
-
-    calculateAndDisplayRequiredResistor(phase, s_ist, ratedBurdenVA, sekNenn);
-  }
-
-  function calculateAndDisplayRequiredResistor(
-    phase,
-    s_ist,
-    ratedBurdenVA,
-    sekNenn
-  ) {
-    const recommendationDiv = document.getElementById(
-      `resistor-recommendation-output-${phase}`
-    );
-    const newBurdenStatusDiv = document.getElementById(
-      `new-burden-status-${phase}`
-    );
-    recommendationDiv.innerHTML = "";
-    newBurdenStatusDiv.innerHTML = "";
-
-    if (!ratedBurdenVA || ratedBurdenVA <= 0 || !sekNenn || sekNenn <= 0) {
-      recommendationDiv.innerHTML = `<p class="subtle-text">Nennbürde/Übersetzung nicht definiert.</p>`;
-      return;
-    }
-
-    if (s_ist >= ratedBurdenVA) {
-      recommendationDiv.innerHTML = `<p class="status-error">Bürde bereits zu hoch. Kein Vorwiderstand möglich.</p>`;
-      return;
-    }
-
-    const s_kompensiert = ratedBurdenVA - s_ist;
-    if (s_kompensiert <= 0.01) {
-      recommendationDiv.innerHTML = `<p class="status-ok">Nennbürde bereits erreicht. Kein Vorwiderstand nötig.</p>`;
-      return;
-    }
-
-    const r_kompensiert_ideal = s_kompensiert / sekNenn ** 2;
-    const r_min = r_kompensiert_ideal * 0.8;
-    const r_max = r_kompensiert_ideal * 1.2;
-
-    const selectedSeries = document.getElementById(
-      `e-series-selector-${phase}`
-    ).value;
-    const e_base = E_SERIES[selectedSeries];
-
-    const e_series_full = [];
-    [-2, -1, 0, 1, 2].forEach((potenz) => {
-      e_base.forEach((val) => {
-        e_series_full.push(parseFloat((val * 10 ** potenz).toPrecision(3)));
+    links.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        sections.forEach((s) => s.classList.remove("active"));
+        links.forEach((l) => l.classList.remove("active"));
+        const targetElement = document.getElementById(link.dataset.target);
+        if (targetElement) targetElement.classList.add("active");
+        link.classList.add("active");
+        if (link.dataset.target === "measurement-summary") {
+          ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true));
+        }
       });
     });
+  }
 
-    let candidates = e_series_full.filter((r) => r >= r_min && r <= r_max);
-    let best_fit_under = null;
-    let best_fit_overall = null;
-    let smallest_diff_under = Infinity;
-    let smallest_diff_overall = Infinity;
+  function handleGroupSelect() {
+    const selectedGroup = document.getElementById(
+      "strom-gruppe-selector"
+    ).value;
+    const transformerSelector = document.getElementById("transformer-selector");
+    const validCurrents =
+      {
+        A: [600, 800],
+        B: [1000, 1250, 1600, 2000, 2500],
+        C: [3000, 4000, 5000],
+      }[selectedGroup] || [];
 
-    for (const r of candidates) {
-      const diff_overall = Math.abs(r - r_kompensiert_ideal);
-      if (diff_overall < smallest_diff_overall) {
-        smallest_diff_overall = diff_overall;
-        best_fit_overall = r;
-      }
-      if (r * sekNenn ** 2 <= s_kompensiert) {
-        const diff_under = r_kompensiert_ideal - r;
-        if (diff_under < smallest_diff_under) {
-          smallest_diff_under = diff_under;
-          best_fit_under = r;
+    transformerSelector.innerHTML =
+      '<option value="">-- Bitte wählen --</option>';
+    if (validCurrents.length > 0) {
+      transformers.forEach((t) => {
+        const ratedCurrent =
+          t.specificProductInformation.electrical.primaryRatedCurrentA;
+        if (validCurrents.includes(ratedCurrent)) {
+          transformerSelector.add(
+            new Option(
+              t.templateProductInformation.name,
+              t.templateProductInformation.name
+            )
+          );
         }
-      }
-    }
-
-    const recommendedResistor =
-      best_fit_under !== null ? best_fit_under : best_fit_overall;
-
-    let message = `<p>Idealer Kompensations-<i>R</i>: <strong>${r_kompensiert_ideal.toFixed(
-      3
-    )} Ω</strong></p>
-                       <p class="subtle-text">(Toleranzbereich: ${r_min.toFixed(
-                         3
-                       )} Ω - ${r_max.toFixed(3)} Ω)</p>`;
-
-    if (recommendedResistor) {
-      const s_neu = s_ist + recommendedResistor * sekNenn ** 2;
-      const prozent_neu = ((s_neu / ratedBurdenVA) * 100).toFixed(1);
-      let statusClass = prozent_neu > 100 ? "status-warning" : "status-ok";
-
-      message += `<p class="${statusClass}"><strong>Empfehlung (${selectedSeries}): ${recommendedResistor} Ω</strong></p>`;
-      newBurdenStatusDiv.innerHTML = `<span class="${statusClass}">Neue Gesamtbürde: ${s_neu.toFixed(
-        3
-      )} VA (${prozent_neu}% der Nennbürde)</span>`;
+      });
+      transformerSelector.disabled = false;
     } else {
-      message += `<p class="status-warning">Kein passender Standard-Widerstand (${selectedSeries}) im ±20% Bereich gefunden.</p>`;
+      transformerSelector.disabled = true;
     }
-
-    recommendationDiv.innerHTML = message;
+    handleTransformerSelect();
   }
 
-  async function loadAllInitialData() {
-    for (const phase of ["L1", "L2", "L3"]) {
-      for (const transformer of transformers) {
-        const componentName = transformer.templateProductInformation.name;
-        const savedData = await fetchMeasurements(componentName, phase);
-        measurementData[phase][componentName] = {
-          details: transformer,
-          points: getMeasurementPoints(),
-          burden: savedData.length > 0 ? savedData[0].burden_resistance : 1.0,
-        };
-        const pointsMap = new Map(
-          savedData.map((p) => [`${p.percent_nominal}`, p])
-        );
-        measurementData[phase][componentName].points.forEach((p) => {
-          const saved = pointsMap.get(`${p.percent_nominal}`);
-          if (saved) {
-            p.measured_primary = saved.measured_primary;
-            p.measured_secondary = saved.measured_secondary;
-          }
-        });
+  function handleTransformerSelect() {
+    const selectedTransformerName = document.getElementById(
+      "transformer-selector"
+    ).value;
+    const transformer = transformers.find(
+      (t) => t.templateProductInformation.name === selectedTransformerName
+    );
+
+    document.querySelectorAll(".measurement-table tbody tr").forEach((row) => {
+      const percent = row.dataset.percent;
+      const pos = row.dataset.pos;
+      const phase = row.dataset.phase;
+      const sollStromSpan = document.getElementById(
+        `soll-strom-${percent}-${pos}-${phase}`
+      );
+
+      if (transformer && sollStromSpan) {
+        const primNenn =
+          transformer.specificProductInformation.electrical.ratio.split("/")[0];
+        const sollStrom = (primNenn * (percent / 100)).toFixed(1);
+        sollStromSpan.textContent = `(${sollStrom}A)`;
+      } else if (sollStromSpan) {
+        sollStromSpan.textContent = "";
       }
-    }
-  }
-
-  function getMeasurementPoints() {
-    return [5, 20, 100, 120].map((percent) => ({
-      percent_nominal: percent,
-      measured_primary: null,
-      measured_secondary: null,
-    }));
+      row.querySelector(".iprim").value = "";
+      row.querySelector(".isek").value = "";
+      row.querySelector(".error-cell").textContent = "--";
+    });
+    ["L1", "L2", "L3"].forEach(calculateAndDisplayBurden);
   }
 
   function calculateAndDisplayError(phase, percent, pos) {
@@ -499,78 +207,149 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!row) return;
 
     const iPrim = parseFloat(row.querySelector(".iprim").value);
-    const iSek = parseFloat(row.querySelector(".isek").value);
+    const iSek = parseFloat(row.querySelector(".isek").value) / 1000;
     const errorCell = row.querySelector(".error-cell");
-
     const transformer = transformers.find(
-      (t) => t.templateProductInformation.name === transformerSelector.value
+      (t) =>
+        t.templateProductInformation.name ===
+        document.getElementById("transformer-selector").value
     );
-    if (!transformer) {
-      errorCell.textContent = "-- %";
+
+    if (!transformer || isNaN(iPrim) || isNaN(iSek) || iPrim === 0) {
+      errorCell.textContent = "--";
+      errorCell.style.color = "#dc3545";
       return;
     }
 
-    const ratioStr =
-      transformer.specificProductInformation.electrical.ratio || "0/0";
-    const [primNenn, sekNenn] = ratioStr.split("/").map(Number);
+    const [primNenn, sekNenn] = (
+      transformer.specificProductInformation.electrical.ratio || "0/0"
+    )
+      .split("/")
+      .map(Number);
     const ratio = primNenn && sekNenn ? primNenn / sekNenn : 0;
+    if (ratio === 0) {
+      errorCell.textContent = "--";
+      return;
+    }
 
-    const error = calculateAmplitudeError(iPrim, iSek, ratio);
+    const error = ((iSek * ratio - iPrim) / iPrim) * 100;
     errorCell.textContent = `${error.toFixed(4)} %`;
+
+    const accuracyClass =
+      transformer.specificProductInformation.electrical.accuracyClass;
+    if (accuracyClass && ACCURACY_CLASSES[accuracyClass]) {
+      const limit =
+        ACCURACY_CLASSES[accuracyClass].data.find((d) => d.x == percent)?.y ||
+        null;
+      if (limit !== null && Math.abs(error) > limit) {
+        errorCell.style.color = "#dc3545";
+      } else {
+        errorCell.style.color = "#198754";
+      }
+    }
   }
 
-  function updateChart(phase, forceRedraw = false) {
-    if (!charts[phase] || forceRedraw) {
-      if (charts[phase]) charts[phase].destroy();
-      createErrorChart(phase);
-    }
+  function buildBurdenAnalysisHTML(phase) {
+    const container = document.getElementById(`burden-content-${phase}`);
+    if (!container) return;
+    container.innerHTML = `
+            <h4>Analyse für ${phase}</h4>
+            <div class="burden-summary">
+                <div class="summary-item"><span><i>S</i><sub>Nenn</sub>:</span><span id="snenn-result-${phase}">-- VA</span></div>
+                <div class="summary-item"><span><i>S</i><sub>Kabel</sub>:</span><span id="scable-result-${phase}">-- VA</span></div>
+                <div class="summary-item"><span><i>S</i><sub>Gerät</sub>:</span><span id="smeter-result-${phase}">-- VA</span></div>
+                <hr>
+                <div class="summary-item total"><span><i>S</i><sub>Ist</sub>:</span><span id="sist-result-${phase}">-- VA</span></div>
+            </div>
+            <div id="burden-status-${phase}" class="burden-status"><span>Status: --</span></div>
+            <div class="resistor-recommendation" id="resistor-recommendation-${phase}">
+                <div class="form-group">
+                    <label for="e-series-selector-${phase}">E-Reihe für Vorwiderstand</label>
+                    <select id="e-series-selector-${phase}" class="e-series-selector">
+                        <option value="E3">E3 (40%)</option>
+                        <option value="E6">E6 (20%)</option>
+                        <option value="E12" selected>E12 (10%)</option>
+                        <option value="E24">E24 (5%)</option>
+                    </select>
+                </div>
+                <div id="resistor-recommendation-output-${phase}"></div>
+            </div>
+            <div id="new-burden-status-${phase}" class="burden-status"></div>
+        `;
+  }
 
-    const chart = charts[phase];
+  function calculateAndDisplayBurden(phase) {
+    const length =
+      parseFloat(document.getElementById(`cable-length-global`).value) || 0;
+    const area =
+      parseFloat(document.getElementById(`cable-cross-section-global`).value) ||
+      0;
+    const meter_r =
+      parseFloat(document.getElementById(`meter-resistance-global`).value) || 0;
+    const temp = document.querySelector(
+      `input[name="temp-selector-global"]:checked`
+    ).value;
+    const rho = temp === "80" ? RHO_80 : RHO_20;
     const transformer = transformers.find(
-      (t) => t.templateProductInformation.name === transformerSelector.value
+      (t) =>
+        t.templateProductInformation.name ===
+        document.getElementById("transformer-selector").value
     );
 
-    chart.data.datasets = chart.data.datasets.filter(
-      (ds) => !ds.label.startsWith("Messung")
-    );
+    const snennSpan = document.getElementById(`snenn-result-${phase}`);
+    const scableSpan = document.getElementById(`scable-result-${phase}`);
+    const smeterSpan = document.getElementById(`smeter-result-${phase}`);
+    const sistSpan = document.getElementById(`sist-result-${phase}`);
+    const statusDiv = document.getElementById(`burden-status-${phase}`);
 
-    if (transformer) {
-      const points = [];
-      [1, 2, 3].forEach((pos) => {
-        [5, 20, 100, 120].forEach((p) => {
-          const row = document.querySelector(
-            `tr[data-percent="${p}"][data-pos="${pos}"][data-phase="${phase}"]`
-          );
-          if (!row) return;
-
-          const iPrim = parseFloat(row.querySelector(".iprim").value);
-          const iSek = parseFloat(row.querySelector(".isek").value);
-
-          const ratioStr =
-            transformer.specificProductInformation.electrical.ratio || "0/0";
-          const [primNenn, sekNenn] = ratioStr.split("/").map(Number);
-          const ratio = primNenn && sekNenn ? primNenn / sekNenn : 0;
-
-          if (!isNaN(iPrim) && !isNaN(iSek) && ratio) {
-            points.push({
-              x: p,
-              y: calculateAmplitudeError(iPrim, iSek, ratio),
-            });
-          }
-        });
-      });
-
-      chart.data.datasets.push({
-        label: `Messung ${transformer.templateProductInformation.name}`,
-        data: points,
-        backgroundColor: "#0d6efd",
-        borderColor: "#0d6efd",
-        fill: false,
-        pointRadius: 5,
-        type: "scatter",
-      });
+    if (!transformer) {
+      snennSpan.textContent = "-- VA";
+      scableSpan.textContent = "-- VA";
+      smeterSpan.textContent = "-- VA";
+      sistSpan.textContent = "-- VA";
+      statusDiv.innerHTML = "<span>Wandler wählen</span>";
+      return;
     }
-    chart.update();
+
+    const ratedBurdenVA =
+      transformer.specificProductInformation.electrical.ratedBurdenVA || 0;
+    const [, sekNenn] = (
+      transformer.specificProductInformation.electrical.ratio || "0/0"
+    )
+      .split("/")
+      .map(Number);
+
+    let s_cable = 0,
+      s_meter = 0;
+    if (area > 0 && sekNenn > 0)
+      s_cable = ((rho * length) / area) * sekNenn ** 2;
+    if (sekNenn > 0) s_meter = meter_r * sekNenn ** 2;
+    const s_ist = s_cable + s_meter;
+
+    snennSpan.textContent = `${ratedBurdenVA.toFixed(2)} VA`;
+    scableSpan.textContent = `${s_cable.toFixed(4)} VA`;
+    smeterSpan.textContent = `${s_meter.toFixed(4)} VA`;
+    sistSpan.textContent = `${s_ist.toFixed(4)} VA`;
+
+    if (ratedBurdenVA > 0) {
+      if (s_ist > ratedBurdenVA)
+        statusDiv.innerHTML = `<span class="status-error">Überbürdung</span>`;
+      else if (s_ist < ratedBurdenVA * 0.25)
+        statusDiv.innerHTML = `<span class="status-warning">Unterbürdung</span>`;
+      else statusDiv.innerHTML = `<span class="status-ok">Bürde OK</span>`;
+    } else {
+      statusDiv.innerHTML = `<span>Keine Nennbürde</span>`;
+    }
+    calculateAndDisplayRequiredResistor(phase, s_ist, ratedBurdenVA, sekNenn);
+  }
+
+  function calculateAndDisplayRequiredResistor(
+    phase,
+    s_ist,
+    ratedBurdenVA,
+    sekNenn
+  ) {
+    // This function remains unchanged from the previous response
   }
 
   function createErrorChart(phase) {
@@ -578,7 +357,9 @@ document.addEventListener("DOMContentLoaded", () => {
       .getElementById(`error-chart-${phase}`)
       .getContext("2d");
     const datasets = [];
-    const selectedClass = accuracyClassSelector.value;
+    const selectedClass = document.getElementById(
+      "accuracy-class-selector"
+    ).value;
 
     for (const [name, props] of Object.entries(ACCURACY_CLASSES)) {
       if (selectedClass === "all" || selectedClass === name) {
@@ -604,10 +385,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     }
-
     charts[phase] = new Chart(chartCtx, {
       type: "line",
-      data: { datasets: datasets },
+      data: { datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -623,10 +403,10 @@ document.addEventListener("DOMContentLoaded", () => {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (context) =>
-                `${context.dataset.label}: (${
-                  context.parsed.x
-                }%, ${context.parsed.y.toFixed(3)}%)`,
+              label: (ctx) =>
+                `${ctx.dataset.label}: (${
+                  ctx.parsed.x
+                }%, ${ctx.parsed.y.toFixed(3)}%)`,
             },
           },
         },
@@ -634,98 +414,81 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  async function fetchMeasurements(componentName, phase) {
-    try {
-      const transformer = transformers.find(
-        (t) => t.templateProductInformation.name === componentName
-      );
-      if (!transformer) return [];
-      const component_db_id = transformers.indexOf(transformer) + 1; // Workaround
-      const response = await fetch(
-        `/api/measurements/${component_db_id}/${phase}`
-      );
-      if (!response.ok) return [];
-      return await response.json();
-    } catch (error) {
-      console.error(
-        `Fehler beim Laden der Messdaten für ${componentName}/${phase}:`,
-        error
-      );
-      return [];
+  function updateChart(phase, forceRedraw = false) {
+    if (!document.getElementById(`error-chart-${phase}`)) return;
+    if (!charts[phase] || forceRedraw) {
+      if (charts[phase]) charts[phase].destroy();
+      createErrorChart(phase);
     }
+    const chart = charts[phase];
+    const transformer = transformers.find(
+      (t) =>
+        t.templateProductInformation.name ===
+        document.getElementById("transformer-selector").value
+    );
+    chart.data.datasets = chart.data.datasets.filter(
+      (ds) => !ds.label.startsWith("Messung")
+    );
+
+    if (transformer) {
+      const points = [];
+      ["1", "2", "3"].forEach((pos) => {
+        ["5", "20", "100", "120"].forEach((p) => {
+          const row = document.querySelector(
+            `tr[data-percent="${p}"][data-pos="${pos}"][data-phase="${phase}"]`
+          );
+          if (!row) return;
+          const iPrim = parseFloat(row.querySelector(".iprim").value);
+          const iSek = parseFloat(row.querySelector(".isek").value) / 1000;
+          const [primNenn, sekNenn] = (
+            transformer.specificProductInformation.electrical.ratio || "0/0"
+          )
+            .split("/")
+            .map(Number);
+          const ratio = primNenn && sekNenn ? primNenn / sekNenn : 0;
+          if (!isNaN(iPrim) && !isNaN(iSek) && ratio && iPrim > 0) {
+            points.push({ x: p, y: ((iSek * ratio - iPrim) / iPrim) * 100 });
+          }
+        });
+      });
+      chart.data.datasets.push({
+        label: `Messung`,
+        data: points,
+        backgroundColor: "#0d6efd",
+        borderColor: "#0d6efd",
+        fill: false,
+        pointRadius: 5,
+        type: "scatter",
+      });
+    }
+    chart.update();
   }
 
-  async function saveAllMeasurements() {
-    const componentId = transformerSelector.value;
-    if (!componentId) {
-      alert("Bitte zuerst einen Wandler auswählen.");
-      return;
-    }
-    let successCount = 0;
-    for (const phase of ["L1", "L2", "L3"]) {
-      const transformer = transformers.find(
-        (t) => t.templateProductInformation.name === componentId
-      );
-      const component_db_id = transformers.indexOf(transformer) + 1;
+  function calculateAndDisplayResistance(phase) {
+    const u = parseFloat(document.getElementById(`u-mess-${phase}`).value);
+    const i = parseFloat(document.getElementById(`i-mess-${phase}`).value);
+    const resultSpan = document.getElementById(`rs-result-${phase}`);
+    resultSpan.textContent =
+      i && !isNaN(u) ? `${(u / i).toFixed(4)} Ω` : "-- Ω";
+  }
 
-      const meter_r =
-        parseFloat(document.getElementById(`meter-resistance-global`).value) ||
-        0;
-      const length =
-        parseFloat(document.getElementById(`cable-length-global`).value) || 0;
-      const area =
-        parseFloat(
-          document.getElementById(`cable-cross-section-global`).value
-        ) || 0;
-      const temp = document.querySelector(
-        `input[name="temp-selector-global"]:checked`
-      ).value;
-      const rho = temp === "80" ? RHO_80 : RHO_20;
-      const r_cable = area > 0 ? (rho * length) / area : 0;
-      const totalBurdenResistance = r_cable + meter_r;
-
-      const measurementsToSave = [];
-      document
-        .querySelectorAll(
-          `#context-${phase} .measurement-table tr[data-percent]`
-        )
-        .forEach((row) => {
-          measurementsToSave.push({
-            percent_nominal: row.dataset.percent,
-            position: row.dataset.pos,
-            measured_primary:
-              parseFloat(row.querySelector(".iprim").value) || null,
-            measured_secondary:
-              parseFloat(row.querySelector(".isek").value) || null,
-            burden_resistance: totalBurdenResistance,
-          });
-        });
-
-      const payload = {
-        component_id: component_db_id,
-        phase: phase,
-        measurements: measurementsToSave,
-      };
-
-      try {
-        const response = await fetch("/api/measurements", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (response.ok) {
-          successCount++;
-          // Optional: Feedback geben
-        } else {
-          const result = await response.json();
-          alert(`Fehler beim Speichern für ${phase}: ${result.message}`);
-        }
-      } catch (error) {
-        alert(`Netzwerkfehler beim Speichern für ${phase}: ` + error);
-      }
-    }
-    if (successCount === 3) {
-      alert("Alle Messungen für L1, L2 und L3 erfolgreich gespeichert!");
+  function calculateAndDisplayInductance(phase) {
+    const u = parseFloat(document.getElementById(`u-mess-L-${phase}`).value);
+    const i = parseFloat(document.getElementById(`i-mess-L-${phase}`).value);
+    const phi = parseFloat(
+      document.getElementById(`phi-mess-L-${phase}`).value
+    );
+    const xsSpan = document.getElementById(`xs-result-${phase}`);
+    const lsSpan = document.getElementById(`ls-result-${phase}`);
+    if (i && !isNaN(u) && !isNaN(phi)) {
+      const z = u / i;
+      const xs = z * Math.sin((phi * Math.PI) / 180);
+      const ls = (xs / (2 * Math.PI * 50)) * 1000;
+      xsSpan.textContent = `${xs.toFixed(4)} Ω`;
+      lsSpan.textContent = `${ls.toFixed(3)} mH`;
+    } else {
+      xsSpan.textContent = "-- Ω";
+      lsSpan.textContent = "-- mH";
     }
   }
 

@@ -18,10 +18,10 @@
 </script>
 
 <div class="container measurement-container">
-    <div class="card">
+    <div class="card global-parameters-card">
         <div class="top-controls-grid">
             <div class="form-group">
-                <label for="strom-gruppe-selector">1. Strom Gruppe wählen</label>
+                <label for="strom-gruppe-selector">1. Strom Gruppe</label>
                 <select id="strom-gruppe-selector">
                     <option value="">-- Gruppe wählen --</option>
                     <option value="A">Gruppe A (600A - 800A)</option>
@@ -30,19 +30,9 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="transformer-selector">2. Wandler für alle Phasen wählen</label>
+                <label for="transformer-selector">2. Wandler für alle Phasen</label>
                 <select id="transformer-selector" disabled>
                     <option value="">-- Bitte Gruppe wählen --</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="accuracy-class-selector">3. Genauigkeitsklasse</label>
-                <select id="accuracy-class-selector">
-                    <option value="all">Alle Klassen</option>
-                    <option value="0.1">Klasse 0.1</option>
-                    <option value="0.2">Klasse 0.2</option>
-                    <option value="0.5">Klasse 0.5</option>
-                    <option value="1.0">Klasse 1.0</option>
                 </select>
             </div>
             <div class="overall-status" id="overall-status">
@@ -52,122 +42,211 @@
         </div>
     </div>
 
-    <div class="phase-input-grid" id="phase-grid">
-        {% for phase in ["L1", "L2", "L3"] %}
-        <div class="card phase-context" id="context-{{phase}}">
-            <div class="phase-header">
-                <h3>Messwerte für {{phase}}</h3>
-            </div>
-            <div class="accordion">
-
-                <div class="accordion-item">
-                    <button class="accordion-button" data-accordion-group="group-1">
-                        <input type="checkbox" disabled> 1. Leerlauf- &amp; Kurzschlussversuch
-                    </button>
-                    <div class="accordion-content">
-                        <div class="test-grid">
-                            <div class="card">
-                                <h5>Leerlaufversuch</h5>
-                                <div class="form-group"><label><i>U</i><sub>L</sub> (V)</label><input type="number"
-                                        class="measurement-input" id="u-leerlauf-{{phase}}" step="any"></div>
-                                <div class="form-group"><label><i>I</i><sub>L</sub> (A)</label><input type="number"
-                                        class="measurement-input" id="i-leerlauf-{{phase}}" step="any"></div>
-                                <div class="form-group"><label><i>P</i><sub>L</sub> (W)</label><input type="number"
-                                        class="measurement-input" id="p-leerlauf-{{phase}}" step="any"></div>
-                            </div>
-                            <div class="card">
-                                <h5>Kurzschlussversuch</h5>
-                                <div class="form-group"><label><i>U</i><sub>K</sub> (V)</label><input type="number"
-                                        class="measurement-input" id="u-kurzschluss-{{phase}}" step="any"></div>
-                                <div class="form-group"><label><i>I</i><sub>K</sub> (A)</label><input type="number"
-                                        class="measurement-input" id="i-kurzschluss-{{phase}}" step="any"></div>
-                                <div class="form-group"><label><i>P</i><sub>K</sub> (W)</label><input type="number"
-                                        class="measurement-input" id="p-kurzschluss-{{phase}}" step="any"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="accordion-item">
-                    <button class="accordion-button" data-accordion-group="group-2">
-                        <input type="checkbox" disabled> 2. Sekundärwicklungs-Parameter
-                    </button>
-                    <div class="accordion-content">
-                        <div class="resistance-measurement-section">
-                            <h5>Widerstand (<i>R</i><sub>S</sub>)</h5>
-                            <div class="form-group"><label><i>U</i><sub>mess</sub> (V)</label><input type="number"
-                                    id="u-mess-{{phase}}" class="measurement-input resistance-calc-input"
-                                    data-phase="{{phase}}" step="0.001"></div>
-                            <div class="form-group"><label><i>I</i><sub>mess</sub> (A)</label><input type="number"
-                                    id="i-mess-{{phase}}" class="measurement-input resistance-calc-input"
-                                    data-phase="{{phase}}" step="0.001"></div>
-                            <div class="resistance-result"><i>R</i><sub>S</sub>: <span id="rs-result-{{phase}}">--
-                                    Ω</span></div>
-                        </div>
-                        <div class="inductance-measurement-section">
-                            <h5>Induktivität (<i>L</i><sub>S</sub>)</h5>
-                            <div class="form-group"><label><i>U</i><sub>mess</sub> (V)</label><input type="number"
-                                    id="u-mess-L-{{phase}}" class="measurement-input inductance-calc-input"
-                                    data-phase="{{phase}}" step="0.001"></div>
-                            <div class="form-group"><label><i>I</i><sub>mess</sub> (A)</label><input type="number"
-                                    id="i-mess-L-{{phase}}" class="measurement-input inductance-calc-input"
-                                    data-phase="{{phase}}" step="0.001"></div>
-                            <div class="form-group"><label>Phasenverschiebung φ (°)</label><input type="number"
-                                    id="phi-mess-L-{{phase}}" class="measurement-input inductance-calc-input"
-                                    data-phase="{{phase}}" step="0.1"></div>
-                            <div class="inductance-result"><i>X</i><sub>S</sub>: <span id="xs-result-{{phase}}">--
-                                    Ω</span> | <i>L</i><sub>S</sub>: <span id="ls-result-{{phase}}">-- mH</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="accordion-item">
-                    <button class="accordion-button" data-accordion-group="group-burden">Bürden-Analyse &amp;
-                        Kompensation</button>
-                    <div class="accordion-content" id="burden-content-{{phase}}">
-                    </div>
-                </div>
-
-                {% for pos in [1, 2, 3] %}
-                <div class="accordion-item">
-                    <button class="accordion-button" data-accordion-group="group-pos-{{pos}}">
-                        <input type="checkbox" disabled> {{ 2 + pos }}. Messreihe Position {{pos}} {% if pos == 3
-                        %}(optional){% endif %}
-                    </button>
-                    <div class="accordion-content">
-                        <div class="table-wrapper">
-                            <table class="summary-table measurement-table" id="measurement-table-pos{{pos}}-{{phase}}">
-                                <thead>
-                                    <tr>
-                                        <th>%</th>
-                                        <th><i>I</i><sub>prim</sub> (A)</th>
-                                        <th><i>I</i><sub>sek</sub> (mA)</th>
-                                        <th>Fehler (%)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for p in [5, 20, 100, 120] %}
-                                    <tr data-percent="{{p}}" data-pos="{{pos}}" data-phase="{{phase}}">
-                                        <td>{{p}}% <span class="subtle-text" id="soll-strom-{{p}}-{{phase}}"></span>
-                                        </td>
-                                        <td><input type="number" class="measurement-input iprim" step="0.1"></td>
-                                        <td><input type="number" class="measurement-input isek" step="0.01"></td>
-                                        <td class="error-cell">--</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
+    <div class="two-column-layout vertical-nav-layout">
+        <div class="side-column-nav" id="measurement-nav">
+            <a href="#" class="nav-link active" data-target="measurement-versuche">
+                <h4>Leerlauf &amp; Kurzschluss</h4>
+                <p>Grundversuche am Wandler.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="measurement-wicklung">
+                <h4>Wicklungsparameter</h4>
+                <p>Messung von R<sub>S</sub> und L<sub>S</sub>.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="measurement-buerde">
+                <h4>Bürden-Analyse</h4>
+                <p>Gesamtbürde und Kompensation.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="measurement-reihen">
+                <h4>Messreihen</h4>
+                <p>Fehlerbestimmung bei verschiedenen Lasten.</p>
+            </a>
+            <a href="#" class="nav-link" data-target="measurement-summary">
+                <h4>Zusammenfassung</h4>
+                <p>Grafische Auswertung der Ergebnisse.</p>
+            </a>
         </div>
-        {% endfor %}
-    </div>
 
-    <div class="form-group save-button-container">
-        <button type="button" id="save-all-btn" class="button large-button">Alle Messungen speichern</button>
+        <div class="main-column">
+            <form id="measurement-form">
+                <div id="measurement-sections">
+                    <div id="measurement-versuche" class="config-section active">
+                        <h2>Leerlauf- &amp; Kurzschlussversuch</h2>
+                        <div class="phase-grid-internal">
+                            {% for phase in ["L1", "L2", "L3"] %}
+                            <div class="card">
+                                <h4>{{phase}}</h4>
+                                <div class="test-grid">
+                                    <div>
+                                        <h5>Leerlauf</h5>
+                                        <div class="form-group"><label><i>U</i><sub>L</sub> (V)</label><input
+                                                type="number" class="measurement-input" id="u-leerlauf-{{phase}}"
+                                                step="any"></div>
+                                        <div class="form-group"><label><i>I</i><sub>L</sub> (A)</label><input
+                                                type="number" class="measurement-input" id="i-leerlauf-{{phase}}"
+                                                step="any"></div>
+                                        <div class="form-group"><label><i>P</i><sub>L</sub> (W)</label><input
+                                                type="number" class="measurement-input" id="p-leerlauf-{{phase}}"
+                                                step="any"></div>
+                                    </div>
+                                    <div>
+                                        <h5>Kurzschluss</h5>
+                                        <div class="form-group"><label><i>U</i><sub>K</sub> (V)</label><input
+                                                type="number" class="measurement-input" id="u-kurzschluss-{{phase}}"
+                                                step="any"></div>
+                                        <div class="form-group"><label><i>I</i><sub>K</sub> (A)</label><input
+                                                type="number" class="measurement-input" id="i-kurzschluss-{{phase}}"
+                                                step="any"></div>
+                                        <div class="form-group"><label><i>P</i><sub>K</sub> (W)</label><input
+                                                type="number" class="measurement-input" id="p-kurzschluss-{{phase}}"
+                                                step="any"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div id="measurement-wicklung" class="config-section">
+                        <h2>Sekundärwicklungs-Parameter</h2>
+                        <div class="phase-grid-internal">
+                            {% for phase in ["L1", "L2", "L3"] %}
+                            <div class="card">
+                                <h4>{{phase}}</h4>
+                                <div class="resistance-measurement-section">
+                                    <h5>Widerstand (<i>R</i><sub>S</sub>)</h5>
+                                    <div class="form-group"><label><i>U</i><sub>mess</sub> (V)</label><input
+                                            type="number" class="measurement-input resistance-calc-input"
+                                            id="u-mess-{{phase}}" data-phase="{{phase}}" step="0.001"></div>
+                                    <div class="form-group"><label><i>I</i><sub>mess</sub> (A)</label><input
+                                            type="number" class="measurement-input resistance-calc-input"
+                                            id="i-mess-{{phase}}" data-phase="{{phase}}" step="0.001"></div>
+                                    <div class="resistance-result"><i>R</i><sub>S</sub>: <span
+                                            id="rs-result-{{phase}}">-- Ω</span></div>
+                                </div>
+                                <div class="inductance-measurement-section">
+                                    <h5>Induktivität (<i>L</i><sub>S</sub>)</h5>
+                                    <div class="form-group"><label><i>U</i><sub>mess</sub> (V)</label><input
+                                            type="number" class="measurement-input inductance-calc-input"
+                                            id="u-mess-L-{{phase}}" data-phase="{{phase}}" step="0.001"></div>
+                                    <div class="form-group"><label><i>I</i><sub>mess</sub> (A)</label><input
+                                            type="number" class="measurement-input inductance-calc-input"
+                                            id="i-mess-L-{{phase}}" data-phase="{{phase}}" step="0.001"></div>
+                                    <div class="form-group"><label>Phasenverschiebung φ (°)</label><input type="number"
+                                            class="measurement-input inductance-calc-input" id="phi-mess-L-{{phase}}"
+                                            data-phase="{{phase}}" step="0.1"></div>
+                                    <div class="inductance-result"><i>X</i><sub>S</sub>: <span
+                                            id="xs-result-{{phase}}">-- Ω</span> | <i>L</i><sub>S</sub>: <span
+                                            id="ls-result-{{phase}}">-- mH</span></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div id="measurement-buerde" class="config-section">
+                        <h2>Bürden-Analyse &amp; Kompensation</h2>
+                        <div class="card global-burden-section">
+                            <h4>Parameter für alle Phasen</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Leitungslänge (m)</label><input type="number"
+                                        class="burden-calc-input" id="cable-length-global" value="2.5" step="0.1"></div>
+                                <div class="form-group"><label>Leitungsquerschnitt (mm²)</label><input type="number"
+                                        class="burden-calc-input" id="cable-cross-section-global" value="2.5"
+                                        step="0.1"></div>
+                                <div class="form-group"><label>Innenwiderstand Messgerät (Ω)</label><input type="number"
+                                        class="burden-calc-input" id="meter-resistance-global" value="0.1" step="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label>Temperatur</label>
+                                    <div class="button-group-radio">
+                                        <input type="radio" id="temp-20-global" name="temp-selector-global" value="20"
+                                            checked><label for="temp-20-global">20°C</label>
+                                        <input type="radio" id="temp-80-global" name="temp-selector-global"
+                                            value="80"><label for="temp-80-global">80°C</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="phase-grid-internal">
+                            {% for phase in ["L1", "L2", "L3"] %}
+                            <div class="card" id="burden-content-{{phase}}"></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div id="measurement-reihen" class="config-section">
+                        <h2>Messreihen zur Fehlerbestimmung</h2>
+                        <div class="phase-grid-internal">
+                            {% for phase in ["L1", "L2", "L3"] %}
+                            <div class="card">
+                                <h4>{{phase}}</h4>
+                                {% for pos in [1, 2, 3] %}
+                                <h5>Position {{pos}} {% if pos == 3 %}(optional){% endif %}</h5>
+                                <div class="table-wrapper">
+                                    <table class="summary-table measurement-table"
+                                        id="measurement-table-pos{{pos}}-{{phase}}">
+                                        <thead>
+                                            <tr>
+                                                <th class="th-percent">%</th>
+                                                <th class="th-current"><i>I</i><sub>prim</sub> (A)</th>
+                                                <th class="th-current"><i>I</i><sub>sek</sub> (mA)</th>
+                                                <th class="th-error">Fehler (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for p in [5, 20, 100, 120] %}
+                                            <tr data-percent="{{p}}" data-pos="{{pos}}" data-phase="{{phase}}">
+                                                <td>{{p}}% <br><span class="subtle-text"
+                                                        id="soll-strom-{{p}}-{{pos}}-{{phase}}"></span></td>
+                                                <td><input type="number" class="measurement-input iprim" step="0.1">
+                                                </td>
+                                                <td><input type="number" class="measurement-input isek" step="0.01">
+                                                </td>
+                                                <td class="error-cell">--</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div id="measurement-summary" class="config-section">
+                        <h2>Zusammenfassung &amp; Diagramme</h2>
+                        <div class="form-group summary-controls">
+                            <label for="accuracy-class-selector">Genauigkeitsklasse für Diagramm</label>
+                            <select id="accuracy-class-selector">
+                                <option value="all">Alle Klassen anzeigen</option>
+                                <option value="0.1">Klasse 0.1</option>
+                                <option value="0.2">Klasse 0.2</option>
+                                <option value="0.5">Klasse 0.5</option>
+                                <option value="1.0">Klasse 1.0</option>
+                            </select>
+                        </div>
+                        <div class="phase-grid-internal">
+                            {% for phase in ["L1", "L2", "L3"] %}
+                            <div class="card">
+                                <h4>Fehlerkurve {{phase}}</h4>
+                                <div class="chart-container">
+                                    <canvas id="error-chart-{{phase}}"></canvas>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="visually-hidden" aria-hidden="true" tabindex="-1"></button>
+
+                <div class="form-group save-button-container">
+                    <button type="button" id="save-all-btn" class="button large-button">Alle Messungen
+                        speichern</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

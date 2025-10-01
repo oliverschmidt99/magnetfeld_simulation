@@ -184,24 +184,28 @@
                                 <h5>Position {{pos}} {% if pos == 3 %}(optional){% endif %}</h5>
                                 <div class="table-wrapper">
                                     <table class="summary-table measurement-table"
-                                        id="measurement-table-pos{{pos}}-{{phase}}">
+                                        id="measurement-table-pos-{{pos}}-{{phase}}">
                                         <thead>
                                             <tr>
                                                 <th class="th-percent">%</th>
-                                                <th class="th-current"><i>I</i><sub>prim</sub> (A)</th>
-                                                <th class="th-current"><i>I</i><sub>sek</sub> (mA)</th>
+                                                <th><i>I</i><sub>prim</sub> (A)</th>
+                                                <th><i>U</i><sub>prim</sub> (V)</th>
+                                                <th><i>I</i><sub>sek</sub> (mA)</th>
+                                                <th><i>U</i><sub>sek</sub> (mV)</th>
                                                 <th class="th-error">Fehler (%)</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for p in [5, 20, 100, 120] %}
                                             <tr data-percent="{{p}}" data-pos="{{pos}}" data-phase="{{phase}}">
-                                                <td>{{p}}% <br><span class="subtle-text"
-                                                        id="soll-strom-{{p}}-{{pos}}-{{phase}}"></span></td>
+                                                <td>{{p}}% <br><span class="subtle-text soll-strom-display"></span></td>
                                                 <td><input type="number" class="measurement-input iprim" step="0.1">
+                                                </td>
+                                                <td><input type="number" class="measurement-input uprim" step="0.01">
                                                 </td>
                                                 <td><input type="number" class="measurement-input isek" step="0.01">
                                                 </td>
+                                                <td><input type="number" class="measurement-input usek" step="0.1"></td>
                                                 <td class="error-cell">--</td>
                                             </tr>
                                             {% endfor %}

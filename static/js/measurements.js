@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const transformers = library.components.transformers || [];
   let charts = { L1: null, L2: null, L3: null };
+  const storageKey = "measurementFormData";
 
   const RHO_20 = 0.0178; // Ohm * mm^2 / m
   const RHO_80 = 0.02195; // Ohm * mm^2 / m
@@ -63,6 +64,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function initialize() {
     initializeVerticalNavigation("measurement-nav", "measurement-sections");
+
+    const form = document.getElementById("measurement-form");
+    form.addEventListener("input", (e) => {
+      saveFormData();
+
+      const target = e.target;
+      const phase = target.dataset.phase;
+
+      if (target.classList.contains("resistance-calc-input")) {
+        calculateAndDisplayResistance(phase);
+      }
+      if (target.classList.contains("inductance-calc-input")) {
+        calculateAndDisplayInductance(phase);
+      }
+      if (target.closest(".measurement-table")) {
+        const row = target.closest("tr");
+        if (row && row.dataset.phase) {
+          calculateAndDisplayError(
+            row.dataset.phase,
+            row.dataset.percent,
+            row.dataset.pos
+          );
+          updateChart(row.dataset.phase);
+        }
+      }
+      if (
+        target.closest(".global-burden-section") ||
+        target.closest('[id^="burden-content-"]')
+      ) {
+        ["L1", "L2", "L3"].forEach(calculateAndDisplayBurden);
+      }
+    });
+
     document
       .getElementById("strom-gruppe-selector")
       .addEventListener("change", handleGroupSelect);
@@ -71,48 +105,207 @@ document.addEventListener("DOMContentLoaded", () => {
       .addEventListener("change", handleTransformerSelect);
     document
       .getElementById("accuracy-class-selector")
-      .addEventListener("change", () =>
-        ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true))
-      );
-
-    document
-      .querySelectorAll(
-        '.burden-calc-input, input[name="temp-selector-global"]'
-      )
-      .forEach((el) => {
-        el.addEventListener("input", () =>
-          ["L1", "L2", "L3"].forEach(calculateAndDisplayBurden)
-        );
+      .addEventListener("change", () => {
+        ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true));
+        saveFormData();
       });
 
-    ["L1", "L2", "L3"].forEach((phase) => {
-      buildBurdenAnalysisHTML(phase); // This function was missing
-      document
-        .querySelectorAll(
-          `#measurement-form .measurement-input[id*="-${phase}"], #burden-content-${phase} select`
+    document
+      .getElementById("save-all-btn")
+      .addEventListener("click", saveAllMeasurementsToDB);
+
+    ["L1", "L2", "L3"].forEach(buildBurdenAnalysisHTML);
+
+    loadFormData();
+  }
+
+  function saveFormData() {
+    const formData = {};
+    document
+      .querySelectorAll(
+        '#measurement-form select, #measurement-form input[type="number"], #measurement-form input[type="radio"]:checked'
+      )
+      .forEach((el) => {
+        let key = el.id;
+        if (!key) {
+          const row = el.closest("tr");
+          if (row) {
+            const type = el.className.match(/(iprim|isek|uprim|usek)/)[0];
+            key = `${type}-${row.dataset.phase}-${row.dataset.pos}-${row.dataset.percent}`;
+          }
+        }
+        if (key) formData[key] = el.value;
+      });
+
+    const activeLink = document.querySelector(
+      "#measurement-nav .nav-link.active"
+    );
+    if (activeLink) {
+      formData["activeMeasurementTab"] = activeLink.dataset.target;
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(formData));
+  }
+
+  function loadFormData() {
+    const savedData = JSON.parse(localStorage.getItem(storageKey));
+    if (!savedData) {
+      handleGroupSelect(true); // Run once to set up initial state without clearing
+      return;
+    }
+
+    // Set group selector value from saved data
+    const groupSelector = document.getElementById("strom-gruppe-selector");
+    if (groupSelector && savedData[groupSelector.id]) {
+      groupSelector.value = savedData[groupSelector.id];
+    }
+
+    // Get the transformer value to restore BEFORE repopulating the list
+    const transformerToRestore = savedData["transformer-selector"];
+
+    // Repopulate transformer list and pass the value to restore
+    handleGroupSelect(true, transformerToRestore);
+
+    // Populate all other fields
+    populateFields(savedData);
+
+    // Run all calculations with the restored data
+    runAllCalculations();
+
+    // Restore the active tab
+    if (savedData.activeMeasurementTab) {
+      const linkToActivate = document.querySelector(
+        `#measurement-nav .nav-link[data-target="${savedData.activeMeasurementTab}"]`
+      );
+      if (linkToActivate) {
+        // Use click to trigger all associated logic including chart updates
+        linkToActivate.click();
+      }
+    }
+  }
+
+  function populateFields(savedData) {
+    Object.keys(savedData).forEach((key) => {
+      let el = document.getElementById(key);
+      if (!el) {
+        const parts = key.split("-");
+        if (parts.length === 4) {
+          const [type, phase, pos, percent] = parts;
+          const row = document.querySelector(
+            `tr[data-phase="${phase}"][data-pos="${pos}"][data-percent="${percent}"]`
+          );
+          if (row) el = row.querySelector(`.${type}`);
+        }
+      }
+      if (el) {
+        // Skip the main selectors as they are handled separately
+        if (
+          el.id === "strom-gruppe-selector" ||
+          el.id === "transformer-selector"
         )
-        .forEach((input) => {
-          input.addEventListener("input", (e) => {
-            if (e.target.classList.contains("resistance-calc-input"))
-              calculateAndDisplayResistance(phase);
-            if (e.target.classList.contains("inductance-calc-input"))
-              calculateAndDisplayInductance(phase);
-            if (e.target.closest(".measurement-table")) {
-              const row = e.target.closest("tr");
-              calculateAndDisplayError(
-                phase,
-                row.dataset.percent,
-                row.dataset.pos
-              );
-              updateChart(phase);
-            }
-            if (e.target.closest(`#burden-content-${phase}`)) {
-              calculateAndDisplayBurden(phase);
-            }
-          });
-        });
+          return;
+
+        if (el.type === "radio") {
+          const radio = document.querySelector(
+            `input[name="${el.name}"][value="${savedData[key]}"]`
+          );
+          if (radio) radio.checked = true;
+        } else {
+          el.value = savedData[key];
+        }
+      }
     });
-    handleGroupSelect();
+  }
+
+  function runAllCalculations() {
+    ["L1", "L2", "L3"].forEach((phase) => {
+      calculateAndDisplayResistance(phase);
+      calculateAndDisplayInductance(phase);
+      calculateAndDisplayBurden(phase);
+      ["1", "2", "3"].forEach((pos) => {
+        ["5", "20", "100", "120"].forEach((p) => {
+          calculateAndDisplayError(phase, p, pos);
+        });
+      });
+      updateChart(phase, true);
+    });
+  }
+
+  async function saveAllMeasurementsToDB() {
+    const selectedTransformerName = document.getElementById(
+      "transformer-selector"
+    ).value;
+    const transformer = transformers.find(
+      (t) => t.templateProductInformation.name === selectedTransformerName
+    );
+    if (!transformer) {
+      alert("Bitte zuerst einen Wandler auswählen.");
+      return;
+    }
+
+    for (const phase of ["L1", "L2", "L3"]) {
+      const measurements = [];
+      document.querySelectorAll(`tr[data-phase="${phase}"]`).forEach((row) => {
+        measurements.push({
+          percent_nominal: parseInt(row.dataset.percent, 10),
+          position: parseInt(row.dataset.pos, 10),
+          measured_primary:
+            parseFloat(row.querySelector(".iprim").value) || null,
+          measured_secondary:
+            parseFloat(row.querySelector(".isek").value) || null,
+          measured_primary_voltage:
+            parseFloat(row.querySelector(".uprim").value) || null,
+          measured_secondary_voltage:
+            parseFloat(row.querySelector(".usek").value) || null,
+        });
+      });
+
+      try {
+        const response = await fetch("/api/measurements", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            component_id: transformer.id,
+            phase: phase,
+            measurements: measurements,
+          }),
+        });
+        if (!response.ok)
+          throw new Error(`Fehler beim Speichern von Phase ${phase}`);
+      } catch (error) {
+        alert(`Ein Fehler ist aufgetreten: ${error.message}`);
+        return;
+      }
+    }
+    alert("Alle Messungen erfolgreich in der Datenbank gespeichert!");
+  }
+
+  async function loadMeasurementsFromDB(componentId, phase) {
+    try {
+      const response = await fetch(`/api/measurements/${componentId}/${phase}`);
+      if (!response.ok) return;
+      const measurements = await response.json();
+
+      measurements.forEach((meas) => {
+        const row = document.querySelector(
+          `tr[data-phase="${phase}"][data-pos="${meas.position}"][data-percent="${meas.percent_nominal}"]`
+        );
+        if (row) {
+          if (meas.measured_primary !== null)
+            row.querySelector(".iprim").value = meas.measured_primary;
+          if (meas.measured_secondary !== null)
+            row.querySelector(".isek").value = meas.measured_secondary;
+          if (meas.measured_primary_voltage !== null)
+            row.querySelector(".uprim").value = meas.measured_primary_voltage;
+          if (meas.measured_secondary_voltage !== null)
+            row.querySelector(".usek").value = meas.measured_secondary_voltage;
+          calculateAndDisplayError(phase, meas.percent_nominal, meas.position);
+        }
+      });
+      updateChart(phase);
+    } catch (error) {
+      console.error(`Fehler beim Laden der Messungen für ${phase}:`, error);
+    }
   }
 
   function initializeVerticalNavigation(navId, sectionContainerId) {
@@ -131,11 +324,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (link.dataset.target === "measurement-summary") {
           ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true));
         }
+        saveFormData();
       });
     });
   }
 
-  function handleGroupSelect() {
+  function handleGroupSelect(
+    isInitialLoad = false,
+    transformerToRestore = null
+  ) {
     const selectedGroup = document.getElementById(
       "strom-gruppe-selector"
     ).value;
@@ -149,10 +346,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     transformerSelector.innerHTML =
       '<option value="">-- Bitte wählen --</option>';
+
     if (validCurrents.length > 0) {
       transformers.forEach((t) => {
         const ratedCurrent =
-          t.specificProductInformation.electrical.primaryRatedCurrentA;
+          t.specificProductInformation?.electrical?.primaryRatedCurrentA;
         if (validCurrents.includes(ratedCurrent)) {
           transformerSelector.add(
             new Option(
@@ -166,10 +364,21 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       transformerSelector.disabled = true;
     }
-    handleTransformerSelect();
+
+    // Restore the selection if a value was passed
+    if (
+      transformerToRestore &&
+      Array.from(transformerSelector.options).some(
+        (opt) => opt.value === transformerToRestore
+      )
+    ) {
+      transformerSelector.value = transformerToRestore;
+    }
+
+    handleTransformerSelect(isInitialLoad);
   }
 
-  function handleTransformerSelect() {
+  function handleTransformerSelect(isInitialLoad = false) {
     const selectedTransformerName = document.getElementById(
       "transformer-selector"
     ).value;
@@ -179,25 +388,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.querySelectorAll(".measurement-table tbody tr").forEach((row) => {
       const percent = row.dataset.percent;
-      const pos = row.dataset.pos;
-      const phase = row.dataset.phase;
-      const sollStromSpan = document.getElementById(
-        `soll-strom-${percent}-${pos}-${phase}`
-      );
+      const sollStromSpan = row.querySelector(".soll-strom-display");
 
-      if (transformer && sollStromSpan) {
+      if (
+        transformer &&
+        sollStromSpan &&
+        transformer.specificProductInformation?.electrical?.ratio
+      ) {
         const primNenn =
           transformer.specificProductInformation.electrical.ratio.split("/")[0];
-        const sollStrom = (primNenn * (percent / 100)).toFixed(1);
-        sollStromSpan.textContent = `(${sollStrom}A)`;
+        if (!isNaN(primNenn)) {
+          const sollStrom = (primNenn * (percent / 100)).toFixed(1);
+          sollStromSpan.textContent = `(${sollStrom}A)`;
+        } else {
+          sollStromSpan.textContent = "";
+        }
       } else if (sollStromSpan) {
         sollStromSpan.textContent = "";
       }
-      row.querySelector(".iprim").value = "";
-      row.querySelector(".isek").value = "";
-      row.querySelector(".error-cell").textContent = "--";
+
+      if (!isInitialLoad) {
+        row.querySelector(".iprim").value = "";
+        row.querySelector(".isek").value = "";
+        row.querySelector(".uprim").value = "";
+        row.querySelector(".usek").value = "";
+        row.querySelector(".error-cell").textContent = "--";
+      }
     });
-    ["L1", "L2", "L3"].forEach(calculateAndDisplayBurden);
+
+    if (transformer && !isInitialLoad) {
+      ["L1", "L2", "L3"].forEach((phase) => {
+        loadMeasurementsFromDB(transformer.id, phase);
+      });
+    }
+
+    ["L1", "L2", "L3"].forEach((phase) => {
+      calculateAndDisplayBurden(phase);
+      if (!isInitialLoad) updateChart(phase);
+    });
   }
 
   function calculateAndDisplayError(phase, percent, pos) {
@@ -221,12 +449,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const [primNenn, sekNenn] = (
-      transformer.specificProductInformation.electrical.ratio || "0/0"
-    )
-      .split("/")
-      .map(Number);
+    const ratioStr =
+      transformer.specificProductInformation?.electrical?.ratio || "0/0";
+    const [primNenn, sekNenn] = ratioStr.split("/").map(Number);
     const ratio = primNenn && sekNenn ? primNenn / sekNenn : 0;
+
     if (ratio === 0) {
       errorCell.textContent = "--";
       return;
@@ -236,7 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
     errorCell.textContent = `${error.toFixed(4)} %`;
 
     const accuracyClass =
-      transformer.specificProductInformation.electrical.accuracyClass;
+      transformer.specificProductInformation?.electrical?.accuracyClass;
     if (accuracyClass && ACCURACY_CLASSES[accuracyClass]) {
       const limit =
         ACCURACY_CLASSES[accuracyClass].data.find((d) => d.x == percent)?.y ||
@@ -246,6 +473,8 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         errorCell.style.color = "#198754";
       }
+    } else {
+      errorCell.style.color = "#343a40";
     }
   }
 
@@ -262,7 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="summary-item total"><span><i>S</i><sub>Ist</sub>:</span><span id="sist-result-${phase}">-- VA</span></div>
             </div>
             <div id="burden-status-${phase}" class="burden-status"><span>Status: --</span></div>
-            <div class="resistor-recommendation" id="resistor-recommendation-${phase}">
+            <div class="resistor-recommendation" id="resistor-recommendation-${phase}" style="display: none;">
                 <div class="form-group">
                     <label for="e-series-selector-${phase}">E-Reihe für Vorwiderstand</label>
                     <select id="e-series-selector-${phase}" class="e-series-selector">
@@ -274,7 +503,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div id="resistor-recommendation-output-${phase}"></div>
             </div>
-            <div id="new-burden-status-${phase}" class="burden-status"></div>
+            <div id="new-burden-status-${phase}" class="burden-status" style="display: none;"></div>
         `;
   }
 
@@ -286,9 +515,12 @@ document.addEventListener("DOMContentLoaded", () => {
       0;
     const meter_r =
       parseFloat(document.getElementById(`meter-resistance-global`).value) || 0;
-    const temp = document.querySelector(
+    const tempEl = document.querySelector(
       `input[name="temp-selector-global"]:checked`
-    ).value;
+    );
+    if (!tempEl) return;
+
+    const temp = tempEl.value;
     const rho = temp === "80" ? RHO_80 : RHO_20;
     const transformer = transformers.find(
       (t) =>
@@ -303,27 +535,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusDiv = document.getElementById(`burden-status-${phase}`);
 
     if (!transformer) {
-      snennSpan.textContent = "-- VA";
-      scableSpan.textContent = "-- VA";
-      smeterSpan.textContent = "-- VA";
-      sistSpan.textContent = "-- VA";
-      statusDiv.innerHTML = "<span>Wandler wählen</span>";
+      if (snennSpan) snennSpan.textContent = "-- VA";
+      if (scableSpan) scableSpan.textContent = "-- VA";
+      if (smeterSpan) smeterSpan.textContent = "-- VA";
+      if (sistSpan) sistSpan.textContent = "-- VA";
+      if (statusDiv) statusDiv.innerHTML = "<span>Wandler wählen</span>";
       return;
     }
 
     const ratedBurdenVA =
-      transformer.specificProductInformation.electrical.ratedBurdenVA || 0;
-    const [, sekNenn] = (
-      transformer.specificProductInformation.electrical.ratio || "0/0"
-    )
-      .split("/")
-      .map(Number);
+      transformer.specificProductInformation?.electrical?.ratedBurdenVA || 0;
+    const ratioStr =
+      transformer.specificProductInformation?.electrical?.ratio || "0/0";
+    const [, sekNenn] = ratioStr.split("/").map(Number);
 
     let s_cable = 0,
       s_meter = 0;
     if (area > 0 && sekNenn > 0)
-      s_cable = ((rho * length) / area) * sekNenn ** 2;
-    if (sekNenn > 0) s_meter = meter_r * sekNenn ** 2;
+      s_cable = ((rho * length) / area) * Math.pow(sekNenn, 2);
+    if (sekNenn > 0) s_meter = meter_r * Math.pow(sekNenn, 2);
     const s_ist = s_cable + s_meter;
 
     snennSpan.textContent = `${ratedBurdenVA.toFixed(2)} VA`;
@@ -349,13 +579,96 @@ document.addEventListener("DOMContentLoaded", () => {
     ratedBurdenVA,
     sekNenn
   ) {
-    // This function remains unchanged from the previous response
+    const recommendationDiv = document.getElementById(
+      `resistor-recommendation-${phase}`
+    );
+    const outputDiv = document.getElementById(
+      `resistor-recommendation-output-${phase}`
+    );
+    const newStatusDiv = document.getElementById(`new-burden-status-${phase}`);
+    const eSeriesSelector = document.getElementById(
+      `e-series-selector-${phase}`
+    );
+
+    if (
+      !recommendationDiv ||
+      ratedBurdenVA <= 0 ||
+      s_ist >= ratedBurdenVA * 0.25 ||
+      sekNenn <= 0
+    ) {
+      if (recommendationDiv) recommendationDiv.style.display = "none";
+      if (newStatusDiv) newStatusDiv.style.display = "none";
+      return;
+    }
+    recommendationDiv.style.display = "block";
+    newStatusDiv.style.display = "block";
+
+    const s_min = ratedBurdenVA * 0.25;
+    const s_diff = s_min - s_ist;
+    const r_required = s_diff / Math.pow(sekNenn, 2);
+
+    const selectedESeries = eSeriesSelector.value;
+    const e_values = E_SERIES[selectedESeries];
+
+    let best_resistor = 0;
+
+    if (r_required > 0) {
+      const magnitude = 10 ** Math.floor(Math.log10(r_required));
+      let min_diff = Infinity;
+
+      for (let i = -2; i <= 4; i++) {
+        for (const val of e_values) {
+          const resistor_val = val * magnitude * 10 ** i;
+          if (resistor_val >= r_required) {
+            const diff = resistor_val - r_required;
+            if (diff < min_diff) {
+              min_diff = diff;
+              best_resistor = resistor_val;
+            }
+          }
+        }
+      }
+    }
+
+    if (best_resistor === 0) {
+      outputDiv.innerHTML = `Kein zusätzlicher Widerstand nötig.`;
+      newStatusDiv.style.display = "none";
+      return;
+    }
+
+    const p_resistor = best_resistor * Math.pow(sekNenn, 2);
+
+    outputDiv.innerHTML = `
+        Empfohlener Vorwiderstand (min.): <strong>${r_required.toFixed(
+          4
+        )} Ω</strong><br>
+        Nächster Wert aus ${selectedESeries}-Reihe: <strong>${best_resistor.toFixed(
+      2
+    )} Ω</strong><br>
+        Verlustleistung am Widerstand: <strong>${p_resistor.toFixed(
+          3
+        )} W</strong>
+    `;
+
+    const s_total_new = s_ist + p_resistor;
+
+    if (s_total_new > ratedBurdenVA) {
+      newStatusDiv.innerHTML = `<span class="status-error">Neue Bürde (${s_total_new.toFixed(
+        4
+      )} VA) zu hoch!</span>`;
+    } else {
+      newStatusDiv.innerHTML = `<span class="status-ok">Neue Bürde: ${s_total_new.toFixed(
+        4
+      )} VA</span>`;
+    }
   }
 
   function createErrorChart(phase) {
     const chartCtx = document
       .getElementById(`error-chart-${phase}`)
       .getContext("2d");
+    if (!chartCtx) return;
+
     const datasets = [];
     const selectedClass = document.getElementById(
       "accuracy-class-selector"
@@ -396,6 +709,8 @@ document.addEventListener("DOMContentLoaded", () => {
             type: "linear",
             position: "bottom",
             title: { display: true, text: "% Nennstrom" },
+            min: 0,
+            max: 130,
           },
           y: { title: { display: true, text: "Amplitudenfehler (%)" } },
         },
@@ -403,10 +718,16 @@ document.addEventListener("DOMContentLoaded", () => {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) =>
-                `${ctx.dataset.label}: (${
+              label: (ctx) => {
+                if (ctx.dataset.label.startsWith("Messung")) {
+                  return `Messung: (${ctx.parsed.x}%, ${ctx.parsed.y.toFixed(
+                    4
+                  )}%)`;
+                }
+                return `${ctx.dataset.label}: (${
                   ctx.parsed.x
-                }%, ${ctx.parsed.y.toFixed(3)}%)`,
+                }%, ${ctx.parsed.y.toFixed(2)}%)`;
+              },
             },
           },
         },
@@ -416,16 +737,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateChart(phase, forceRedraw = false) {
     if (!document.getElementById(`error-chart-${phase}`)) return;
+
     if (!charts[phase] || forceRedraw) {
       if (charts[phase]) charts[phase].destroy();
       createErrorChart(phase);
     }
     const chart = charts[phase];
+    if (!chart) return;
+
     const transformer = transformers.find(
       (t) =>
         t.templateProductInformation.name ===
         document.getElementById("transformer-selector").value
     );
+
     chart.data.datasets = chart.data.datasets.filter(
       (ds) => !ds.label.startsWith("Messung")
     );
@@ -438,19 +763,23 @@ document.addEventListener("DOMContentLoaded", () => {
             `tr[data-percent="${p}"][data-pos="${pos}"][data-phase="${phase}"]`
           );
           if (!row) return;
+
           const iPrim = parseFloat(row.querySelector(".iprim").value);
           const iSek = parseFloat(row.querySelector(".isek").value) / 1000;
-          const [primNenn, sekNenn] = (
-            transformer.specificProductInformation.electrical.ratio || "0/0"
-          )
-            .split("/")
-            .map(Number);
+          const ratioStr =
+            transformer.specificProductInformation?.electrical?.ratio || "0/0";
+          const [primNenn, sekNenn] = ratioStr.split("/").map(Number);
           const ratio = primNenn && sekNenn ? primNenn / sekNenn : 0;
+
           if (!isNaN(iPrim) && !isNaN(iSek) && ratio && iPrim > 0) {
-            points.push({ x: p, y: ((iSek * ratio - iPrim) / iPrim) * 100 });
+            points.push({
+              x: parseInt(p, 10),
+              y: ((iSek * ratio - iPrim) / iPrim) * 100,
+            });
           }
         });
       });
+
       chart.data.datasets.push({
         label: `Messung`,
         data: points,
@@ -465,14 +794,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function calculateAndDisplayResistance(phase) {
+    if (!phase) return;
     const u = parseFloat(document.getElementById(`u-mess-${phase}`).value);
     const i = parseFloat(document.getElementById(`i-mess-${phase}`).value);
     const resultSpan = document.getElementById(`rs-result-${phase}`);
-    resultSpan.textContent =
-      i && !isNaN(u) ? `${(u / i).toFixed(4)} Ω` : "-- Ω";
+    if (resultSpan) {
+      resultSpan.textContent =
+        !isNaN(u) && i > 0 ? `${(u / i).toFixed(4)} Ω` : "-- Ω";
+    }
   }
 
   function calculateAndDisplayInductance(phase) {
+    if (!phase) return;
     const u = parseFloat(document.getElementById(`u-mess-L-${phase}`).value);
     const i = parseFloat(document.getElementById(`i-mess-L-${phase}`).value);
     const phi = parseFloat(
@@ -480,15 +813,18 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const xsSpan = document.getElementById(`xs-result-${phase}`);
     const lsSpan = document.getElementById(`ls-result-${phase}`);
-    if (i && !isNaN(u) && !isNaN(phi)) {
-      const z = u / i;
-      const xs = z * Math.sin((phi * Math.PI) / 180);
-      const ls = (xs / (2 * Math.PI * 50)) * 1000;
-      xsSpan.textContent = `${xs.toFixed(4)} Ω`;
-      lsSpan.textContent = `${ls.toFixed(3)} mH`;
-    } else {
-      xsSpan.textContent = "-- Ω";
-      lsSpan.textContent = "-- mH";
+
+    if (xsSpan && lsSpan) {
+      if (!isNaN(u) && i > 0 && !isNaN(phi)) {
+        const z = u / i;
+        const xs = z * Math.sin((phi * Math.PI) / 180);
+        const ls = (xs / (2 * Math.PI * FREQUENCY)) * 1000; // in mH
+        xsSpan.textContent = `${xs.toFixed(4)} Ω`;
+        lsSpan.textContent = `${ls.toFixed(3)} mH`;
+      } else {
+        xsSpan.textContent = "-- Ω";
+        lsSpan.textContent = "-- mH";
+      }
     }
   }
 

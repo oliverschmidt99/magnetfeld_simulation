@@ -229,6 +229,7 @@ def get_library():
         if comp_type not in library["components"]:
             library["components"][comp_type] = []
         component = {
+            "id": comp_row["id"],  # ID hinzufügen für leichtere Zuordnung
             "templateProductInformation": {
                 "name": comp_row["name"],
                 "productName": comp_row["productName"],
@@ -462,7 +463,8 @@ def get_measurements(component_id, phase):
     db = get_db()
     cursor = db.execute(
         """SELECT percent_nominal, position, measured_primary,
-           measured_secondary, burden_resistance
+           measured_secondary, burden_resistance,
+           measured_primary_voltage, measured_secondary_voltage
            FROM measurements WHERE component_id = ? AND phase = ?""",
         (component_id, phase),
     )
@@ -489,6 +491,7 @@ def save_measurements():
                 (component_id, phase),
             )
             for meas in measurements:
+                # Nur speichern, wenn mindestens ein Messwert vorhanden ist
                 if (
                     meas.get("measured_primary") is not None
                     or meas.get("measured_secondary") is not None
@@ -496,8 +499,9 @@ def save_measurements():
                     db.execute(
                         """INSERT INTO measurements
                            (component_id, phase, percent_nominal, position,
-                           measured_primary, measured_secondary, burden_resistance)
-                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                           measured_primary, measured_secondary, burden_resistance,
+                           measured_primary_voltage, measured_secondary_voltage)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             component_id,
                             phase,
@@ -506,6 +510,8 @@ def save_measurements():
                             meas.get("measured_primary"),
                             meas.get("measured_secondary"),
                             meas.get("burden_resistance"),
+                            meas.get("measured_primary_voltage"),
+                            meas.get("measured_secondary_voltage"),
                         ),
                     )
         return jsonify({"message": "Messungen erfolgreich gespeichert."})

@@ -99,10 +99,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document
       .getElementById("strom-gruppe-selector")
-      .addEventListener("change", handleGroupSelect);
+      .addEventListener("change", () => {
+        handleGroupSelect();
+        saveFormData();
+      });
     document
       .getElementById("transformer-selector")
-      .addEventListener("change", handleTransformerSelect);
+      .addEventListener("change", () => {
+        handleTransformerSelect();
+        saveFormData();
+      });
     document
       .getElementById("accuracy-class-selector")
       .addEventListener("change", () => {
@@ -127,10 +133,12 @@ document.addEventListener("DOMContentLoaded", () => {
       )
       .forEach((el) => {
         let key = el.id;
-        if (!key) {
+        if (!key && el.closest("tr")) {
+          // Fallback für Tabellen-Inputs ohne ID
           const row = el.closest("tr");
-          if (row) {
-            const type = el.className.match(/(iprim|isek|uprim|usek)/)[0];
+          const typeMatch = el.className.match(/(iprim|isek|uprim|usek)/);
+          if (row && typeMatch) {
+            const type = typeMatch[0];
             key = `${type}-${row.dataset.phase}-${row.dataset.pos}-${row.dataset.percent}`;
           }
         }
@@ -150,35 +158,32 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadFormData() {
     const savedData = JSON.parse(localStorage.getItem(storageKey));
     if (!savedData) {
-      handleGroupSelect(true); // Run once to set up initial state without clearing
+      handleGroupSelect(true); // Nur zum initialen Setup
       return;
     }
 
-    // Set group selector value from saved data
+    // 1. Strom-Gruppe setzen
     const groupSelector = document.getElementById("strom-gruppe-selector");
     if (groupSelector && savedData[groupSelector.id]) {
       groupSelector.value = savedData[groupSelector.id];
     }
 
-    // Get the transformer value to restore BEFORE repopulating the list
+    // 2. Wandler-Liste basierend auf der Gruppe füllen
     const transformerToRestore = savedData["transformer-selector"];
-
-    // Repopulate transformer list and pass the value to restore
     handleGroupSelect(true, transformerToRestore);
 
-    // Populate all other fields
+    // 3. Alle anderen Felder füllen
     populateFields(savedData);
 
-    // Run all calculations with the restored data
+    // 4. Alle Berechnungen und Diagramme basierend auf den wiederhergestellten Daten ausführen
     runAllCalculations();
 
-    // Restore the active tab
+    // 5. Den zuletzt aktiven Tab wiederherstellen
     if (savedData.activeMeasurementTab) {
       const linkToActivate = document.querySelector(
         `#measurement-nav .nav-link[data-target="${savedData.activeMeasurementTab}"]`
       );
       if (linkToActivate) {
-        // Use click to trigger all associated logic including chart updates
         linkToActivate.click();
       }
     }
@@ -198,19 +203,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
       if (el) {
-        // Skip the main selectors as they are handled separately
-        if (
-          el.id === "strom-gruppe-selector" ||
-          el.id === "transformer-selector"
-        )
-          return;
-
         if (el.type === "radio") {
           const radio = document.querySelector(
             `input[name="${el.name}"][value="${savedData[key]}"]`
           );
           if (radio) radio.checked = true;
-        } else {
+        } else if (
+          el.id !== "strom-gruppe-selector" &&
+          el.id !== "transformer-selector"
+        ) {
           el.value = savedData[key];
         }
       }
@@ -344,6 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
         C: [3000, 4000, 5000],
       }[selectedGroup] || [];
 
+    const currentSelection = transformerToRestore || transformerSelector.value;
     transformerSelector.innerHTML =
       '<option value="">-- Bitte wählen --</option>';
 
@@ -365,14 +367,13 @@ document.addEventListener("DOMContentLoaded", () => {
       transformerSelector.disabled = true;
     }
 
-    // Restore the selection if a value was passed
     if (
-      transformerToRestore &&
+      currentSelection &&
       Array.from(transformerSelector.options).some(
-        (opt) => opt.value === transformerToRestore
+        (opt) => opt.value === currentSelection
       )
     ) {
-      transformerSelector.value = transformerToRestore;
+      transformerSelector.value = currentSelection;
     }
 
     handleTransformerSelect(isInitialLoad);

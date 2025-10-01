@@ -14,13 +14,14 @@ from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
 from server.configurations import configurations_bp
+from server.measurements import measurements_bp  # NEU
 from server.utils import (
     load_csv,
     calculate_position_steps,
     calculate_label_positions,
 )
 from server import db
-from server.json_provider import CustomJSONProvider  # Importiere den neuen Provider
+from server.json_provider import CustomJSONProvider
 from src.femm_wrapper import BLOCK_INTEGRAL_TYPES
 
 # --- Konstanten und Pfade ---
@@ -31,7 +32,7 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
 # --- App-Initialisierung ---
 app = Flask(__name__)
-app.json = CustomJSONProvider(app)  # Weise den benutzerdefinierten Provider zu
+app.json = CustomJSONProvider(app)
 db.init_app(app)
 
 # Logging konfigurieren
@@ -43,6 +44,7 @@ app.register_blueprint(api_bp)
 app.register_blueprint(analysis_bp, url_prefix="/api")
 app.register_blueprint(simulation_bp)
 app.register_blueprint(configurations_bp, url_prefix="/api")
+app.register_blueprint(measurements_bp)  # NEU
 
 
 def get_library_from_db():
@@ -70,6 +72,7 @@ def get_library_from_db():
             library_data["components"][comp_type] = []
 
         component = {
+            "id": comp_row["id"],  # ID wird nun für das Laden der CSVs benötigt
             "templateProductInformation": {
                 "name": comp_row["name"],
                 "productName": comp_row["productName"],

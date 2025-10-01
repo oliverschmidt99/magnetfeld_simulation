@@ -7,11 +7,23 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const transformers = library.components.transformers || [];
   let charts = { L1: null, L2: null, L3: null };
-  const storageKey = "measurementFormData";
 
   const RHO_20 = 0.0178; // Ohm * mm^2 / m
   const RHO_80 = 0.02195; // Ohm * mm^2 / m
   const FREQUENCY = 50; // Netzfrequenz in Hz
+
+  // Debounce-Funktion, um das Speichern zu verzögern
+  function debounce(func, delay) {
+    let timeout;
+    return function (...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+  }
+
+  // Eine debounced Version der Export-Funktion erstellen (2000ms = 2s Verzögerung)
+  const debouncedServerExport = debounce(saveAllMeasurementsToCsv, 2000);
 
   const E_SERIES = {
     E3: [1.0, 2.2, 4.7],
@@ -67,7 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const form = document.getElementById("measurement-form");
     form.addEventListener("input", (e) => {
-      saveFormData();
+      // Automatischer Server-Export wird verzögert ausgelöst
+      debouncedServerExport();
 
       const target = e.target;
       const phase = target.dataset.phase;
@@ -102,134 +115,204 @@ document.addEventListener("DOMContentLoaded", () => {
       .addEventListener("change", () => {
         handleGroupSelect();
         handleTransformerSelect();
-        saveFormData();
       });
     document
       .getElementById("transformer-selector")
       .addEventListener("change", () => {
         handleTransformerSelect();
-        saveFormData();
       });
     document
       .getElementById("accuracy-class-selector")
       .addEventListener("change", () => {
         ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true));
-        saveFormData();
       });
-
-    document
-      .getElementById("save-all-btn")
-      .addEventListener("click", saveAllMeasurementsToDB);
 
     ["L1", "L2", "L3"].forEach(buildBurdenAnalysisHTML);
 
-    loadFormData();
+    handleGroupSelect();
   }
 
-  function saveFormData() {
-    const formData = {};
-    document
-      .querySelectorAll(
-        '#measurement-form select, #measurement-form input[type="number"], #measurement-form input[type="radio"]:checked'
-      )
-      .forEach((el) => {
-        let key = el.id;
-        if (!key && el.closest("tr")) {
-          const row = el.closest("tr");
-          const typeMatch = el.className.match(/(iprim|isek|uprim|usek)/);
-          if (row && typeMatch) {
-            const type = typeMatch[0];
-            key = `${type}-${row.dataset.phase}-${row.dataset.pos}-${row.dataset.percent}`;
-          }
-        }
-        if (key) formData[key] = el.value;
+  function gatherAllMeasurementData() {
+    const transformerName = document.getElementById(
+      "transformer-selector"
+    ).value;
+    const stromGruppe = document.getElementById("strom-gruppe-selector").value; // NEU
+
+    const leerlauf_und_kurzschluss = [];
+    ["L1", "L2", "L3"].forEach((phase) => {
+      leerlauf_und_kurzschluss.push({
+        Phase: phase,
+        Typ: "Leerlauf",
+        U_V: document.getElementById(`u-leerlauf-${phase}`).value || "",
+        I_A: document.getElementById(`i-leerlauf-${phase}`).value || "",
+        P_W: document.getElementById(`p-leerlauf-${phase}`).value || "",
       });
+      leerlauf_und_kurzschluss.push({
+        Phase: phase,
+        Typ: "Kurzschluss",
+        U_V: document.getElementById(`u-kurzschluss-${phase}`).value || "",
+        I_A: document.getElementById(`i-kurzschluss-${phase}`).value || "",
+        P_W: document.getElementById(`p-kurzschluss-${phase}`).value || "",
+      });
+    });
 
-    const activeLink = document.querySelector(
-      "#measurement-nav .nav-link.active"
-    );
-    if (activeLink) {
-      formData["activeMeasurementTab"] = activeLink.dataset.target;
-    }
+    const wicklungsparameter = [];
+    ["L1", "L2", "L3"].forEach((phase) => {
+      wicklungsparameter.push({
+        Phase: phase,
+        R_S_Ohm: document
+          .getElementById(`rs-result-${phase}`)
+          .textContent.replace(" Ω", "")
+          .trim(),
+        X_S_Ohm: document
+          .getElementById(`xs-result-${phase}`)
+          .textContent.replace(" Ω", "")
+          .trim(),
+        L_S_mH: document
+          .getElementById(`ls-result-${phase}`)
+          .textContent.replace(" mH", "")
+          .trim(),
+      });
+    });
 
-    localStorage.setItem(storageKey, JSON.stringify(formData));
+    const gesamtbuerde_und_kompensation = [];
+    ["L1", "L2", "L3"].forEach((phase) => {
+      gesamtbuerde_und_kompensation.push({
+        Phase: phase,
+        S_Nenn_VA: document
+          .getElementById(`snenn-result-${phase}`)
+          .textContent.replace(" VA", "")
+          .trim(),
+        S_Kabel_VA: document
+          .getElementById(`scable-result-${phase}`)
+          .textContent.replace(" VA", "")
+          .trim(),
+        S_Geraet_VA: document
+          .getElementById(`smeter-result-${phase}`)
+          .textContent.replace(" VA", "")
+          .trim(),
+        S_Ist_VA: document
+          .getElementById(`sist-result-${phase}`)
+          .textContent.replace(" VA", "")
+          .trim(),
+        Status: document.querySelector(`#burden-status-${phase} span`)
+          .textContent,
+      });
+    });
+
+    const messreihen = [];
+    document.querySelectorAll(".measurement-table tbody tr").forEach((row) => {
+      const sollStromText = row.querySelector(
+        ".soll-strom-display"
+      ).textContent;
+      messreihen.push({
+        Phase: row.dataset.phase,
+        Position: row.dataset.pos,
+        Prozent_Nennstrom: row.dataset.percent,
+        I_prim_soll_A: sollStromText.replace(/[()A]/g, ""),
+        I_prim_ist_A: row.querySelector(".iprim").value || "",
+        U_prim_ist_V: row.querySelector(".uprim").value || "",
+        I_sek_ist_mA: row.querySelector(".isek").value || "",
+        U_sek_ist_mV: row.querySelector(".usek").value || "",
+        Fehler_Prozent: row
+          .querySelector(".error-cell")
+          .textContent.replace(/ %/g, "")
+          .trim(),
+      });
+    });
+
+    return {
+      transformerName,
+      stromGruppe, // NEU
+      leerlauf_und_kurzschluss,
+      wicklungsparameter,
+      gesamtbuerde_und_kompensation,
+      messreihen,
+    };
   }
 
-  function loadFormData() {
-    const savedData = JSON.parse(localStorage.getItem(storageKey));
-    if (!savedData) {
-      handleGroupSelect();
+  async function saveAllMeasurementsToCsv() {
+    const dataToExport = gatherAllMeasurementData();
+
+    if (!dataToExport.transformerName || !dataToExport.stromGruppe) {
+      console.log(
+        "Kein Wandler oder Gruppe ausgewählt, automatisches Speichern übersprungen."
+      );
       return;
     }
 
-    // 1. Gruppe setzen
-    const groupSelector = document.getElementById("strom-gruppe-selector");
-    if (groupSelector && savedData[groupSelector.id]) {
-      groupSelector.value = savedData[groupSelector.id];
-    }
+    console.log(
+      `Automatisches Speichern für ${dataToExport.transformerName} in Gruppe ${dataToExport.stromGruppe} wird ausgelöst...`
+    );
 
-    // 2. Wandlerliste basierend auf der Gruppe füllen
-    handleGroupSelect(true);
+    try {
+      const response = await fetch("/api/measurements/save_csv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToExport),
+      });
 
-    // 3. Wandlerwert setzen (falls gespeichert und in der neuen Liste vorhanden)
-    const transformerSelector = document.getElementById("transformer-selector");
-    if (transformerSelector && savedData[transformerSelector.id]) {
-      if (
-        Array.from(transformerSelector.options).some(
-          (opt) => opt.value === savedData[transformerSelector.id]
-        )
-      ) {
-        transformerSelector.value = savedData[transformerSelector.id];
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Unbekannter Fehler");
       }
-    }
 
-    // 4. Alle anderen Felder füllen
-    populateFields(savedData);
-
-    // 5. Alle UI-Updates und Berechnungen basierend auf dem vollen Zustand ausführen
-    handleTransformerSelect(true);
-    runAllCalculations();
-
-    // 6. Den zuletzt aktiven Tab wiederherstellen
-    if (savedData.activeMeasurementTab) {
-      const linkToActivate = document.querySelector(
-        `#measurement-nav .nav-link[data-target="${savedData.activeMeasurementTab}"]`
-      );
-      if (linkToActivate) {
-        linkToActivate.click();
-      }
+      console.log(result.message);
+    } catch (error) {
+      console.error(`Fehler beim automatischen Speichern: ${error.message}`);
     }
   }
 
-  function populateFields(savedData) {
-    Object.keys(savedData).forEach((key) => {
-      let el = document.getElementById(key);
-      if (!el) {
-        const parts = key.split("-");
-        if (parts.length === 4) {
-          const [type, phase, pos, percent] = parts;
-          const row = document.querySelector(
-            `tr[data-phase="${phase}"][data-pos="${pos}"][data-percent="${percent}"]`
-          );
-          if (row) el = row.querySelector(`.${type}`);
-        }
-      }
-      if (el) {
-        // Die Haupt-Selektoren werden jetzt in loadFormData() behandelt, hier überspringen.
-        if (
-          el.id === "strom-gruppe-selector" ||
-          el.id === "transformer-selector"
-        )
-          return;
+  async function loadMeasurementsFromCsv(transformerName, stromGruppe) {
+    if (!transformerName || !stromGruppe) {
+      document.getElementById("measurement-form").reset();
+      runAllCalculations();
+      return;
+    }
 
-        if (el.type === "radio") {
-          const radio = document.querySelector(
-            `input[name="${el.name}"][value="${savedData[key]}"]`
-          );
-          if (radio) radio.checked = true;
-        } else {
-          el.value = savedData[key];
-        }
+    try {
+      const response = await fetch(
+        `/api/measurements/load_csv/${stromGruppe}/${encodeURIComponent(
+          transformerName
+        )}`
+      );
+      if (!response.ok) {
+        throw new Error("Netzwerkfehler beim Laden der Daten.");
+      }
+      const data = await response.json();
+      populateFormWithLoadedData(data);
+      runAllCalculations();
+    } catch (error) {
+      console.error(
+        `Fehler beim Laden der CSV-Daten für ${transformerName}: ${error.message}`
+      );
+      document.getElementById("measurement-form").reset();
+      runAllCalculations();
+    }
+  }
+
+  function populateFormWithLoadedData(data) {
+    (data.leerlauf_und_kurzschluss || []).forEach((item) => {
+      const type = (item.Typ || "").toLowerCase();
+      if (document.getElementById(`u-${type}-${item.Phase}`)) {
+        document.getElementById(`u-${type}-${item.Phase}`).value =
+          item.U_V || "";
+        document.getElementById(`i-${type}-${item.Phase}`).value =
+          item.I_A || "";
+        document.getElementById(`p-${type}-${item.Phase}`).value =
+          item.P_W || "";
+      }
+    });
+
+    (data.messreihen || []).forEach((item) => {
+      const row = document.querySelector(
+        `tr[data-phase="${item.Phase}"][data-pos="${item.Position}"][data-percent="${item.Prozent_Nennstrom}"]`
+      );
+      if (row) {
+        row.querySelector(".iprim").value = item.I_prim_ist_A || "";
+        row.querySelector(".uprim").value = item.U_prim_ist_V || "";
+        row.querySelector(".isek").value = item.I_sek_ist_mA || "";
+        row.querySelector(".usek").value = item.U_sek_ist_mV || "";
       }
     });
   }
@@ -248,83 +331,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  async function saveAllMeasurementsToDB() {
-    const selectedTransformerName = document.getElementById(
-      "transformer-selector"
-    ).value;
-    const transformer = transformers.find(
-      (t) => t.templateProductInformation.name === selectedTransformerName
-    );
-    if (!transformer) {
-      alert("Bitte zuerst einen Wandler auswählen.");
-      return;
-    }
-
-    for (const phase of ["L1", "L2", "L3"]) {
-      const measurements = [];
-      document.querySelectorAll(`tr[data-phase="${phase}"]`).forEach((row) => {
-        measurements.push({
-          percent_nominal: parseInt(row.dataset.percent, 10),
-          position: parseInt(row.dataset.pos, 10),
-          measured_primary:
-            parseFloat(row.querySelector(".iprim").value) || null,
-          measured_secondary:
-            parseFloat(row.querySelector(".isek").value) || null,
-          measured_primary_voltage:
-            parseFloat(row.querySelector(".uprim").value) || null,
-          measured_secondary_voltage:
-            parseFloat(row.querySelector(".usek").value) || null,
-        });
-      });
-
-      try {
-        const response = await fetch("/api/measurements", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            component_id: transformer.id,
-            phase: phase,
-            measurements: measurements,
-          }),
-        });
-        if (!response.ok)
-          throw new Error(`Fehler beim Speichern von Phase ${phase}`);
-      } catch (error) {
-        alert(`Ein Fehler ist aufgetreten: ${error.message}`);
-        return;
-      }
-    }
-    alert("Alle Messungen erfolgreich in der Datenbank gespeichert!");
-  }
-
-  async function loadMeasurementsFromDB(componentId, phase) {
-    try {
-      const response = await fetch(`/api/measurements/${componentId}/${phase}`);
-      if (!response.ok) return;
-      const measurements = await response.json();
-
-      measurements.forEach((meas) => {
-        const row = document.querySelector(
-          `tr[data-phase="${phase}"][data-pos="${meas.position}"][data-percent="${meas.percent_nominal}"]`
-        );
-        if (row) {
-          if (meas.measured_primary !== null)
-            row.querySelector(".iprim").value = meas.measured_primary;
-          if (meas.measured_secondary !== null)
-            row.querySelector(".isek").value = meas.measured_secondary;
-          if (meas.measured_primary_voltage !== null)
-            row.querySelector(".uprim").value = meas.measured_primary_voltage;
-          if (meas.measured_secondary_voltage !== null)
-            row.querySelector(".usek").value = meas.measured_secondary_voltage;
-          calculateAndDisplayError(phase, meas.percent_nominal, meas.position);
-        }
-      });
-      updateChart(phase);
-    } catch (error) {
-      console.error(`Fehler beim Laden der Messungen für ${phase}:`, error);
-    }
-  }
-
   function initializeVerticalNavigation(navId, sectionContainerId) {
     const links = document.querySelectorAll(`#${navId} .nav-link`);
     const sections = document.querySelectorAll(
@@ -341,12 +347,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (link.dataset.target === "measurement-summary") {
           ["L1", "L2", "L3"].forEach((phase) => updateChart(phase, true));
         }
-        saveFormData();
       });
     });
   }
 
-  function handleGroupSelect(isInitialLoad = false) {
+  function handleGroupSelect() {
     const selectedGroup = document.getElementById(
       "strom-gruppe-selector"
     ).value;
@@ -380,7 +385,6 @@ document.addEventListener("DOMContentLoaded", () => {
       transformerSelector.disabled = true;
     }
 
-    // Restore selection if it exists in the new list
     if (
       Array.from(transformerSelector.options).some(
         (opt) => opt.value === currentSelection
@@ -390,9 +394,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function handleTransformerSelect(isInitialLoad = false) {
+  function handleTransformerSelect() {
     const selectedTransformerName = document.getElementById(
       "transformer-selector"
+    ).value;
+    const selectedGruppe = document.getElementById(
+      "strom-gruppe-selector"
     ).value;
     const transformer = transformers.find(
       (t) => t.templateProductInformation.name === selectedTransformerName
@@ -418,26 +425,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (sollStromSpan) {
         sollStromSpan.textContent = "";
       }
-
-      if (!isInitialLoad) {
-        row.querySelector(".iprim").value = "";
-        row.querySelector(".isek").value = "";
-        row.querySelector(".uprim").value = "";
-        row.querySelector(".usek").value = "";
-        row.querySelector(".error-cell").textContent = "--";
-      }
     });
 
-    if (transformer && !isInitialLoad) {
-      ["L1", "L2", "L3"].forEach((phase) => {
-        loadMeasurementsFromDB(transformer.id, phase);
-      });
-    }
-
-    ["L1", "L2", "L3"].forEach((phase) => {
-      calculateAndDisplayBurden(phase);
-      if (!isInitialLoad) updateChart(phase);
-    });
+    loadMeasurementsFromCsv(selectedTransformerName, selectedGruppe);
   }
 
   function calculateAndDisplayError(phase, percent, pos) {

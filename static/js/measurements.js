@@ -101,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .getElementById("strom-gruppe-selector")
       .addEventListener("change", () => {
         handleGroupSelect();
+        handleTransformerSelect();
         saveFormData();
       });
     document
@@ -134,7 +135,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .forEach((el) => {
         let key = el.id;
         if (!key && el.closest("tr")) {
-          // Fallback für Tabellen-Inputs ohne ID
           const row = el.closest("tr");
           const typeMatch = el.className.match(/(iprim|isek|uprim|usek)/);
           if (row && typeMatch) {
@@ -158,27 +158,39 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadFormData() {
     const savedData = JSON.parse(localStorage.getItem(storageKey));
     if (!savedData) {
-      handleGroupSelect(true); // Nur zum initialen Setup
+      handleGroupSelect();
       return;
     }
 
-    // 1. Strom-Gruppe setzen
+    // 1. Gruppe setzen
     const groupSelector = document.getElementById("strom-gruppe-selector");
     if (groupSelector && savedData[groupSelector.id]) {
       groupSelector.value = savedData[groupSelector.id];
     }
 
-    // 2. Wandler-Liste basierend auf der Gruppe füllen
-    const transformerToRestore = savedData["transformer-selector"];
-    handleGroupSelect(true, transformerToRestore);
+    // 2. Wandlerliste basierend auf der Gruppe füllen
+    handleGroupSelect(true);
 
-    // 3. Alle anderen Felder füllen
+    // 3. Wandlerwert setzen (falls gespeichert und in der neuen Liste vorhanden)
+    const transformerSelector = document.getElementById("transformer-selector");
+    if (transformerSelector && savedData[transformerSelector.id]) {
+      if (
+        Array.from(transformerSelector.options).some(
+          (opt) => opt.value === savedData[transformerSelector.id]
+        )
+      ) {
+        transformerSelector.value = savedData[transformerSelector.id];
+      }
+    }
+
+    // 4. Alle anderen Felder füllen
     populateFields(savedData);
 
-    // 4. Alle Berechnungen und Diagramme basierend auf den wiederhergestellten Daten ausführen
+    // 5. Alle UI-Updates und Berechnungen basierend auf dem vollen Zustand ausführen
+    handleTransformerSelect(true);
     runAllCalculations();
 
-    // 5. Den zuletzt aktiven Tab wiederherstellen
+    // 6. Den zuletzt aktiven Tab wiederherstellen
     if (savedData.activeMeasurementTab) {
       const linkToActivate = document.querySelector(
         `#measurement-nav .nav-link[data-target="${savedData.activeMeasurementTab}"]`
@@ -203,15 +215,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
       if (el) {
+        // Die Haupt-Selektoren werden jetzt in loadFormData() behandelt, hier überspringen.
+        if (
+          el.id === "strom-gruppe-selector" ||
+          el.id === "transformer-selector"
+        )
+          return;
+
         if (el.type === "radio") {
           const radio = document.querySelector(
             `input[name="${el.name}"][value="${savedData[key]}"]`
           );
           if (radio) radio.checked = true;
-        } else if (
-          el.id !== "strom-gruppe-selector" &&
-          el.id !== "transformer-selector"
-        ) {
+        } else {
           el.value = savedData[key];
         }
       }
@@ -330,10 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function handleGroupSelect(
-    isInitialLoad = false,
-    transformerToRestore = null
-  ) {
+  function handleGroupSelect(isInitialLoad = false) {
     const selectedGroup = document.getElementById(
       "strom-gruppe-selector"
     ).value;
@@ -345,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
         C: [3000, 4000, 5000],
       }[selectedGroup] || [];
 
-    const currentSelection = transformerToRestore || transformerSelector.value;
+    const currentSelection = transformerSelector.value;
     transformerSelector.innerHTML =
       '<option value="">-- Bitte wählen --</option>';
 
@@ -367,16 +380,14 @@ document.addEventListener("DOMContentLoaded", () => {
       transformerSelector.disabled = true;
     }
 
+    // Restore selection if it exists in the new list
     if (
-      currentSelection &&
       Array.from(transformerSelector.options).some(
         (opt) => opt.value === currentSelection
       )
     ) {
       transformerSelector.value = currentSelection;
     }
-
-    handleTransformerSelect(isInitialLoad);
   }
 
   function handleTransformerSelect(isInitialLoad = false) {

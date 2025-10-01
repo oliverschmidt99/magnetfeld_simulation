@@ -18,30 +18,6 @@
 </script>
 
 <div class="container measurement-container">
-    <div class="card global-parameters-card">
-        <div class="top-controls-grid">
-            <div class="form-group">
-                <label for="strom-gruppe-selector">1. Strom Gruppe</label>
-                <select id="strom-gruppe-selector">
-                    <option value="">-- Gruppe wählen --</option>
-                    <option value="A">Gruppe A (600A - 800A)</option>
-                    <option value="B">Gruppe B (1000A - 2500A)</option>
-                    <option value="C">Gruppe C (3000A - 5000A)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="transformer-selector">2. Wandler für alle Phasen</label>
-                <select id="transformer-selector" disabled>
-                    <option value="">-- Bitte Gruppe wählen --</option>
-                </select>
-            </div>
-            <div class="overall-status" id="overall-status">
-                Messung vollständig: <span class="status-value incomplete">Nein</span> | <span
-                    class="status-date">--.--.----</span>
-            </div>
-        </div>
-    </div>
-
     <div class="two-column-layout vertical-nav-layout">
         <div class="side-column-nav" id="measurement-nav">
             <a href="#" class="nav-link active" data-target="measurement-versuche">
@@ -68,6 +44,30 @@
 
         <div class="main-column">
             <form id="measurement-form">
+                <div class="card global-parameters-card">
+                    <div class="top-controls-grid">
+                        <div class="form-group">
+                            <label for="strom-gruppe-selector">1. Strom Gruppe</label>
+                            <select id="strom-gruppe-selector">
+                                <option value="">-- Gruppe wählen --</option>
+                                <option value="A">Gruppe A (600A - 800A)</option>
+                                <option value="B">Gruppe B (1000A - 2500A)</option>
+                                <option value="C">Gruppe C (3000A - 5000A)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="transformer-selector">2. Wandler für alle Phasen</label>
+                            <select id="transformer-selector">
+                                <option value="">-- Bitte Gruppe wählen --</option>
+                            </select>
+                        </div>
+                        <div class="overall-status" id="overall-status">
+                            Messung vollständig: <span class="status-value incomplete">Nein</span> | <span
+                                class="status-date">--.--.----</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="measurement-sections">
                     <div id="measurement-versuche" class="config-section active">
                         <h2>Leerlauf- &amp; Kurzschlussversuch</h2>

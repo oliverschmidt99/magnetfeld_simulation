@@ -7,6 +7,7 @@ import json
 import os
 import math
 import time
+import pandas as pd
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
@@ -14,11 +15,12 @@ from server.api import api_bp
 from server.analysis import analysis_bp
 from server.simulation import simulation_bp
 from server.configurations import configurations_bp
-from server.measurements import measurements_bp  # NEU
+from server.measurements import measurements_bp
 from server.utils import (
     load_csv,
     calculate_position_steps,
     calculate_label_positions,
+    sanitize_filename,
 )
 from server import db
 from server.json_provider import CustomJSONProvider
@@ -29,6 +31,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SIMULATION_RUN_FILE = "simulation_run.json"
 SIMULATIONS_DIR = "simulations"
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+MEASUREMENTS_DIR = os.path.join(BASE_DIR, "messungen")
 
 # --- App-Initialisierung ---
 app = Flask(__name__)
@@ -38,13 +41,6 @@ db.init_app(app)
 # Logging konfigurieren
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
-
-# Blueprints registrieren
-app.register_blueprint(api_bp)
-app.register_blueprint(analysis_bp, url_prefix="/api")
-app.register_blueprint(simulation_bp)
-app.register_blueprint(configurations_bp, url_prefix="/api")
-app.register_blueprint(measurements_bp)  # NEU
 
 
 def get_library_from_db():
@@ -72,7 +68,7 @@ def get_library_from_db():
             library_data["components"][comp_type] = []
 
         component = {
-            "id": comp_row["id"],  # ID wird nun für das Laden der CSVs benötigt
+            "id": comp_row["id"],
             "templateProductInformation": {
                 "name": comp_row["name"],
                 "productName": comp_row["productName"],
@@ -96,6 +92,108 @@ def get_library_from_db():
         library_data["components"][comp_type].append(component)
 
     return library_data
+
+
+def sync_measurement_folders():
+    """
+    Synchronisiert die Ordnerstruktur im 'messungen'-Verzeichnis mit der Bauteil-Bibliothek.
+    Erstellt für jeden Wandler einen Ordner in der passenden Gruppe und legt leere CSV-Dateien an.
+    """
+    print("Synchronisiere Messungs-Ordner mit der Bibliothek...")
+
+    # Basis-Verzeichnisse erstellen
+    if not os.path.exists(MEASUREMENTS_DIR):
+        os.makedirs(MEASUREMENTS_DIR)
+    for group in ["a", "b", "c"]:
+        group_path = os.path.join(MEASUREMENTS_DIR, f"gruppe_{group}")
+        if not os.path.exists(group_path):
+            os.makedirs(group_path)
+
+    strom_gruppen = {
+        "a": [600, 800],
+        "b": [1000, 1250, 1600, 2000, 2500],
+        "c": [3000, 4000, 5000],
+    }
+
+    csv_structures = {
+        "Leerlauf_Und_Kurzschluss.csv": ["Phase", "Typ", "U_V", "I_A", "P_W"],
+        "Wicklungsparameter.csv": ["Phase", "R_S_Ohm", "X_S_Ohm", "L_S_mH"],
+        "Gesamtbuerde_Und_Kompensation.csv": [
+            "Phase",
+            "S_Nenn_VA",
+            "S_Kabel_VA",
+            "S_Geraet_VA",
+            "S_Ist_VA",
+            "Status",
+        ],
+        "Messreihen.csv": [
+            "Phase",
+            "Position",
+            "Prozent_Nennstrom",
+            "I_prim_soll_A",
+            "I_prim_ist_A",
+            "U_prim_ist_V",
+            "I_sek_ist_mA",
+            "U_sek_ist_mV",
+            "Fehler_Prozent",
+        ],
+    }
+
+    with app.app_context():
+        library_data = get_library_from_db()
+        transformers = library_data.get("components", {}).get("transformers", [])
+
+    if not transformers:
+        print("Keine Wandler in der Bibliothek gefunden. Überspringe Synchronisation.")
+        return
+
+    for transformer in transformers:
+        try:
+            name = transformer["templateProductInformation"]["name"]
+            unique_number = transformer["templateProductInformation"].get(
+                "uniqueNumber", ""
+            )
+            rated_current = transformer["specificProductInformation"]["electrical"][
+                "primaryRatedCurrentA"
+            ]
+
+            target_group = None
+            for group_key, current_range in strom_gruppen.items():
+                if rated_current in current_range:
+                    target_group = group_key
+                    break
+
+            if target_group:
+                folder_name = f"{unique_number}_{name}"
+                safe_folder_name = sanitize_filename(folder_name)
+                transformer_dir = os.path.join(
+                    MEASUREMENTS_DIR, f"gruppe_{target_group}", safe_folder_name
+                )
+                os.makedirs(transformer_dir, exist_ok=True)
+
+                for filename, headers in csv_structures.items():
+                    filepath = os.path.join(transformer_dir, filename)
+                    if not os.path.exists(filepath):
+                        df = pd.DataFrame(columns=headers)
+                        df.to_csv(filepath, index=False)
+        except (KeyError, TypeError) as e:
+            print(
+                f"WARNUNG: Überspringe Wandler aufgrund fehlender Daten: "
+                f"{transformer.get('templateProductInformation', {}).get('name', 'Unbekannt')}. Fehler: {e}"
+            )
+
+    print("Synchronisation der Messungs-Ordner abgeschlossen.")
+
+
+# Führe die Synchronisation beim Start der App aus
+sync_measurement_folders()
+
+# Blueprints registrieren
+app.register_blueprint(api_bp)
+app.register_blueprint(analysis_bp, url_prefix="/api")
+app.register_blueprint(simulation_bp)
+app.register_blueprint(configurations_bp, url_prefix="/api")
+app.register_blueprint(measurements_bp)
 
 
 # --- Routen ---
@@ -143,7 +241,7 @@ def results():
 
 
 @app.route("/library")
-def library():
+def library_page():
     """Zeigt die kombinierte Bibliotheks- und Stammdaten-Verwaltung."""
     with app.app_context():
         library_data = get_library_from_db()

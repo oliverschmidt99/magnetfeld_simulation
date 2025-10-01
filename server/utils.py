@@ -21,6 +21,15 @@ TAGS_FILE = "tags.json"
 RESULTS_DIR = "res"
 
 
+def sanitize_filename(name):
+    """Bereinigt einen String, um ihn als sicheren Datei- oder Ordnernamen zu verwenden."""
+    if not isinstance(name, str):
+        name = str(name)
+    name = re.sub(r'[<>:"/\\|?*]', "_", name)
+    name = name.replace(" ", "_")
+    return name
+
+
 def _safe_float(value, default=0.0):
     """Wandelt einen Wert sicher in einen Float um."""
     if value is None or value == "":

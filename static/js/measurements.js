@@ -2,9 +2,30 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   // Globale Variablen & Konstanten
-  const library = JSON.parse(
-    document.getElementById("library-data").textContent
-  );
+  let library;
+  try {
+    const libraryDataElement = document.getElementById("library-data");
+    if (!libraryDataElement || !libraryDataElement.textContent) {
+      throw new Error(
+        "Bibliotheksdaten-Element nicht im HTML gefunden oder leer."
+      );
+    }
+    library = JSON.parse(libraryDataElement.textContent);
+    if (!library || !library.components) {
+      throw new Error("Bibliotheksdaten sind ungültig oder unvollständig.");
+    }
+  } catch (error) {
+    console.error(
+      "FATALER FEHLER: Initialisierung der Messungs-Seite fehlgeschlagen.",
+      error
+    );
+    alert(
+      "Fehler: Die Bibliotheksdaten konnten nicht geladen werden. Die Seite ist nicht funktionsfähig. Bitte überprüfe die Server-Konsole auf Fehler."
+    );
+    // Beende die weitere Ausführung, wenn die Bibliothek nicht geladen werden kann
+    return;
+  }
+
   const transformers = library.components.transformers || [];
   let charts = { L1: null, L2: null, L3: null };
 
@@ -136,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const transformerName = document.getElementById(
       "transformer-selector"
     ).value;
-    const stromGruppe = document.getElementById("strom-gruppe-selector").value; // NEU
+    const stromGruppe = document.getElementById("strom-gruppe-selector").value;
 
     const leerlauf_und_kurzschluss = [];
     ["L1", "L2", "L3"].forEach((phase) => {
@@ -223,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return {
       transformerName,
-      stromGruppe, // NEU
+      stromGruppe,
       leerlauf_und_kurzschluss,
       wicklungsparameter,
       gesamtbuerde_und_kompensation,
@@ -830,5 +851,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Initialisiere die Seite
   initialize();
 });

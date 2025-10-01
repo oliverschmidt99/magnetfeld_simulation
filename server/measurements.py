@@ -1,21 +1,19 @@
 # server/measurements.py
+"""
+Dieses Modul stellt die API-Endpunkte für die Erfassung und Verwaltung von Messdaten bereit.
+"""
 import os
-import re
 import pandas as pd
 from flask import Blueprint, jsonify, request, current_app
+
+from server.db import get_db
+from server.utils import sanitize_filename
 
 measurements_bp = Blueprint("measurements_bp", __name__)
 
 # Pfad zum Hauptverzeichnis des Projekts
 BASE_DIR = os.path.join(os.path.dirname(__file__), "..")
 MEASUREMENTS_DIR = os.path.join(BASE_DIR, "messungen")
-
-
-def sanitize_filename(name):
-    """Bereinigt einen String, um ihn als sicheren Ordnernamen zu verwenden."""
-    name = re.sub(r'[<>:"/\\|?*]', "_", name)
-    name = name.replace(" ", "_")
-    return name
 
 
 @measurements_bp.route("/api/measurements/save_csv", methods=["POST"])
@@ -30,10 +28,17 @@ def save_measurements_to_csv():
     if not transformer_name or not strom_gruppe:
         return jsonify({"error": "Wandlername oder Stromgruppe fehlt."}), 400
 
-    # Verzeichnis für die Stromgruppe und den Wandler erstellen
-    safe_transformer_name = sanitize_filename(transformer_name)
+    db_conn = get_db()
+    comp_row = db_conn.execute(
+        "SELECT uniqueNumber FROM components WHERE name = ?", (transformer_name,)
+    ).fetchone()
+    unique_number = comp_row["uniqueNumber"] if comp_row else ""
+
+    folder_name = f"{unique_number}_{transformer_name}"
+    safe_folder_name = sanitize_filename(folder_name)
+
     transformer_dir = os.path.join(
-        MEASUREMENTS_DIR, f"Gruppe_{strom_gruppe}", safe_transformer_name
+        MEASUREMENTS_DIR, f"Gruppe_{strom_gruppe.lower()}", safe_folder_name
     )
     os.makedirs(transformer_dir, exist_ok=True)
 
@@ -50,7 +55,7 @@ def save_measurements_to_csv():
                 df.to_csv(os.path.join(transformer_dir, filename), index=False)
 
         return jsonify({"message": "Daten erfolgreich gespeichert."})
-    except Exception as e:
+    except (IOError, pd.errors.ParserError) as e:
         current_app.logger.error(f"Fehler beim Speichern der CSV-Dateien: {e}")
         return jsonify({"error": "Serverseitiger Fehler beim Speichern der CSVs."}), 500
 
@@ -65,9 +70,17 @@ def load_measurements_from_csv(strom_gruppe, transformer_name):
     if not strom_gruppe or not transformer_name:
         return jsonify({"error": "Wandlername oder Stromgruppe fehlt."}), 400
 
-    safe_transformer_name = sanitize_filename(transformer_name)
+    db_conn = get_db()
+    comp_row = db_conn.execute(
+        "SELECT uniqueNumber FROM components WHERE name = ?", (transformer_name,)
+    ).fetchone()
+    unique_number = comp_row["uniqueNumber"] if comp_row else ""
+
+    folder_name = f"{unique_number}_{transformer_name}"
+    safe_folder_name = sanitize_filename(folder_name)
+
     transformer_dir = os.path.join(
-        MEASUREMENTS_DIR, f"Gruppe_{strom_gruppe}", safe_transformer_name
+        MEASUREMENTS_DIR, f"Gruppe_{strom_gruppe.lower()}", safe_folder_name
     )
 
     if not os.path.isdir(transformer_dir):
@@ -87,6 +100,6 @@ def load_measurements_from_csv(strom_gruppe, transformer_name):
                 all_data[key] = df.where(pd.notna(df), None).to_dict("records")
 
         return jsonify(all_data)
-    except Exception as e:
+    except (IOError, pd.errors.ParserError) as e:
         current_app.logger.error(f"Fehler beim Laden der CSV-Dateien: {e}")
         return jsonify({"error": "Fehler beim Lesen der CSV-Dateien."}), 500

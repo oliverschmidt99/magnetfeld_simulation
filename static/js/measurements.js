@@ -129,6 +129,12 @@ document.addEventListener("DOMContentLoaded", () => {
       ) {
         ["L1", "L2", "L3"].forEach(calculateAndDisplayBurden);
       }
+
+      // Hinzugefügt: Listener für die Radio-Buttons zur Umschaltung und Neuberechnung
+      if (target.name === "meter-load-type") {
+        toggleMeterLoadInputs();
+        ["L1", "L2", "L3"].forEach(calculateAndDisplayBurden);
+      }
     });
 
     document
@@ -151,6 +157,29 @@ document.addEventListener("DOMContentLoaded", () => {
     ["L1", "L2", "L3"].forEach(buildBurdenAnalysisHTML);
 
     handleGroupSelect();
+    toggleMeterLoadInputs(); // Initialer Aufruf
+  }
+
+  function toggleMeterLoadInputs() {
+    const isResistance = document.getElementById(
+      "meter-load-resistance"
+    ).checked;
+
+    // Umschalten der Sichtbarkeit der Gruppen
+    document
+      .getElementById("meter-load-resistance-group")
+      .classList.toggle("initially-hidden", !isResistance);
+    document
+      .getElementById("meter-load-burden-group")
+      .classList.toggle("initially-hidden", isResistance);
+
+    // Entfernen des .burden-calc-input von der versteckten Gruppe, um nur den aktiven Wert zu triggern
+    document
+      .getElementById("meter-resistance-global")
+      .classList.toggle("burden-calc-input", isResistance);
+    document
+      .getElementById("meter-burden-global")
+      .classList.toggle("burden-calc-input", !isResistance);
   }
 
   function gatherAllMeasurementData() {
@@ -181,6 +210,33 @@ document.addEventListener("DOMContentLoaded", () => {
     ["L1", "L2", "L3"].forEach((phase) => {
       wicklungsparameter.push({
         Phase: phase,
+
+        // NEU: RAW MEASUREMENT VALUES FÜR R_S (FUNKTIONS-FIX)
+        R_S_U_V: document.getElementById(`u-mess-${phase}`).value || "",
+        R_S_I_A: document.getElementById(`i-mess-${phase}`).value || "",
+
+        // NEU: RAW MEASUREMENT VALUES FÜR L_S (FUNKTIONS-FIX)
+        L_S_U_V: document.getElementById(`u-mess-L-${phase}`).value || "",
+        L_S_I_A: document.getElementById(`i-mess-L-${phase}`).value || "",
+        L_S_Phi_deg: document.getElementById(`phi-mess-L-${phase}`).value || "",
+
+        // R_S Settings
+        R_S_Probe_Ratio:
+          document.getElementById(`probe-ratio-${phase}-rs`)?.value || "",
+        R_S_Attenuator:
+          document.getElementById(`attenuator-${phase}-rs`)?.value || "",
+        R_S_Coupling:
+          document.getElementById(`coupling-${phase}-rs`)?.value || "DC",
+
+        // L_S Settings
+        L_S_Probe_Ratio:
+          document.getElementById(`probe-ratio-${phase}-ls`)?.value || "",
+        L_S_Attenuator:
+          document.getElementById(`attenuator-${phase}-ls`)?.value || "",
+        L_S_Coupling:
+          document.getElementById(`coupling-${phase}-ls`)?.value || "AC",
+
+        // CALCULATED RESULTS
         R_S_Ohm: document
           .getElementById(`rs-result-${phase}`)
           .textContent.replace(" Ω", "")
@@ -195,6 +251,23 @@ document.addEventListener("DOMContentLoaded", () => {
           .trim(),
       });
     });
+
+    // Hinzugefügt: Globale Bürden-Einstellungen speichern
+    const globale_buerden_einstellungen = {
+      cable_length_m: document.getElementById("cable-length-global").value,
+      cable_cross_section_mm2: document.getElementById(
+        "cable-cross-section-global"
+      ).value,
+      meter_load_type: document.querySelector(
+        'input[name="meter-load-type"]:checked'
+      ).value,
+      meter_resistance_ohm: document.getElementById("meter-resistance-global")
+        .value,
+      meter_burden_va: document.getElementById("meter-burden-global").value,
+      temperature_setting: document.querySelector(
+        'input[name="temp-selector-global"]:checked'
+      ).value,
+    };
 
     const gesamtbuerde_und_kompensation = [];
     ["L1", "L2", "L3"].forEach((phase) => {
@@ -245,6 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return {
       transformerName,
       stromGruppe,
+      globale_buerden_einstellungen, // Exportiere die neuen Einstellungen
       leerlauf_und_kurzschluss,
       wicklungsparameter,
       gesamtbuerde_und_kompensation,
@@ -285,9 +359,48 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadMeasurementsFromCsv(transformerName, stromGruppe) {
-    if (!transformerName || !stromGruppe) {
-      document.getElementById("measurement-form").reset();
+    // KORREKTUR: Wir speichern die aktuellen Selektor-Werte
+    const groupSelector = document.getElementById("strom-gruppe-selector");
+    const transformerSelector = document.getElementById("transformer-selector");
+    const currentGroupValue = groupSelector.value;
+    const currentTransformerValue = transformerSelector.value;
+
+    const clearMeasurementFields = () => {
+      // Setzt nur die INPUT-Felder und die SELECT-Kopplungen zurück
+      document.querySelectorAll(".measurement-input").forEach((input) => {
+        if (input.tagName === "INPUT") {
+          input.value = "";
+        } else if (input.tagName === "SELECT") {
+          // Setze Kopplung auf Standardwert zurück (L_S: AC, R_S: DC)
+          if (input.id.endsWith("-ls")) {
+            input.value = "AC";
+          } else if (input.id.endsWith("-rs")) {
+            input.value = "DC";
+          }
+        }
+      });
+      document.querySelectorAll(".measurement-setting").forEach((input) => {
+        if (input.tagName === "INPUT") input.value = "";
+      });
+
+      // Stellen Sie sicher, dass die Selektoren ihre Auswahl behalten (Funktions-Fix)
+      groupSelector.value = currentGroupValue;
+      transformerSelector.value = currentTransformerValue;
+
+      // Setze globale Bürden-Felder auf Standard zurück (ohne Reset())
+      document.getElementById("cable-length-global").value = "2.5";
+      document.getElementById("cable-cross-section-global").value = "2.5";
+      document.getElementById("meter-resistance-global").value = "0.1";
+      document.getElementById("meter-burden-global").value = "5";
+      document.getElementById("meter-load-resistance").checked = true;
+      document.getElementById("temp-20-global").checked = true;
+      toggleMeterLoadInputs();
+
       runAllCalculations();
+    };
+
+    if (!transformerName || !stromGruppe) {
+      clearMeasurementFields();
       return;
     }
 
@@ -307,12 +420,14 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(
         `Fehler beim Laden der CSV-Daten für ${transformerName}: ${error.message}`
       );
-      document.getElementById("measurement-form").reset();
-      runAllCalculations();
+      // Fehlerfall: Nur Messfelder zurücksetzen
+      clearMeasurementFields();
     }
   }
 
   function populateFormWithLoadedData(data) {
+    // ... (Logik zum Laden von Leerlauf/Kurzschluss)
+
     (data.leerlauf_und_kurzschluss || []).forEach((item) => {
       const type = (item.Typ || "").toLowerCase();
       if (document.getElementById(`u-${type}-${item.Phase}`)) {
@@ -324,6 +439,62 @@ document.addEventListener("DOMContentLoaded", () => {
           item.P_W || "";
       }
     });
+
+    (data.wicklungsparameter || []).forEach((item) => {
+      const phase = item.Phase;
+
+      // NEU: RAW MEASUREMENT VALUES FÜR R_S (FUNKTIONS-FIX)
+      if (document.getElementById(`u-mess-${phase}`)) {
+        document.getElementById(`u-mess-${phase}`).value = item.R_S_U_V || "";
+        document.getElementById(`i-mess-${phase}`).value = item.R_S_I_A || "";
+        document.getElementById(`u-mess-L-${phase}`).value = item.L_S_U_V || "";
+        document.getElementById(`i-mess-L-${phase}`).value = item.L_S_I_A || "";
+        document.getElementById(`phi-mess-L-${phase}`).value =
+          item.L_S_Phi_deg || "";
+      }
+
+      // R_S Settings
+      if (document.getElementById(`probe-ratio-${phase}-rs`)) {
+        document.getElementById(`probe-ratio-${phase}-rs`).value =
+          item.R_S_Probe_Ratio || "";
+        document.getElementById(`attenuator-${phase}-rs`).value =
+          item.R_S_Attenuator || "";
+        document.getElementById(`coupling-${phase}-rs`).value =
+          item.R_S_Coupling || "DC";
+      }
+
+      // L_S Settings
+      if (document.getElementById(`probe-ratio-${phase}-ls`)) {
+        document.getElementById(`probe-ratio-${phase}-ls`).value =
+          item.L_S_Probe_Ratio || "";
+        document.getElementById(`attenuator-${phase}-ls`).value =
+          item.L_S_Attenuator || "";
+        document.getElementById(`coupling-${phase}-ls`).value =
+          item.L_S_Coupling || "AC";
+      }
+    });
+
+    // Hinzugefügt: Laden der globalen Bürden-Einstellungen
+    if (data.globale_buerden_einstellungen) {
+      const global = data.globale_buerden_einstellungen;
+      document.getElementById("cable-length-global").value =
+        global.cable_length_m || "2.5";
+      document.getElementById("cable-cross-section-global").value =
+        global.cable_cross_section_mm2 || "2.5";
+      document.getElementById("meter-resistance-global").value =
+        global.meter_resistance_ohm || "0.1";
+      document.getElementById("meter-burden-global").value =
+        global.meter_burden_va || "5";
+
+      // Setze den Radio-Button und die Temperatur
+      const loadType = global.meter_load_type || "resistance";
+      document.getElementById(`meter-load-${loadType}`).checked = true;
+
+      const temp = global.temperature_setting || "20";
+      document.getElementById(`temp-${temp}-global`).checked = true;
+
+      toggleMeterLoadInputs();
+    }
 
     (data.messreihen || []).forEach((item) => {
       const row = document.querySelector(
@@ -536,8 +707,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const area =
       parseFloat(document.getElementById(`cable-cross-section-global`).value) ||
       0;
-    const meter_r =
-      parseFloat(document.getElementById(`meter-resistance-global`).value) || 0;
+
+    // NEUE LOGIK: Meter-Widerstand (meter_r) aus Widerstand oder Bürde berechnen
+    const loadType = document.querySelector(
+      'input[name="meter-load-type"]:checked'
+    ).value;
+    let meter_r = 0;
+
+    const transformer = transformers.find(
+      (t) =>
+        t.templateProductInformation.name ===
+        document.getElementById("transformer-selector").value
+    );
+
+    if (transformer) {
+      const ratioStr =
+        transformer.specificProductInformation?.electrical?.ratio || "0/5";
+      const [, sekNenn] = ratioStr.split("/").map(Number); // sekNenn is I_sek,Nenn
+
+      if (loadType === "resistance") {
+        meter_r =
+          parseFloat(
+            document.getElementById(`meter-resistance-global`).value
+          ) || 0;
+      } else if (loadType === "burden" && sekNenn > 0) {
+        const burden_va =
+          parseFloat(document.getElementById(`meter-burden-global`).value) || 0;
+        meter_r = burden_va / Math.pow(sekNenn, 2);
+      }
+    }
+    // ENDE NEUE LOGIK
+
     const tempEl = document.querySelector(
       `input[name="temp-selector-global"]:checked`
     );
@@ -545,11 +745,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const temp = tempEl.value;
     const rho = temp === "80" ? RHO_80 : RHO_20;
-    const transformer = transformers.find(
-      (t) =>
-        t.templateProductInformation.name ===
-        document.getElementById("transformer-selector").value
-    );
+
+    // ... (meter_r wurde jetzt oben berechnet)
 
     const snennSpan = document.getElementById(`snenn-result-${phase}`);
     const scableSpan = document.getElementById(`scable-result-${phase}`);
@@ -573,15 +770,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const [, sekNenn] = ratioStr.split("/").map(Number);
 
     let s_cable = 0,
-      s_meter = 0;
+      s_meter_calc = 0; // Umbenannt, um meter_r nicht zu überschreiben
+
     if (area > 0 && sekNenn > 0)
       s_cable = ((rho * length) / area) * Math.pow(sekNenn, 2);
-    if (sekNenn > 0) s_meter = meter_r * Math.pow(sekNenn, 2);
-    const s_ist = s_cable + s_meter;
+
+    // Berechne S_Meter basierend auf dem abgeleiteten R_Meter (meter_r)
+    if (sekNenn > 0) s_meter_calc = meter_r * Math.pow(sekNenn, 2);
+
+    const s_ist = s_cable + s_meter_calc;
 
     snennSpan.textContent = `${ratedBurdenVA.toFixed(2)} VA`;
     scableSpan.textContent = `${s_cable.toFixed(4)} VA`;
-    smeterSpan.textContent = `${s_meter.toFixed(4)} VA`;
+    smeterSpan.textContent = `${s_meter_calc.toFixed(4)} VA`; // Verwende s_meter_calc
     sistSpan.textContent = `${s_ist.toFixed(4)} VA`;
 
     if (ratedBurdenVA > 0) {

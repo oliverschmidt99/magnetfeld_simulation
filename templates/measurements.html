@@ -45,8 +45,8 @@
         <div class="main-column">
             <form id="measurement-form">
                 <div class="card global-parameters-card">
-                    <div class="top-controls-grid">
-                        <div class="form-group">
+                    <div class="form-row">
+                        <div class="form-group" style="flex-basis: 30%;">
                             <label for="strom-gruppe-selector">1. Strom Gruppe</label>
                             <select id="strom-gruppe-selector">
                                 <option value="">-- Gruppe wählen --</option>
@@ -55,13 +55,14 @@
                                 <option value="C">Gruppe C (3000A - 5000A)</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex-basis: 30%;">
                             <label for="transformer-selector">2. Wandler für alle Phasen</label>
                             <select id="transformer-selector">
                                 <option value="">-- Bitte Gruppe wählen --</option>
                             </select>
                         </div>
-                        <div class="overall-status" id="overall-status">
+                        <div class="overall-status" id="overall-status"
+                            style="flex-basis: 40%; align-self: flex-end; text-align: right;">
                             Messung vollständig: <span class="status-value incomplete">Nein</span> | <span
                                 class="status-date">--.--.----</span>
                         </div>
@@ -108,6 +109,88 @@
 
                     <div id="measurement-wicklung" class="config-section">
                         <h2>Sekundärwicklungs-Parameter</h2>
+
+                        <details class="card" open style="margin-bottom: 1.5rem;">
+                            <summary
+                                style="font-size: 1.15rem; font-weight: bold; cursor: pointer; padding: 0.75rem 1rem; color: #0d6efd; background-color: #f8f9fa; border: none; border-radius: 6px;">
+                                <span style="display: inline-block; transform: translateY(2px);">
+                                    ⚙️ Anleitung: Oszilloskop-Einstellung für Strommesszange
+                                </span>
+                            </summary>
+                            <div style="padding: 0.5rem 1rem 1rem; border-top: 1px dashed #dee2e6;">
+                                <p>Um präzise Messungen zu gewährleisten, müssen die korrekten Einstellungen
+                                    dokumentiert werden.</p>
+
+                                <h4>Generische Oszilloskop-Menü-Einstellungen</h4>
+                                <ol style="padding-left: 1.5rem;">
+                                    <li style="margin-bottom: 0.75rem;"><strong>Kanalwahl:</strong> Klicken Sie auf den
+                                        Kanal, der für die Strommessung verwendet wird.</li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>Sensor/Sonden:</strong> Wählen Sie im
+                                        Menü den Punkt <strong>"Sensor"</strong> (oder <strong>"Probe"</strong>) aus.
+                                    </li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>Verhältnis & Dämpfung:</strong> Im sich
+                                        öffnenden Fenster können der <strong>"Attenuat"</strong> (Dämpfung) und das
+                                        <strong>Sondenverhältnis ("MessStrom")</strong> eingestellt werden.
+                                    </li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>Verhältnis-Einstellung:</strong> Auf das
+                                        Feld <strong>"MessStrom"</strong> klicken und das gewünschte Verhältnis
+                                        einstellen:
+                                        <ul style="margin-top: 0.5rem; padding-left: 1rem; list-style-type: circle;">
+                                            <li>Für die <strong>Empfindlichkeit</strong>: z.B. <strong>100.0
+                                                    mV/A</strong> (Stromquelle liefert 1A, Oszilloskop misst 100mV).
+                                            </li>
+                                            <li>Für den <strong>Strom pro Volt</strong>: z.B. <strong>10.0 A/V</strong>
+                                                (Oszilloskop misst 1V, die Strommesszange misst 10A).</li>
+                                        </ul>
+                                    </li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>Kopplung (Coupling):</strong> Wählen Sie
+                                        <strong>AC</strong> für $L_S$-Parameter und <strong>DC</strong> für
+                                        $R_S$-Parameter.
+                                    </li>
+                                </ol>
+
+                                <h4 style="margin-top: 1.5rem;">Spezialfall: Tektronix AM 503 Stromsonden-Verstärker
+                                </h4>
+                                <p>Für korrekte DC-Messungen mit dem AM 503 muss vor jeder Messreihe eine
+                                    **Entmagnetisierung (Degaussing)** und ein **DC-Abgleich (Balance)** durchgeführt
+                                    werden.</p>
+                                <ol style="padding-left: 1.5rem;">
+                                    <li style="margin-bottom: 0.75rem;"><strong>Ausgangs-Setup:</strong> Verbinde den
+                                        <strong>OUTPUT INTO 50Ω</strong> Ausgang des AM 503 mit dem Oszilloskop-Eingang.
+                                        Stelle dort die Empfindlichkeit auf <strong>10 mV/Div</strong> ein.
+                                    </li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>Nullpunkt-Einstellung
+                                            (DC-Level):</strong>
+                                        <ul>
+                                            <li>Setze den Oszilloskop-Eingang auf Masse (GND), positioniere die Spur auf
+                                                die Mitte.</li>
+                                            <li>Setze den Oszilloskop-Eingang auf <strong>DC-Kopplung</strong>.</li>
+                                            <li>Setze den AM 503 Schalter (unten Mitte) auf <strong>CAL DC
+                                                    LEVEL</strong>.</li>
+                                            <li>Stelle den <strong>DC LEVEL</strong> Regler so ein, dass die
+                                                Oszilloskop-Spur wieder in der Mitte liegt.</li>
+                                        </ul>
+                                    </li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>Entmagnetisierung (DEGAUSS):</strong>
+                                        Drücke den **DEGAUSS** Knopf, während die Stromsonde geöffnet ist (nicht um
+                                        einen Leiter).</li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>DC-Abgleich (BALANCE):</strong>
+                                        <ul>
+                                            <li>Setze den AM 503 Schalter (unten Mitte) auf <strong>DC</strong>.</li>
+                                            <li>Drehe den <strong>CURRENT/DIV</strong> Regler ganz im Uhrzeigersinn
+                                                (Full Clockwise).</li>
+                                            <li>Stelle den **BALANCE** Poti (kleiner Schraubendreher-Eingang, oben
+                                                Mitte) so ein, dass die Oszilloskop-Spur in der Mitte liegt. Das System
+                                                ist nun abgreglichen und bereit für DC-Messungen.</li>
+                                        </ul>
+                                    </li>
+                                    <li style="margin-bottom: 0.75rem;"><strong>Bereich wählen:</strong> Stelle den
+                                        Hauptregler <strong>CURRENT/DIV</strong> auf den gewünschten Messbereich.
+                                        **Dieser Wert entspricht dem Attenuator-Wert auf der Website.**</li>
+                                </ol>
+
+                            </div>
+                        </details>
                         <div class="phase-grid-internal">
                             {% for phase in ["L1", "L2", "L3"] %}
                             <div class="card">
@@ -120,6 +203,41 @@
                                     <div class="form-group"><label><i>I</i><sub>mess</sub> (A)</label><input
                                             type="number" class="measurement-input resistance-calc-input"
                                             id="i-mess-{{phase}}" data-phase="{{phase}}" step="0.001"></div>
+
+                                    <div class="instrument-settings-group card"
+                                        style="margin-top: 1.5rem; padding: 1rem;">
+                                        <h6>Messgeräte-Einstellungen (R<sub>S</sub>)</h6>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Verhältnis</label>
+                                                <span
+                                                    style="font-size: 0.8em; color: #6c757d; display: block; height: 1.5em; margin-top: -5px;">(A/V
+                                                    oder V/A)</span>
+                                                <input type="text" class="measurement-input measurement-setting"
+                                                    id="probe-ratio-{{phase}}-rs" data-phase="{{phase}}" value=""
+                                                    placeholder="z.B. 10.0 A/V">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Attenuator</label>
+                                                <span
+                                                    style="font-size: 0.8em; color: #6c757d; display: block; height: 1.5em; margin-top: -5px;">(V/Div)</span>
+                                                <input type="text" class="measurement-input measurement-setting"
+                                                    id="attenuator-{{phase}}-rs" data-phase="{{phase}}" value=""
+                                                    placeholder="z.B. 10 mV/Div">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Kopplung</label>
+                                                <span
+                                                    style="font-size: 0.8em; color: #6c757d; display: block; height: 1.5em; margin-top: -5px;">&nbsp;</span>
+                                                <select class="measurement-input measurement-setting"
+                                                    id="coupling-{{phase}}-rs" data-phase="{{phase}}">
+                                                    <option value="DC" selected>DC (Gleichstrom)</option>
+                                                    <option value="AC">AC (Wechselstrom)</option>
+                                                    <option value="GND">Masse/GND</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="resistance-result"><i>R</i><sub>S</sub>: <span
                                             id="rs-result-{{phase}}">-- Ω</span></div>
                                 </div>
@@ -134,6 +252,41 @@
                                     <div class="form-group"><label>Phasenverschiebung φ (°)</label><input type="number"
                                             class="measurement-input inductance-calc-input" id="phi-mess-L-{{phase}}"
                                             data-phase="{{phase}}" step="0.1"></div>
+
+                                    <div class="instrument-settings-group card"
+                                        style="margin-top: 1.5rem; padding: 1rem;">
+                                        <h6>Messgeräte-Einstellungen (L<sub>S</sub>)</h6>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Verhältnis</label>
+                                                <span
+                                                    style="font-size: 0.8em; color: #6c757d; display: block; height: 1.5em; margin-top: -5px;">(A/V
+                                                    oder V/A)</span>
+                                                <input type="text" class="measurement-input measurement-setting"
+                                                    id="probe-ratio-{{phase}}-ls" data-phase="{{phase}}" value=""
+                                                    placeholder="z.B. 10.0 A/V">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Attenuator</label>
+                                                <span
+                                                    style="font-size: 0.8em; color: #6c757d; display: block; height: 1.5em; margin-top: -5px;">(V/Div)</span>
+                                                <input type="text" class="measurement-input measurement-setting"
+                                                    id="attenuator-{{phase}}-ls" data-phase="{{phase}}" value=""
+                                                    placeholder="z.B. 10 mV/Div">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Kopplung</label>
+                                                <span
+                                                    style="font-size: 0.8em; color: #6c757d; display: block; height: 1.5em; margin-top: -5px;">&nbsp;</span>
+                                                <select class="measurement-input measurement-setting"
+                                                    id="coupling-{{phase}}-ls" data-phase="{{phase}}">
+                                                    <option value="AC" selected>AC (Wechselstrom)</option>
+                                                    <option value="DC">DC (Gleichstrom)</option>
+                                                    <option value="GND">Masse/GND</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="inductance-result"><i>X</i><sub>S</sub>: <span
                                             id="xs-result-{{phase}}">-- Ω</span> | <i>L</i><sub>S</sub>: <span
                                             id="ls-result-{{phase}}">-- mH</span></div>
@@ -153,8 +306,31 @@
                                 <div class="form-group"><label>Leitungsquerschnitt (mm²)</label><input type="number"
                                         class="burden-calc-input" id="cable-cross-section-global" value="2.5"
                                         step="0.1"></div>
-                                <div class="form-group"><label>Innenwiderstand Messgerät (Ω)</label><input type="number"
-                                        class="burden-calc-input" id="meter-resistance-global" value="0.1" step="0.01">
+
+                                <div class="form-group">
+                                    <label>Last des Messgeräts</label>
+                                    <div class="button-group-radio" style="margin-bottom: 0.75rem;">
+                                        <input type="radio" id="meter-load-resistance" name="meter-load-type"
+                                            value="resistance" checked>
+                                        <label for="meter-load-resistance">Innenwiderstand ($\Omega$)</label>
+                                        <input type="radio" id="meter-load-burden" name="meter-load-type"
+                                            value="burden">
+                                        <label for="meter-load-burden">Nennbürde (VA)</label>
+                                    </div>
+
+                                    <div id="meter-load-resistance-group">
+                                        <label for="meter-resistance-global"
+                                            style="font-weight: normal;">Innenwiderstand ($\Omega$)</label>
+                                        <input type="number" class="burden-calc-input" id="meter-resistance-global"
+                                            value="0.1" step="0.01">
+                                    </div>
+
+                                    <div id="meter-load-burden-group" class="initially-hidden">
+                                        <label for="meter-burden-global" style="font-weight: normal;">Nennbürde
+                                            (VA)</label>
+                                        <input type="number" class="burden-calc-input" id="meter-burden-global"
+                                            value="5" step="0.1">
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label>Temperatur</label>

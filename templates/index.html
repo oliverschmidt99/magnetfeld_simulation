@@ -3,32 +3,102 @@
 
 {% block title %}Startseite{% endblock %}
 
+{% block head %}
+<style>
+    .welcome-header {
+        text-align: center;
+        padding: 3rem 1rem;
+        background-color: #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 3rem;
+    }
+
+    .welcome-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .welcome-header .subtitle {
+        font-size: 1.2rem;
+        color: #6c757d;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .card-navigation {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .card-navigation .card {
+        text-align: center;
+        padding: 2rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card-navigation .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-navigation .card h3 {
+        font-size: 1.5rem;
+        margin-top: 0;
+        color: #0d6efd;
+    }
+
+    .card-navigation .card p {
+        margin-bottom: 1.5rem;
+        color: #495057;
+    }
+
+    .features-section {
+        margin-top: 3rem;
+    }
+
+    .features-section h2 {
+        text-align: center;
+        font-size: 2rem;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container welcome-container">
     <header class="welcome-header">
         <h1>Willkommen zur Magnetfeld-Simulation</h1>
         <p class="subtitle">
-            Ein Werkzeug zur Konfiguration, Durchführung und Analyse von FEMM-Simulationen.
+            Ein Werkzeug zur Konfiguration, Durchführung und Analyse von FEMM-Simulationen – vom digitalen Modell bis
+            zum Vergleich mit realen Messdaten.
         </p>
     </header>
 
-    <div class="card-navigation">
-        <div class="card">
-            <h3>Simulation</h3>
-            <p>Konfiguriere und starte eine neue Simulation Schritt für Schritt.</p>
-            <a href="{{ url_for('simulation') }}" class="button">Zur Simulation</a>
-        </div>
+    <div class="features-section">
+        <h2>Kernfunktionen im Überblick</h2>
+        <div class="card-navigation">
+            <div class="card">
+                <h3><a href="{{ url_for('simulation') }}">Simulation</a></h3>
+                <p>Konfiguriere komplexe Szenarien mit einem visuellen Editor, starte Berechnungen und verfolge den
+                    Fortschritt in Echtzeit.</p>
+                <a href="{{ url_for('simulation') }}" class="button">Simulation starten</a>
+            </div>
 
-        <div class="card">
-            <h3>Ergebnisse</h3>
-            <p>Analysiere die Daten und visualisiere die Ergebnisse vergangener Läufe.</p>
-            <a href="{{ url_for('results') }}" class="button">Zu den Ergebnissen</a>
-        </div>
+            <div class="card">
+                <h3><a href="{{ url_for('measurements') }}">Praxismessungen</a></h3>
+                <p>Erfasse und analysiere Messdaten vom realen Prüfstand, um Simulationsmodelle zu validieren und zu
+                    verfeinern.</p>
+                <a href="{{ url_for('measurements') }}" class="button">Messungen verwalten</a>
+            </div>
 
-        <div class="card">
-            <h3>Bibliothek</h3>
-            <p>Verwalte die Bauteil-Bibliothek und die CSV-Stammdaten.</p>
-            <a href="{{ url_for('library_page') }}" class="button">Zur Bibliothek</a>
+            <div class="card">
+                <h3><a href="{{ url_for('library_page') }}">Bibliothek</a></h3>
+                <p>Verwalte eine zentrale Datenbank für Bauteile, Materialien und Stammdaten, um Konsistenz und
+                    Wiederverwendbarkeit zu sichern.</p>
+                <a href="{{ url_for('library_page') }}" class="button">Zur Bibliothek</a>
+            </div>
         </div>
     </div>
 </div>

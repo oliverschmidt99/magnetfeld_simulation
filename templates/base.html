@@ -18,13 +18,25 @@
         </div>
         <nav id="main-nav">
             <div class="nav-item"><a href="{{ url_for('index') }}">Home</a></div>
-            <div class="nav-item"><a href="{{ url_for('simulation') }}">Simulation</a></div>
-            <div class="nav-item"><a href="{{ url_for('results') }}">Ergebnisse</a></div>
-            <div class="nav-item"><a href="{{ url_for('library_page') }}">Bibliothek</a></div>
-            <div class="nav-item"><a href="{{ url_for('measurements') }}">Messungen</a></div>
-            <div class="nav-item"><a href="{{ url_for('documentation') }}">Dokumentation</a></div>
-            <div class="nav-item"><a href="{{ url_for('settings') }}">Einstellungen</a></div>
+            <div class="nav-item has-dropdown">
+                <a href="#">Simulation</a>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('simulation') }}">Konfiguration &amp; Start</a>
+                    <a href="{{ url_for('results') }}">Simulationsergebnisse</a>
+                </div>
+            </div>
+            <div class="nav-item"><a href="{{ url_for('measurements') }}">Praxismessungen</a></div>
+            <div class="nav-item has-dropdown">
+                <a href="#">Verwaltung</a>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('library_page') }}">Bibliothek &amp; Stammdaten</a>
+                    <a href="{{ url_for('documentation') }}">Dokumentation</a>
+                    <a href="{{ url_for('settings') }}">Einstellungen</a>
+                </div>
+            </div>
         </nav>
+        <div class="header-right">
+        </div>
     </header>
 
     {% block sub_nav %}{% endblock %}

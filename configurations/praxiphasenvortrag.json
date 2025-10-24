@@ -1,0 +1,122 @@
+{
+    "simulationParams": {
+        "ratedCurrent": "2000",
+        "startpositionen": {
+            "x_L1": "-130",
+            "y_L1": "0",
+            "x_L2": "0",
+            "y_L2": "0",
+            "x_L3": "130",
+            "y_L3": "0"
+        },
+        "bewegungsRichtungen": {
+            "L1": {
+                "x": "-1",
+                "y": "-1"
+            },
+            "L2": {
+                "x": "0",
+                "y": "1"
+            },
+            "L3": {
+                "x": "1",
+                "y": "0"
+            }
+        },
+        "problemDepthM": "50",
+        "spielraum": {
+            "Laenge": "600",
+            "Breite": "300"
+        },
+        "schrittweiten": {
+            "Pos1": "10",
+            "Pos2": "20",
+            "Pos3": "50",
+            "Pos4": "0"
+        },
+        "I_1_mes": "1500",
+        "I_2_mes": "2000",
+        "I_3_mes": "2500",
+        "phaseSweep": {
+            "start": "0",
+            "end": "180",
+            "step": "5"
+        }
+    },
+    "electricalSystem": [
+        {
+            "name": "L1",
+            "phaseShiftDeg": 0,
+            "peakCurrentA": 2828.43
+        },
+        {
+            "name": "L2",
+            "phaseShiftDeg": 120,
+            "peakCurrentA": 2828.43
+        },
+        {
+            "name": "L3",
+            "phaseShiftDeg": -120,
+            "peakCurrentA": 2828.43
+        }
+    ],
+    "assemblies": [
+        {
+            "name": "Assembly_1",
+            "phaseName": "L1",
+            "copperRailName": "RJ_80x20_2000A",
+            "transformerName": "ASK 101.4",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_2",
+            "phaseName": "L2",
+            "copperRailName": "RJ_80x20_2000A",
+            "transformerName": "ASK 101.4",
+            "enabled": true
+        },
+        {
+            "name": "Assembly_3",
+            "phaseName": "L3",
+            "copperRailName": "RJ_80x20_2000A",
+            "transformerName": "ASK 101.4",
+            "enabled": true
+        }
+    ],
+    "standAloneComponents": [],
+    "simulationMeta": {
+        "selectedIntegrals": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30
+        ]
+    }
+}
